@@ -1,9 +1,28 @@
 from fastapi import APIRouter, HTTPException
-from app.database import execute_query, get_account_by_number
+from app.database import execute_query, get_account_by_number, get_cheque_request_by_id
 from app.logger import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter()
+
+
+@router.get("/customers", tags=["Customers"], summary="List all registered customers")
+async def list_customers():
+    """List all registered customers — for testing."""
+    customers = execute_query(
+        "SELECT phone_number, full_name, aadhaar_number, pan_number, status, created_at "
+        "FROM customers ORDER BY id"
+    )
+    return {"customers": customers, "total": len(customers)}
+
+
+@router.get("/cheque-requests/{request_id}", tags=["Cheques"], summary="Get cheque request by ID")
+async def get_cheque_request(request_id: str):
+    """Get a cheque deposit request by its request ID."""
+    cheque_request = get_cheque_request_by_id(request_id.strip().upper())
+    if not cheque_request:
+        raise HTTPException(status_code=404, detail="Cheque request not found")
+    return {"cheque_request": cheque_request}
 
 
 @router.get("/accounts", tags=["Accounts"], summary="List all accounts")

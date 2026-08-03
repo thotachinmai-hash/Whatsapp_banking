@@ -13,6 +13,23 @@ redis_client = redis.Redis.from_url(
 )
 
 SESSION_TTL = 3600  # 1 hour
+ACCOUNT_TTL = 3600  # 1 hour
+
+
+def cache_active_account(phone_number: str, account: dict) -> None:
+    """Cache the customer's active account details for quick follow-up use."""
+    try:
+        serializable = {
+            key: float(value) if key == "balance" and value is not None else value
+            for key, value in account.items()
+        }
+        redis_client.setex(
+            f"account:active:{phone_number}",
+            ACCOUNT_TTL,
+            json.dumps(serializable, default=str),
+        )
+    except Exception as e:
+        logger.error(f"Redis account cache error | phone={phone_number} | error={e}")
 
 
 def get_session_history(phone_number: str) -> list:

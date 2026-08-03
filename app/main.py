@@ -1,7 +1,7 @@
 import time
 import uuid
 
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -10,6 +10,8 @@ from app.logger import get_logger
 from app.memory import get_redis_health
 from app.metrics import get_metrics
 from app.services.message_handler import handle_incoming_message
+from app.services.document_parser import parse_document
+from app.services.whatsapp import get_sender_phone
 from app.api.routes import router
 from app.agent.agent import run_agent
 
@@ -74,6 +76,14 @@ async def whatsapp_webhook(request: Request):
         # Extract OpenWA message data
         data = payload.get("data", {})
         logger.info(f"data={data}")
+        chat_id = data.get("chatId")
+
+        sender_phone = None
+        if chat_id:
+            sender_phone = await get_sender_phone(chat_id)
+
+        logger.info(f"Chat ID: {chat_id}")
+        logger.info(f"Resolved sender phone: {sender_phone}")
 
         message_data = {
             "from": data.get("chatId"),
@@ -81,6 +91,9 @@ async def whatsapp_webhook(request: Request):
             "body": data.get("body"),
             "type": data.get("type"),
             "media": data.get("media", {}),
+            "mediaUrl": data.get("mediaUrl"),
+            "fileName": data.get("fileName"),
+            "mimeType": data.get("mimeType"),
             "raw": data
         }
 
@@ -145,7 +158,73 @@ async def test_message(request: TestMessageRequest):
         "duration_ms": round(duration, 2)
     }
 
+# ── Document parser test endpoint ────────────────────────────────
 
+@app.post(
+    "/api/test/document",
+    tags=["Testing"],
+    summary="Test document parser"
+)
+async def test_document(
+    file: UploadFile = File(...)
+):
+    """
+    Upload image/pdf/docx and test Qwen vision document extraction.
+    """
+
+    trace_id = str(uuid.uuid4())[:8]
+
+    start = time.time()
+
+    try:
+
+        file_bytes = await file.read()
+
+        logger.info(
+            f"[{trace_id}] Document upload received | "
+            f"name={file.filename} | "
+            f"size={len(file_bytes)} bytes"
+        )
+
+
+        result = await parse_document(
+            file_bytes=file_bytes,
+            filename=file.filename,
+            prompt="""
+            Extract all information from this document.
+
+            Rules:
+            - Return ONLY valid JSON.
+            - Do not summarize.
+            - Preserve exact values.
+            - Extract tables also.
+            - Extract handwritten text if visible.
+            """,
+            trace_id=trace_id
+        )
+
+
+        duration = (time.time() - start) * 1000
+
+
+        return {
+            "trace_id": trace_id,
+            "filename": file.filename,
+            "duration_ms": round(duration, 2),
+            "result": result
+        }
+
+
+    except Exception as e:
+
+        logger.error(
+            f"[{trace_id}] Document test failed | error={e}"
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
 
 # ── System endpoints ──────────────────────────────────────────────
 @app.get(
@@ -209,5 +288,6 @@ async def root():
         "health": "/health",
         "metrics": "/metrics",
         "webhook": "POST /webhook/whatsapp",
-        "test": "POST /api/test/message"
+        "test": "POST /api/test/message",
+        "test_document": "POST /api/test/document"
     }

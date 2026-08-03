@@ -44,3 +44,7 @@ uvicorn==0.51.0
 websockets==15.0.1
 xxhash==3.8.1
 zstandard==0.25.0
+python-multipart==0.0.20
+python-docx==1.2.0
+pillow==11.3.0
+pypdf==6.1.0
