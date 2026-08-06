@@ -1,0 +1,88 @@
+services:
+
+  # PostgreSQL database
+  postgres:
+    image: postgres:15
+    container_name: whatsapp_postgres
+    environment:
+      POSTGRES_DB: banking_db
+      POSTGRES_USER: banking_user
+      POSTGRES_PASSWORD: banking_pass
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - whatsapp_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U banking_user -d banking_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis for session memory
+  redis:
+    image: redis:7-alpine
+    container_name: whatsapp_redis
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # OpenWA WhatsApp Gateway
+  openwa:
+    image: ghcr.io/rmyndharis/openwa:latest
+    container_name: whatsapp_openwa
+    ports:
+      - "2785:2785"
+    environment:
+      DATABASE_URL: postgresql://banking_user:banking_pass@postgres:5432/banking_db
+      REDIS_URL: redis://redis:6379
+      API_KEY: ${OPENWA_API_KEY}
+      WEBHOOK_ALLOW_LOCAL: "true"
+      DISABLE_IP_CHECK: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - whatsapp_openwa_data:/app/data
+    restart: unless-stopped
+
+  # FastAPI Application
+  app:
+    build: .
+    container_name: whatsapp_app
+    ports:
+      - "8001:8000"
+    environment:
+      DATABASE_URL: postgresql://banking_user:banking_pass@postgres:5432/banking_db
+      REDIS_URL: redis://redis:6379
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      GROQ_MODEL: ${GROQ_MODEL:-llama-3.3-70b-versatile}
+      GROQ_WHISPER_MODEL: ${GROQ_WHISPER_MODEL:-whisper-large-v3-turbo}
+      OPENWA_URL: http://openwa:2785
+      OPENWA_API_KEY: ${OPENWA_API_KEY}
+      OPENWA_SESSION_ID: ${OPENWA_SESSION_ID:-hsbc-assistant}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  whatsapp_postgres_data:
+  whatsapp_openwa_data:
