@@ -67,7 +67,8 @@ async def receive_webhook(request: Request):
     raw_body = await request.body()
     timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
-    print(f"\n\nWebhook received {timestamp}\n")
+    print("Webhook POST received:", body)
+
 
     if raw_body:
         try:
