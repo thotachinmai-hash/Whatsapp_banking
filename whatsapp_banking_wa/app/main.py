@@ -47,7 +47,7 @@ app.include_router(router, prefix="/api")
 
 
 #webhook endpoint for WA business API
-@app.get("/webhook")
+@app.get("/")
 def verify_webhook(
     hub_mode: str = Query(..., alias="hub.mode"),
     hub_verify_token: str = Query(..., alias="hub.verify_token"),
@@ -72,7 +72,7 @@ def verify_webhook(
     )
 
 
-@app.post("/webhook")
+@app.post("/")
 async def receive_webhook(request: Request) -> Dict[str, Any]:
     headers = dict(request.headers)
     body = await request.body()
