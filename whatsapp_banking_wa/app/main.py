@@ -67,9 +67,6 @@ async def receive_webhook(request: Request):
     raw_body = await request.body()
     timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
-    print("Webhook POST received:", body)
-
-
     if raw_body:
         try:
             body = json.loads(raw_body.decode("utf-8"))
@@ -79,6 +76,7 @@ async def receive_webhook(request: Request):
     else:
         body = {}
 
+    print(f"\nWebhook POST received {timestamp}")
     print(json.dumps(body, indent=2))
 
     # Example: parse WhatsApp message if present
