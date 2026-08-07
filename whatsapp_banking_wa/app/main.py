@@ -64,22 +64,12 @@ async def verify_webhook(
 
 @app.post("/")
 async def receive_webhook(request: Request):
-    raw_body = await request.body()
+    body = await request.json()   
+
     timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-
-    if raw_body:
-        try:
-            body = json.loads(raw_body.decode("utf-8"))
-        except json.JSONDecodeError:
-            # Not valid JSON, just log raw text
-            body = {"raw_body": raw_body.decode("utf-8", errors="ignore")}
-    else:
-        body = {}
-
     print(f"\nWebhook POST received {timestamp}")
     print(json.dumps(body, indent=2))
 
-    # Example: parse WhatsApp message if present
     try:
         change = body["entry"][0]["changes"][0]
         value = change["value"]
@@ -94,13 +84,12 @@ async def receive_webhook(request: Request):
                 print("Sender:", sender)
                 print("Message:", text)
 
-                # Send acknowledgement back
                 send_message(sender, "✅ Got your message! Thanks for reaching out.")
-
     except Exception as e:
         print("Error parsing webhook:", e)
 
     return PlainTextResponse(content="OK", status_code=200)
+
 
 def send_message(to, text):
 
