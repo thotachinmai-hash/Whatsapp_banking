@@ -72,6 +72,35 @@ async def receive_webhook(request: Request):
 
 
 
+def send_message(to, text):
+
+    url = f"https://graph.facebook.com/v23.0/{PHONE_NUMBER_ID}/messages"
+
+    headers = {
+        "Authorization": f"Bearer {ACCESS_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": to,
+        "type": "text",
+        "text": {
+            "body": text
+        }
+    }
+
+    response = requests.post(
+        url,
+        headers=headers,
+        json=payload
+    )
+
+    print(response.status_code)
+    print(response.text)
+
+
+
 # ── agent endpoint ──────────────────────────────────────────────
 @app.post(
     "/openwa/whatsapp",
