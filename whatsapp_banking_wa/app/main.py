@@ -3,9 +3,11 @@ import os
 import time
 import uuid
 from typing import Any, Dict
+from datetime import datetime
 
 from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Query, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -26,7 +28,7 @@ logger = get_logger(__name__)
 
 
 app = FastAPI(
-    title="HSBC WhatsApp Banking Assistant",
+    title="Finacle WhatsApp Banking Assistant",
     description="AI-powered banking assistant via WhatsApp — accepts voice and text messages",
     version="1.0.0"
 )
@@ -48,55 +50,25 @@ app.include_router(router, prefix="/api")
 
 #webhook endpoint for WA business API
 @app.get("/")
-def verify_webhook(
-    hub_mode: str = Query(..., alias="hub.mode"),
-    hub_verify_token: str = Query(..., alias="hub.verify_token"),
-    hub_challenge: str = Query(..., alias="hub.challenge"),
+async def verify_webhook(
+    hub_mode: str = Query(None, alias="hub.mode"),
+    hub_challenge: str = Query(None, alias="hub.challenge"),
+    hub_verify_token: str = Query(None, alias="hub.verify_token")
 ):
-    print("\n===== VERIFY REQUEST =====")
-    print("Mode:", hub_mode)
-    print("Token:", hub_verify_token)
-    print("Challenge:", hub_challenge)
-
-    if (
-        hub_mode == "subscribe"
-        and hub_verify_token == VERIFY_TOKEN
-    ):
-        print("Webhook verified successfully.")
-        return hub_challenge
-
-    print("Verification failed.")
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Invalid verify token",
-    )
+    if hub_mode == "subscribe" and hub_verify_token == VERIFY_TOKEN:
+        print("WEBHOOK VERIFIED")
+        return PlainTextResponse(content=hub_challenge, status_code=200)
+    else:
+        return PlainTextResponse(content="Forbidden", status_code=403)
 
 
 @app.post("/")
-async def receive_webhook(request: Request) -> Dict[str, Any]:
-    headers = dict(request.headers)
-    body = await request.body()
-
-    print("\n==============================")
-    print("INBOUND WEBHOOK RECEIVED")
-    print("==============================")
-    print("Headers:", headers)
-
-    if body:
-        text = body.decode("utf-8", errors="ignore")
-        print("Body:", text)
-        try:
-            payload = json.loads(text)
-        except json.JSONDecodeError:
-            payload = {"raw_body": text}
-    else:
-        payload = {}
-
-    print("Parsed payload:", json.dumps(payload, indent=4))
-    logger.info("Headers: %s", headers)
-    logger.info("Body: %s", json.dumps(payload, indent=4))
-
-    return {"status": "received", "payload": payload}
+async def receive_webhook(request: Request):
+    body = await request.json()
+    timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"\n\nWebhook received {timestamp}\n")
+    print(body)
+    return PlainTextResponse(content="OK", status_code=200)
 
 
 
