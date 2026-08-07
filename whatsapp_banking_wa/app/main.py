@@ -64,7 +64,6 @@ async def verify_webhook(
 
 @app.post("/")
 async def receive_webhook(request: Request):
-    async def receive_webhook(request: Request):
     raw_body = await request.body()
     timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
