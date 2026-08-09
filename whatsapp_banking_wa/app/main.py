@@ -23,6 +23,7 @@ from app.agent.agent import run_agent
 
 load_dotenv()
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
+PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 
 logger = get_logger(__name__)
 
