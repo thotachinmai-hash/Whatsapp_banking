@@ -1,4 +1,4 @@
-# HSBC WhatsApp Banking Assistant
+# Finacle WhatsApp Banking Assistant
 
 AI-powered WhatsApp banking assistant that accepts voice, text, and document (image/PDF/DOCX) messages, processes them through a LangGraph AI agent and a step-based workflow engine, and responds with real banking information. Built with FastAPI, LangGraph, Groq LLM, Groq Whisper, Groq Vision (OCR), PostgreSQL, Redis, and OpenWA.
 

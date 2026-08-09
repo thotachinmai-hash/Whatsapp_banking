@@ -9,17 +9,17 @@ from app.metrics import (
     log_request
 )
 from app.services.whatsapp import (
+    download_whatsapp_media,
+    send_text_message,
     extract_phone_number,
     detect_message_type,
     get_message_text,
-    get_media_url,
-    send_text_message,
+    get_media_id,
     get_media_filename,
     get_media_mimetype,
-    get_media_data
 )
-from app.services.transcription import download_audio, transcribe_audio
-from app.services.document_parser import download_document, parse_document
+from app.services.transcription import transcribe_audio
+from app.services.document_parser import parse_document
 from app.workflows.constants import (
     STEP_COLLECT_AADHAAR,
     STEP_COLLECT_PAN,
@@ -29,13 +29,7 @@ from app.workflows.constants import (
 )
 from app.workflows.memory import get_workflow
 from app.agent.agent import run_agent
-import os
-import base64
-
 logger = get_logger(__name__)
-
-OPENWA_API_KEY = os.getenv("OPENWA_API_KEY", "")
-
 
 async def handle_incoming_message(payload: dict) -> dict:
     """
@@ -87,11 +81,9 @@ async def handle_incoming_message(payload: dict) -> dict:
             logger.info(f"[{trace_id}] Text message | content={query[:50]}")
 
         elif msg_type == "voice":
-            logger.info(f"[{trace_id}] Voice message — transcribing")
-            media_url = get_media_url(payload)
-
-            if not media_url:
-                logger.error(f"[{trace_id}] No media URL in voice message")
+            media_id = get_media_id(payload)
+            if not media_id:
+                logger.error(f"[{trace_id}] No media ID in voice message")
                 await send_text_message(
                     from_person,
                     "Sorry, I couldn't process your voice message. Please try sending a text message.",
@@ -99,8 +91,7 @@ async def handle_incoming_message(payload: dict) -> dict:
                 )
                 return {"status": "error", "trace_id": trace_id}
 
-            # Download audio
-            audio_data = await download_audio(media_url, OPENWA_API_KEY, trace_id)
+            audio_data, _ = await download_whatsapp_media(media_id, trace_id)
             if not audio_data:
                 await send_text_message(
                     from_person,
@@ -109,7 +100,6 @@ async def handle_incoming_message(payload: dict) -> dict:
                 )
                 return {"status": "error", "trace_id": trace_id}
 
-            # Transcribe with Groq Whisper
             transcribe_start = time.time()
             query = await transcribe_audio(audio_data, trace_id)
             transcribe_duration = (time.time() - transcribe_start) * 1000
@@ -130,13 +120,12 @@ async def handle_incoming_message(payload: dict) -> dict:
 
             logger.info(f"[{trace_id}] Document received")
 
-            media_url = get_media_url(payload)
-            media_data = get_media_data(payload)
+            media_id = get_media_id(payload)
             filename = get_media_filename(payload)
             mime_type = get_media_mimetype(payload)
 
-            if not media_url and not media_data:
-                logger.error(f"[{trace_id}] No media found")
+            if not media_id:
+                logger.error(f"[{trace_id}] No media ID in document message")
 
                 await send_text_message(
                     from_person,
@@ -149,52 +138,7 @@ async def handle_incoming_message(payload: dict) -> dict:
                     "trace_id": trace_id,
                 }
 
-            #
-            # Download document
-            #
-            #
-            # Get document bytes
-            #
-            if media_data:
-
-                logger.info(
-                    f"[{trace_id}] Using Base64 media from webhook"
-                )
-
-                try:
-                    # OpenWA may provide either raw base64 or a data URI.
-                    encoded_media = media_data.split(",", 1)[-1]
-                    file_bytes = base64.b64decode(encoded_media)
-
-                except Exception as e:
-
-                    logger.error(
-                        f"[{trace_id}] Failed to decode Base64 media | error={e}"
-                    )
-
-                    await send_text_message(
-                        from_person,
-                        "Sorry, I couldn't process your uploaded document.",
-                        trace_id
-                    )
-
-                    return {
-                        "status": "error",
-                        "trace_id": trace_id
-                    }
-
-            else:
-
-                logger.info(
-                    f"[{trace_id}] Downloading document from media URL"
-                )
-
-                file_bytes = await download_document(
-                    media_url=media_url,
-                    api_key=OPENWA_API_KEY,
-                    trace_id=trace_id
-                )
-
+            file_bytes, downloaded_mime = await download_whatsapp_media(media_id, trace_id)
             if not file_bytes:
 
                 await send_text_message(
@@ -207,6 +151,9 @@ async def handle_incoming_message(payload: dict) -> dict:
                     "status": "error",
                     "trace_id": trace_id
                 }
+
+            if not mime_type:
+                mime_type = downloaded_mime
 
             #
             # Parse document

@@ -6,178 +6,151 @@ from app.logger import get_logger
 load_dotenv()
 logger = get_logger(__name__)
 
-OPENWA_URL = os.getenv("OPENWA_URL", "http://localhost:2785")
-OPENWA_API_KEY = os.getenv("OPENWA_API_KEY", "")
-OPENWA_SESSION_ID = os.getenv("OPENWA_SESSION_ID")
+ACCESS_TOKEN = os.getenv("ACCESS_TOKEN", "")
+PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID", "")
+GRAPH_API_VERSION = os.getenv("GRAPH_API_VERSION", "v25.0")
+GRAPH_API_BASE = f"https://graph.facebook.com/{GRAPH_API_VERSION}"
 
 
 async def send_text_message(phone_number: str, message: str, trace_id: str) -> bool:
-    """
-    Send text message back to WhatsApp user via OpenWA API.
-    phone_number format: 447812345678 (without @c.us)
-    """
-    chat_id = phone_number
-    url = f"{OPENWA_URL}/api/sessions/{OPENWA_SESSION_ID}/messages/send-text"
+    url = f"{GRAPH_API_BASE}/{PHONE_NUMBER_ID}/messages"
 
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 url,
                 headers={
-                    "X-API-Key": OPENWA_API_KEY,
+                    "Authorization": f"Bearer {ACCESS_TOKEN}",
                     "Content-Type": "application/json"
                 },
                 json={
-                    "chatId": chat_id,
-                    "text": message
+                    "messaging_product": "whatsapp",
+                    "to": phone_number,
+                    "type": "text",
+                    "text": {"body": message}
                 },
                 timeout=15.0
             )
 
-            if response.status_code in [200, 201]:
-                logger.info(f"[{trace_id}] WhatsApp message sent | phone={phone_number[-4:]}")
-                return True
-            else:
-                logger.error(f"[{trace_id}] WhatsApp send failed | status={response.status_code} | body={response.text[:100]}")
-                return False
+        if response.status_code in [200, 201]:
+            logger.info(f"[{trace_id}] WhatsApp message sent | phone={phone_number[-4:]}")
+            return True
+
+        logger.error(
+            f"[{trace_id}] WhatsApp send failed | status={response.status_code} | body={response.text[:200]}"
+        )
+        return False
 
     except Exception as e:
         logger.error(f"[{trace_id}] WhatsApp send error | error={e}")
         return False
 
-async def get_sender_phone(contact_id: str):
-    url = (
-        f"{OPENWA_URL}/api/sessions/"
-        f"{OPENWA_SESSION_ID}/contacts/"
-        f"{contact_id}/phone"
-    )
 
+async def get_media_url(media_id: str, trace_id: str) -> str | None:
+    url = f"{GRAPH_API_BASE}/{media_id}"
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 url,
-                headers={
-                    "X-API-Key": OPENWA_API_KEY
-                },
-                timeout=10.0,
+                headers={"Authorization": f"Bearer {ACCESS_TOKEN}"},
+                params={"fields": "url"},
+                timeout=15.0
             )
 
-        logger.info(f"Phone lookup status: {response.status_code}")
-        logger.info(f"Phone lookup body: {response.text}")
+        if response.status_code != 200:
+            logger.error(
+                f"[{trace_id}] Media URL lookup failed | status={response.status_code} | body={response.text[:200]}"
+            )
+            return None
 
-        if response.status_code == 200:
-            return response.json()
-
-        return None
+        return response.json().get("url")
 
     except Exception as e:
-        logger.error(f"Phone lookup failed: {e}")
+        logger.error(f"[{trace_id}] Media URL lookup failed | error={e}")
         return None
 
+
+async def download_whatsapp_media(media_id: str, trace_id: str) -> tuple[bytes | None, str]:
+    media_url = await get_media_url(media_id, trace_id)
+    if not media_url:
+        return None, ""
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                media_url,
+                headers={"Authorization": f"Bearer {ACCESS_TOKEN}"},
+                timeout=60.0
+            )
+
+        if response.status_code != 200:
+            logger.error(
+                f"[{trace_id}] Media download failed | status={response.status_code}"
+            )
+            return None, ""
+
+        content_type = response.headers.get("content-type", "application/octet-stream")
+        logger.info(
+            f"[{trace_id}] Media downloaded | size={len(response.content)} bytes | mime_type={content_type}"
+        )
+        return response.content, content_type
+
+    except Exception as e:
+        logger.error(f"[{trace_id}] Media download error | error={e}")
+        return None, ""
+
+
 def extract_phone_number(chat_id: str) -> str:
-    """Extract phone number from WhatsApp chat ID format: 447812345678@c.us"""
-    return chat_id.replace("@c.us", "").replace("@g.us", "").replace("@lid", "")
+    if not chat_id:
+        return ""
+    return chat_id.replace("@c.us", "").replace("@g.us", "").replace("@lid", "").strip()
 
 
 def detect_message_type(payload: dict) -> str:
-    """
-    Detect message type from OpenWA webhook payload.
-    Returns: 'voice', 'text', or 'unsupported'
-    """
     msg_type = payload.get("type", "")
-    if msg_type in ["audio", "ptt"]:  # ptt = push to talk (voice note)
+    if msg_type in ["audio", "voice"]:
         return "voice"
-    elif msg_type == "text":
+    if msg_type == "text":
         return "text"
-
-    elif msg_type in [
-        "image",
-        "document",
-        "file",
-        "pdf",
-        "application"
-    ]:
+    if msg_type in ["image", "document"]:
         return "document"
-
-    # Some OpenWA versions send only mimeType
-    mime_type = (
-        payload.get("mimeType")
-        or payload.get("mimetype")
-        or ""
-    )
-
-    if mime_type.startswith("image/"):
-        return "document"
-
-    if mime_type in [
-        "application/pdf",
-        "application/msword",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    ]:
-        return "document"
-
     return "unsupported"
 
 
 def get_message_text(payload: dict) -> str:
-    """Extract text content from webhook payload."""
-    return payload.get("body", "") or payload.get("text", "") or ""
+    text_data = payload.get("body") or payload.get("text", {})
+    if isinstance(text_data, dict):
+        return text_data.get("body", "") or ""
+    return text_data or ""
 
 
-def get_media_url(payload: dict) -> str:
-    """
-    Extract media URL for voice/document/image files.
-    """
+def get_media_id(payload: dict) -> str:
+    msg_type = payload.get("type", "")
+    if msg_type == "audio":
+        return payload.get("audio", {}).get("id", "")
+    if msg_type == "image":
+        return payload.get("image", {}).get("id", "")
+    if msg_type == "document":
+        return payload.get("document", {}).get("id", "")
+    return ""
 
-    media = payload.get("media", {}) or {}
-
-    return (
-        media.get("url")
-        or media.get("mediaUrl")
-        or payload.get("mediaUrl")
-        or payload.get("url")
-        or ""
-    )
 
 def get_media_filename(payload: dict) -> str:
-    """
-    Extract uploaded filename.
-    """
-
-    media = payload.get("media", {}) or {}
-
     return (
-        media.get("fileName")
-        or media.get("filename")
-        or payload.get("fileName")
-        or payload.get("filename")
+        payload.get("document", {}).get("filename")
+        or payload.get("image", {}).get("filename")
+        or payload.get("audio", {}).get("filename")
         or "uploaded_file"
     )
 
+
 def get_media_mimetype(payload: dict) -> str:
-    """
-    Extract MIME type.
-    """
-
-    media = payload.get("media", {}) or {}
-
     return (
-        media.get("mimetype")
-        or media.get("mimeType")
-        or payload.get("mimetype")
-        or payload.get("mimeType")
-        or ""
-    )
-
-def get_media_data(payload: dict) -> str:
-    """
-    Extract Base64 media data from the OpenWA webhook payload.
-    """
-
-    media = payload.get("media", {}) or {}
-
-    return (
-        media.get("data")
-        or payload.get("data")
+        payload.get("document", {}).get("mime_type")
+        or payload.get("document", {}).get("mimeType")
+        or payload.get("image", {}).get("mime_type")
+        or payload.get("image", {}).get("mimeType")
+        or payload.get("audio", {}).get("mime_type")
+        or payload.get("audio", {}).get("mimeType")
         or ""
     )

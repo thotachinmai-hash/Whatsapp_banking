@@ -16,13 +16,14 @@ from app.memory import get_redis_health
 from app.metrics import get_metrics
 from app.services.message_handler import handle_incoming_message
 from app.services.document_parser import parse_document
-from app.services.whatsapp import get_sender_phone
 from app.api.routes import router
 from app.agent.agent import run_agent
 
 
 load_dotenv()
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
+PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
+ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 
 logger = get_logger(__name__)
 
@@ -64,136 +65,151 @@ async def verify_webhook(
 
 @app.post("/")
 async def receive_webhook(request: Request):
-    body = await request.json()   
+    body = await request.json()
 
     timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"\nWebhook POST received {timestamp}")
-    print(json.dumps(body, indent=2))
+    logger.info(f"Webhook POST received {timestamp}")
+    logger.debug(json.dumps(body, indent=2))
 
     try:
-        change = body["entry"][0]["changes"][0]
+        entry = body["entry"][0]
+        change = entry["changes"][0]
         value = change["value"]
 
-        if "messages" in value:
-            message = value["messages"][0]
-            sender = message["from"]
-            message_type = message["type"]
+        messages = value.get("messages", [])
+        if not messages:
+            logger.info("No messages in webhook payload")
+            return {"status": "ignored", "reason": "no_messages"}
 
-            if message_type == "text":
-                text = message["text"]["body"]
-                print("Sender:", sender)
-                print("Message:", text)
+        message = messages[0]
 
-                send_message(sender, "✅ Got your message! Thanks for reaching out.")
-    except Exception as e:
-        print("Error parsing webhook:", e)
-
-    return PlainTextResponse(content="OK", status_code=200)
-
-
-def send_message(to, text):
-
-    url = f"https://graph.facebook.com/v23.0/{PHONE_NUMBER_ID}/messages"
-
-    headers = {
-        "Authorization": f"Bearer {ACCESS_TOKEN}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "messaging_product": "whatsapp",
-        "to": to,
-        "type": "text",
-        "text": {
-            "body": text
-        }
-    }
-
-    response = requests.post(
-        url,
-        headers=headers,
-        json=payload
-    )
-
-    print(response.status_code)
-    print(response.text)
-
-
-
-# ── agent endpoint ──────────────────────────────────────────────
-@app.post(
-    "/openwa/whatsapp",
-    tags=["Agent"],
-    summary="Receive messages from OpenWA WhatsApp Gateway"
-)
-async def whatsapp_webhook(request: Request):
-    """
-    Main endpoint — receives all WhatsApp messages from OpenWA.
-    Handles both text and voice messages.
-    """
-
-    try:
-        payload = await request.json()
-        logger.info(f"payload received | payload={payload}")
-
-        logger.info(
-            f"payload received | event={payload.get('event', 'unknown')}"
-        )
-
-        # Only process message events
-        event = payload.get("event", "")
-
-        if event != "message.received":
-            logger.info(
-                f"message ignored | event={event}"
-            )
-            return {
-                "status": "ignored",
-                "event": event
-            }
-
-        # Extract OpenWA message data
-        data = payload.get("data", {})
-        logger.info(f"data={data}")
-        chat_id = data.get("chatId")
-
-        sender_phone = None
-        if chat_id:
-            sender_phone = await get_sender_phone(chat_id)
-
-        logger.info(f"Chat ID: {chat_id}")
-        logger.info(f"Resolved sender phone: {sender_phone}")
-
-        message_data = {
-            "from": data.get("chatId"),
-            "to": data.get("to"),
-            "body": data.get("body"),
-            "type": data.get("type"),
-            "media": data.get("media", {}),
-            "mediaUrl": data.get("mediaUrl"),
-            "fileName": data.get("fileName"),
-            "mimeType": data.get("mimeType"),
-            "raw": data
+        payload = {
+            "from": message.get("from"),
+            "type": message.get("type"),
+            "raw": message
         }
 
-        logger.info(
-            f"Processed message | phone={message_data['from']} | type={message_data['type']}"
-        )
+        message_type = message.get("type")
+        if message_type == "text":
+            payload["body"] = message["text"]["body"]
+        elif message_type in ["audio", "voice"]:
+            payload["audio"] = message.get("audio", {})
+        elif message_type in ["image", "document", "video"]:
+            payload[message_type] = message.get(message_type, {})
+        else:
+            payload[message_type] = message.get(message_type, {})
 
-        result = await handle_incoming_message(message_data)
-
+        result = await handle_incoming_message(payload)
         return result
 
-
     except Exception as e:
-        logger.error(
-            f"Webhook error | error={e}"
-        )
+        logger.error(f"Webhook error | error={e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
+
+# def send_message(to, text):
+
+#     url = f"https://graph.facebook.com/v25.0/{PHONE_NUMBER_ID}/messages"
+
+#     headers = {
+#         "Authorization": f"Bearer {ACCESS_TOKEN}",
+#         "Content-Type": "application/json"
+#     }
+
+#     payload = {
+#         "messaging_product": "whatsapp",
+#         "to": to,
+#         "type": "text",
+#         "text": {
+#             "body": text
+#         }
+#     }
+
+#     response = requests.post(
+#         url,
+#         headers=headers,
+#         json=payload
+#     )
+
+#     print(response.status_code)
+#     print(response.text)
+
+
+
+# # ── agent endpoint ──────────────────────────────────────────────
+# @app.post(
+#     "/openwa/whatsapp",
+#     tags=["Agent"],
+#     summary="Receive messages from OpenWA WhatsApp Gateway"
+# )
+# async def whatsapp_webhook(request: Request):
+#     """
+#     Main endpoint — receives all WhatsApp messages from OpenWA.
+#     Handles both text and voice messages.
+#     """
+
+#     try:
+#         payload = await request.json()
+#         logger.info(f"payload received | payload={payload}")
+
+#         logger.info(
+#             f"payload received | event={payload.get('event', 'unknown')}"
+#         )
+
+#         # Only process message events
+#         event = payload.get("event", "")
+
+#         if event != "message.received":
+#             logger.info(
+#                 f"message ignored | event={event}"
+#             )
+#             return {
+#                 "status": "ignored",
+#                 "event": event
+#             }
+
+#         # Extract OpenWA message data
+#         data = payload.get("data", {})
+#         logger.info(f"data={data}")
+#         chat_id = data.get("chatId")
+
+#         sender_phone = None
+#         if chat_id:
+#             sender_phone = await get_sender_phone(chat_id)
+
+#         logger.info(f"Chat ID: {chat_id}")
+#         logger.info(f"Resolved sender phone: {sender_phone}")
+
+#         message_data = {
+#             "from": data.get("chatId"),
+#             "to": data.get("to"),
+#             "body": data.get("body"),
+#             "type": data.get("type"),
+#             "media": data.get("media", {}),
+#             "mediaUrl": data.get("mediaUrl"),
+#             "fileName": data.get("fileName"),
+#             "mimeType": data.get("mimeType"),
+#             "raw": data
+#         }
+
+#         logger.info(
+#             f"Processed message | phone={message_data['from']} | type={message_data['type']}"
+#         )
+
+#         result = await handle_incoming_message(message_data)
+
+#         return result
+
+
+#     except Exception as e:
+#         logger.error(
+#             f"Webhook error | error={e}"
+#         )
+
+#         raise HTTPException(
+#             status_code=500,
+#             detail=str(e)
+#         )
 
 
 # ── Test endpoint ─────────────────────────────────────────────────
