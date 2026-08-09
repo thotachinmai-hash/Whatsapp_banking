@@ -19,6 +19,7 @@ from app.services.document_parser import parse_document
 from app.services.whatsapp import get_sender_phone
 from app.api.routes import router
 from app.agent.agent import run_agent
+import requests
 
 
 load_dotenv()
@@ -95,7 +96,7 @@ async def receive_webhook(request: Request):
 
 def send_message(to, text):
 
-    url = f"https://graph.facebook.com/v23.0/{PHONE_NUMBER_ID}/messages"
+    url = f"https://graph.facebook.com/v25.0/{PHONE_NUMBER_ID}/messages"
 
     headers = {
         "Authorization": f"Bearer {ACCESS_TOKEN}",
