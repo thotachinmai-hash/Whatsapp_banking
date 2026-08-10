@@ -30,27 +30,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # OpenWA WhatsApp Gateway
-  openwa:
-    image: ghcr.io/rmyndharis/openwa:latest
-    container_name: whatsapp_openwa
-    ports:
-      - "2785:2785"
-    environment:
-      DATABASE_URL: postgresql://banking_user:banking_pass@postgres:5432/banking_db
-      REDIS_URL: redis://redis:6379
-      API_KEY: ${OPENWA_API_KEY}
-      WEBHOOK_ALLOW_LOCAL: "true"
-      DISABLE_IP_CHECK: "true"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - whatsapp_openwa_data:/app/data
-    restart: unless-stopped
-
   # FastAPI Application
   app:
     build: .
@@ -67,9 +46,9 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
       GEMINI_TTS_MODEL: ${GEMINI_TTS_MODEL:-gemini-2.5-flash-preview-tts}
-      OPENWA_URL: http://openwa:2785
-      OPENWA_API_KEY: ${OPENWA_API_KEY}
-      OPENWA_SESSION_ID: ${OPENWA_SESSION_ID:-finacle-assistant}
+      ACCESS_TOKEN: ${ACCESS_TOKEN}
+      PHONE_NUMBER_ID: ${PHONE_NUMBER_ID}
+      VERIFY_TOKEN: ${VERIFY_TOKEN}
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
     depends_on:
       postgres:
@@ -86,5 +65,3 @@ services:
       retries: 3
       start_period: 40s
 
-volumes:
-  whatsapp_openwa_data:

@@ -1,4 +1,3 @@
-import base64
 import os
 import re
 import httpx
@@ -8,145 +7,153 @@ from app.logger import get_logger
 load_dotenv()
 logger = get_logger(__name__)
 
-OPENWA_URL = os.getenv("OPENWA_URL", "http://localhost:2785")
-OPENWA_API_KEY = os.getenv("OPENWA_API_KEY", "")
-OPENWA_SESSION_ID = os.getenv("OPENWA_SESSION_ID")
+ACCESS_TOKEN = os.getenv("ACCESS_TOKEN", "")
+PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID", "")
+WHATSAPP_API_VERSION = os.getenv("WHATSAPP_API_VERSION", "v17.0")
 
 
 def normalize_chat_id(phone_number: str) -> str:
-    """Convert a phone number or existing chat identifier into an OpenWA chat ID."""
+    """Normalise a phone number by removing non-digit characters."""
     value = (phone_number or "").strip()
     if not value:
         return value
 
-    if "@" in value:
-        return value
-
     digits_only = re.sub(r"\D", "", value)
-    if digits_only:
-        return f"{digits_only}@c.us"
-
-    return value
+    return digits_only
 
 
 async def send_text_message(phone_number: str, message: str, trace_id: str) -> bool:
     """
-    Send text message back to WhatsApp user via OpenWA API.
-    Accepts either a plain phone number or an existing chat ID.
+    Send a text message back to WhatsApp user via WhatsApp Business Cloud API.
+    Accepts a phone number in any common format and normalizes digits only.
     """
-    chat_id = normalize_chat_id(phone_number)
-    url = f"{OPENWA_URL}/api/sessions/{OPENWA_SESSION_ID}/messages/send-text"
+    to_phone = normalize_chat_id(phone_number)
+    if not to_phone:
+        logger.error(f"[{trace_id}] WhatsApp send failed | invalid recipient phone")
+        return False
+
+    if not PHONE_NUMBER_ID or not ACCESS_TOKEN:
+        logger.error(
+            f"[{trace_id}] WhatsApp send failed | missing PHONE_NUMBER_ID or ACCESS_TOKEN"
+        )
+        return False
+
+    url = f"https://graph.facebook.com/{WHATSAPP_API_VERSION}/{PHONE_NUMBER_ID}/messages"
 
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 url,
                 headers={
-                    "X-API-Key": OPENWA_API_KEY,
+                    "Authorization": f"Bearer {ACCESS_TOKEN}",
                     "Content-Type": "application/json"
                 },
                 json={
-                    "chatId": chat_id,
-                    "text": message
+                    "messaging_product": "whatsapp",
+                    "to": to_phone,
+                    "type": "text",
+                    "text": {"body": message}
                 },
                 timeout=15.0
             )
 
             if response.status_code in [200, 201]:
-                logger.info(f"[{trace_id}] WhatsApp message sent | phone={phone_number[-4:]}")
+                logger.info(f"[{trace_id}] WhatsApp message sent | phone={to_phone[-4:]}")
                 return True
-            else:
-                logger.error(f"[{trace_id}] WhatsApp send failed | status={response.status_code} | body={response.text[:100]}")
-                return False
+
+            logger.error(
+                f"[{trace_id}] WhatsApp send failed | status={response.status_code} | body={response.text[:200]}"
+            )
+            return False
 
     except Exception as e:
         logger.error(f"[{trace_id}] WhatsApp send error | error={e}")
         return False
 
+
 async def send_voice_message(phone_number: str, audio_bytes: bytes, mimetype: str, trace_id: str) -> bool:
     """
-    Send a voice note back to WhatsApp user via OpenWA's real send-audio
-    endpoint — confirmed against the running gateway's own OpenAPI spec
-    (GET /api/docs-json on the OpenWA container): POST .../messages/
-    send-audio with {chatId, base64, mimetype, ptt: true}. `base64` is
-    the raw base64 payload (no "data:...;base64," prefix — mimetype is
-    its own field). `ptt: true` renders it as a proper voice-note bubble;
-    the gateway's own docs say this needs "audio/ogg; codecs=opus" bytes
-    to play reliably — see app/services/tts.py::synthesize_voice_note for
-    where that conversion happens.
+    Voice note delivery is not currently implemented for the WhatsApp Cloud API path.
+    The caller will fall back to text delivery if this returns False.
     """
-    chat_id = normalize_chat_id(phone_number)
-    url = f"{OPENWA_URL}/api/sessions/{OPENWA_SESSION_ID}/messages/send-audio"
-    encoded = base64.b64encode(audio_bytes).decode("ascii")
-
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                url,
-                headers={
-                    "X-API-Key": OPENWA_API_KEY,
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "chatId": chat_id,
-                    "base64": encoded,
-                    "mimetype": mimetype,
-                    "ptt": True,
-                },
-                timeout=30.0
-            )
-
-            if response.status_code in [200, 201]:
-                logger.info(f"[{trace_id}] WhatsApp voice message sent | phone={phone_number[-4:]}")
-                return True
-            else:
-                logger.error(f"[{trace_id}] WhatsApp voice send failed | status={response.status_code} | body={response.text[:200]}")
-                return False
-
-    except Exception as e:
-        logger.error(f"[{trace_id}] WhatsApp voice send error | error={e}")
-        return False
+    logger.warning(
+        f"[{trace_id}] WhatsApp voice send is not supported by current Cloud API implementation"
+    )
+    return False
 
 
 async def get_sender_phone(contact_id: str):
-    url = (
-        f"{OPENWA_URL}/api/sessions/"
-        f"{OPENWA_SESSION_ID}/contacts/"
-        f"{contact_id}/phone"
+    logger.warning(
+        "get_sender_phone() called, but WhatsApp Cloud API does not support OpenWA contact lookup"
+    )
+    return None
+
+
+def get_media_id(payload: dict) -> str:
+    """Extract the WhatsApp Cloud API media ID from a message payload."""
+    msg_type = str(payload.get("type") or "").lower()
+    if not msg_type:
+        return ""
+
+    media_payload = payload.get(msg_type, {}) or {}
+    if isinstance(media_payload, dict):
+        return media_payload.get("id") or media_payload.get("media_id") or ""
+
+    return ""
+
+
+async def download_media(media_id: str, trace_id: str) -> bytes | None:
+    """Download media bytes from WhatsApp Business Cloud API given a media ID."""
+    if not media_id:
+        logger.error(f"[{trace_id}] download_media failed | missing media_id")
+        return None
+
+    if not ACCESS_TOKEN:
+        logger.error(f"[{trace_id}] download_media failed | missing ACCESS_TOKEN")
+        return None
+
+    media_info_url = (
+        f"https://graph.facebook.com/{WHATSAPP_API_VERSION}/{media_id}?fields=url"
     )
 
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                url,
-                headers={
-                    "X-API-Key": OPENWA_API_KEY
-                },
-                timeout=10.0,
+                media_info_url,
+                headers={"Authorization": f"Bearer {ACCESS_TOKEN}"},
+                timeout=15.0
             )
 
-        logger.info(f"Phone lookup status: {response.status_code}")
-        logger.info(f"Phone lookup body: {response.text}")
+            if response.status_code != 200:
+                logger.error(
+                    f"[{trace_id}] Media metadata request failed | status={response.status_code} | body={response.text[:200]}"
+                )
+                return None
 
-        if response.status_code == 200:
-            data = response.json()
-            if isinstance(data, dict):
-                for key in ("phone", "phoneNumber", "number"):
-                    value = data.get(key)
-                    if isinstance(value, str) and value.strip():
-                        return value
-                if "data" in data and isinstance(data["data"], dict):
-                    for key in ("phone", "phoneNumber", "number"):
-                        value = data["data"].get(key)
-                        if isinstance(value, str) and value.strip():
-                            return value
-            if isinstance(data, str) and data.strip():
-                return data
+            media_url = response.json().get("url")
+            if not media_url:
+                logger.error(
+                    f"[{trace_id}] Media metadata response missing url | body={response.text[:200]}"
+                )
+                return None
 
-        return None
+            response = await client.get(
+                media_url,
+                headers={"Authorization": f"Bearer {ACCESS_TOKEN}"},
+                timeout=30.0
+            )
+
+            if response.status_code != 200:
+                logger.error(
+                    f"[{trace_id}] Media download failed | status={response.status_code} | body={response.text[:200]}"
+                )
+                return None
+
+            logger.info(f"[{trace_id}] Media downloaded | size={len(response.content)} bytes")
+            return response.content
 
     except Exception as e:
-        logger.error(f"Phone lookup failed: {e}")
+        logger.error(f"[{trace_id}] Media download error | error={e}")
         return None
 
 def extract_phone_number(chat_id: str) -> str:

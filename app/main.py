@@ -1,8 +1,10 @@
 import time
 import uuid
+import os
 
 from fastapi import FastAPI, Request, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -11,7 +13,7 @@ from app.memory import get_redis_health
 from app.metrics import get_metrics
 from app.services.message_handler import handle_incoming_message
 from app.services.document_parser import parse_document
-from app.services.whatsapp import extract_phone_number, get_sender_phone, get_external_message_id
+from app.services.whatsapp import extract_phone_number, get_external_message_id
 from app.services import idempotency
 from app.conversation.renderer import render_and_send
 from app.api.routes import router
@@ -59,14 +61,14 @@ app.include_router(router, prefix="/api")
 
 # ── agent endpoint ──────────────────────────────────────────────
 @app.post(
-    "/openwa/whatsapp",
+    "/",
     tags=["Agent"],
-    summary="Receive messages from OpenWA WhatsApp Gateway"
+    summary="Receive WhatsApp Business Cloud API webhook"
 )
 async def whatsapp_webhook(request: Request):
     """
-    Main endpoint — receives all WhatsApp messages from OpenWA.
-    Handles both text and voice messages.
+    Main endpoint — receives WhatsApp Business Cloud API webhook events.
+    Handles both text and media messages.
     """
 
     webhook_trace_id = str(uuid.uuid4())[:8]
@@ -76,149 +78,74 @@ async def whatsapp_webhook(request: Request):
         logger.info(f"[{webhook_trace_id}] webhook.received")
         logger.info(f"payload received | payload={_redact_media_for_log(payload)}")
 
+        entry = payload.get("entry")
+        if not entry or not isinstance(entry, list):
+            logger.info("message ignored | missing entry")
+            return {"status": "ignored", "reason": "missing_entry"}
+
+        change = entry[0].get("changes", [{}])[0]
+        value = change.get("value", {})
+        messages = value.get("messages") or []
+        if not messages:
+            logger.info("message ignored | no messages")
+            return {"status": "ignored", "reason": "no_messages"}
+
+        message = messages[0]
+        sender_phone = message.get("from")
+        if not sender_phone:
+            logger.warning("message ignored | missing sender phone")
+            return {"status": "ignored", "reason": "missing_sender"}
+
+        message_type = message.get("type", "")
+        media = message.get(message_type, {}) if message_type else {}
+        external_message_id = get_external_message_id(message)
+        if not external_message_id:
+            external_message_id = message.get("id") or message.get("message_id") or ""
+
         logger.info(
-            f"payload received | event={payload.get('event', 'unknown')}"
+            f"[{webhook_trace_id}] message.id={external_message_id} | sender={sender_phone} | type={message_type}"
         )
 
-        # Only process message events
-        event = payload.get("event", "")
-
-        if event != "message.received":
-            logger.info(
-                f"message ignored | event={event}"
-            )
-            return {
-                "status": "ignored",
-                "event": event
-            }
-
-        # Extract OpenWA message data
-        data = payload.get("data", {})
-        logger.info(f"data={_redact_media_for_log(data)}")
-
-        # Banking conversations are private. Ignore group messages so a
-        # birthday wish or other group chat text cannot start onboarding or a
-        # transfer for the group ID.
-        if data.get("isGroup"):
-            logger.info("message ignored | reason=group_chat")
-            return {"status": "ignored", "reason": "group_chat"}
-
-        chat_id = data.get("chatId")
-
-        # ── Idempotency guard ──────────────────────────────────────
-        # Claim the OpenWA message id BEFORE any expensive work (phone
-        # resolution, transcription, OCR, intent classification, LLM,
-        # workflow execution) so a webhook retry / duplicate delivery
-        # of the SAME event can never start a second conversational turn
-        # or a second banking action. See app/services/idempotency.py
-        # and docs/current_architecture.md "Webhook Reliability &
-        # Idempotency — Phase 6" for the full design.
-        external_message_id = get_external_message_id(data)
-        if not external_message_id:
-            # No stable id in this payload build. Fall back to the
-            # message's own delivery timestamp (stable across retries of
-            # the same event, unlike processing time) rather than message
-            # text/phone — a documented, reduced-reliability fallback.
-            timestamp = data.get("t") or data.get("timestamp")
-            if timestamp and chat_id:
-                external_message_id = f"{chat_id}:{data.get('type', '')}:{timestamp}"
-            else:
-                logger.warning(
-                    f"[{webhook_trace_id}] No external message id or timestamp available — "
-                    f"idempotency cannot be enforced for this event"
-                )
-
         claim_result = idempotency.claim(external_message_id) if external_message_id else idempotency.ClaimResult.CLAIMED
-
         if claim_result == idempotency.ClaimResult.DUPLICATE:
             logger.info(
-                f"[{webhook_trace_id}] message.idempotency.duplicate | "
-                f"external_message_id={external_message_id}"
+                f"[{webhook_trace_id}] message.idempotency.duplicate | external_message_id={external_message_id}"
             )
             return {"status": "duplicate", "trace_id": webhook_trace_id}
 
         if claim_result == idempotency.ClaimResult.REDIS_UNAVAILABLE:
             logger.error(
-                f"[{webhook_trace_id}] message.idempotency.redis_unavailable | "
-                f"external_message_id={external_message_id}"
+                f"[{webhook_trace_id}] message.idempotency.redis_unavailable | external_message_id={external_message_id}"
             )
-            # Fail-safe: we cannot guarantee this event hasn't already been
-            # claimed by a concurrent/duplicate request, so we do not run
-            # ConversationManager/workflows/LLM for it. This mirrors the
-            # user-safe error responses already used elsewhere in the app.
-            if chat_id:
-                await render_and_send(
-                    "I'm having trouble processing your request right now. Please try again shortly.",
-                    chat_id,
-                    webhook_trace_id,
-                )
+            await render_and_send(
+                "I'm having trouble processing your request right now. Please try again shortly.",
+                sender_phone,
+                webhook_trace_id,
+            )
             return {"status": "error", "reason": "idempotency_unavailable", "trace_id": webhook_trace_id}
 
-        logger.info(
-            f"[{webhook_trace_id}] message.idempotency.claimed | "
-            f"external_message_id={external_message_id}"
-        )
-        is_lid = bool(chat_id and "@lid" in chat_id)
-
-        sender_phone = None
-        if chat_id:
-            # A normal WhatsApp chat ID already contains the real number.
-            # Only LID identifiers require the OpenWA contact lookup.
-            if not is_lid:
-                sender_phone = extract_phone_number(chat_id)
-            else:
-                sender_phone = await get_sender_phone(chat_id)
-
-        if is_lid and not sender_phone:
-            # The LID's numeric portion is NOT a phone number — it must
-            # never be used to look up or create a customer/account record.
-            # If OpenWA couldn't resolve the real number behind this LID,
-            # bail out instead of silently misidentifying the customer.
-            logger.error(
-                f"Could not resolve real phone number for LID chat — "
-                f"refusing to use the LID for customer lookup | chat_id={chat_id}"
-            )
-            idempotency.mark_failed(external_message_id)
-            await render_and_send(
-                "Sorry, we couldn't verify your WhatsApp number right now. Please try again shortly.",
-                chat_id,
-                str(uuid.uuid4())[:8],
-            )
-            return {"status": "error", "reason": "phone_resolution_failed"}
-
-        resolved_phone = sender_phone if is_lid else (sender_phone or chat_id)
-        normalized_phone = extract_phone_number(resolved_phone) if resolved_phone else ""
-
-        logger.info(f"Chat ID: {chat_id}")
-        logger.info(f"Resolved sender phone: {sender_phone}")
-
         message_data = {
-            "from": normalized_phone or data.get("chatId"),
-            "to": data.get("to"),
-            "body": data.get("body"),
-            "type": data.get("type"),
-            "media": data.get("media", {}),
-            "mediaUrl": data.get("mediaUrl"),
-            "fileName": data.get("fileName"),
-            "mimeType": data.get("mimeType"),
-            "raw": data
+            "from": sender_phone,
+            "to": value.get("metadata", {}).get("phone_number_id", ""),
+            "body": message.get("text", {}).get("body", "") if message_type == "text" else "",
+            "type": message_type,
+            "media": media,
+            "media_id": media.get("id") if isinstance(media, dict) else "",
+            "mimeType": media.get("mime_type") or media.get("mimeType", ""),
+            "fileName": media.get("filename") or media.get("file_name", ""),
+            "raw": payload
         }
 
-        logger.info(
-            f"Processed message | phone={message_data['from']} | type={message_data['type']}"
-        )
+        if value.get("statuses"):
+            logger.info("message ignored | status update")
+            return {"status": "ignored", "reason": "status_update"}
 
-        # Best-effort per-phone lock: serializes two near-simultaneous
-        # messages for the same customer (e.g. "transfer money" then "500")
-        # so they don't race on the same workflow:{phone} Redis key. Not a
-        # queue — bounded wait, then proceeds without the lock rather than
-        # dropping the message.
-        lock_token = idempotency.acquire_conversation_lock(normalized_phone) if normalized_phone else None
+        lock_token = idempotency.acquire_conversation_lock(sender_phone)
         try:
             logger.info(f"[{webhook_trace_id}] message.processing.started | external_message_id={external_message_id}")
             result = await handle_incoming_message(message_data)
         finally:
-            idempotency.release_conversation_lock(normalized_phone, lock_token)
+            idempotency.release_conversation_lock(sender_phone, lock_token)
 
         if result.get("status") == "error":
             idempotency.mark_failed(external_message_id)
@@ -233,19 +160,12 @@ async def whatsapp_webhook(request: Request):
 
         return result
 
-
     except Exception as e:
-        logger.error(
-            f"Webhook error | error={e}"
-        )
+        logger.error(f"Webhook error | error={e}")
         eid = locals().get("external_message_id")
         if eid:
             idempotency.mark_failed(eid)
-
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ── Test endpoint ─────────────────────────────────────────────────
@@ -410,7 +330,18 @@ async def metrics():
     "/",
     tags=["System"]
 )
-async def root():
+async def root(request: Request):
+    """
+    Verify WhatsApp Business Cloud webhook or return service metadata.
+    """
+    query_params = dict(request.query_params)
+    if query_params.get("hub.mode") == "subscribe":
+        challenge = query_params.get("hub.challenge")
+        verify_token = query_params.get("hub.verify_token")
+        expected_token = os.getenv("VERIFY_TOKEN", "")
+        if verify_token == expected_token:
+            return PlainTextResponse(content=challenge or "", status_code=200)
+        raise HTTPException(status_code=403, detail="Invalid verify_token")
 
     return {
         "service": "Finacle Banking WhatsApp Assistant",
@@ -418,7 +349,6 @@ async def root():
         "docs": "/docs",
         "health": "/health",
         "metrics": "/metrics",
-        "webhook": "POST /webhook/whatsapp",
         "test": "POST /api/test/message",
         "test_document": "POST /api/test/document"
     }

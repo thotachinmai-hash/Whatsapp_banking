@@ -1,6 +1,6 @@
 # Finacle Banking WhatsApp Assistant
 
-AI-powered WhatsApp banking assistant that accepts voice, text, and document (image/PDF/DOCX) messages, processes them through a LangGraph AI agent and a step-based workflow engine, and responds with real banking information. Built with FastAPI, LangGraph, Groq LLM, Groq Whisper, Groq Vision (OCR), PostgreSQL, Redis, and OpenWA.
+AI-powered WhatsApp banking assistant that accepts voice, text, and document (image/PDF/DOCX) messages, processes them through a LangGraph AI agent and a step-based workflow engine, and responds with real banking information. Built with FastAPI, LangGraph, Groq LLM, Groq Whisper, Groq Vision (OCR), PostgreSQL, Redis, and WhatsApp Business Cloud API.
 
 Every incoming message is first matched against a registered-customer database by WhatsApp number (the "@lid"). Known customers get a personalized greeting and service menu; unknown numbers are guided through an Aadhaar/PAN registration flow before anything else, which also opens their first account. From there, customers can check balances, browse categorized transactions and spend summaries, transfer money with OTP verification, deposit a cheque by photo, apply for a loan, and update KYC — all in natural language over WhatsApp, with every workflow safely cancellable mid-flow.
 
@@ -49,7 +49,7 @@ flowchart TD
     H --> K[(Redis\nSession memory + active\nworkflow state, 1h TTL)]
     RG --> K
     G -->|response text| D
-    D -->|send reply via OpenWA API| B
+    D -->|send reply via WhatsApp Cloud API| B
     B -->|WhatsApp reply| A
     D --> L[Trace ID Logging\nDaily rotating logs\n7 day retention]
     D --> M[Metrics Endpoint\nGET /metrics]
@@ -87,61 +87,85 @@ GROQ_WHISPER_MODEL=whisper-large-v3-turbo
 DATABASE_URL=postgresql://banking_user:banking_pass@localhost:5433/banking_db
 REDIS_URL=redis://localhost:6380
 
-OPENWA_URL=http://localhost:2785
-OPENWA_API_KEY=get_this_after_step_2
-OPENWA_SESSION_ID=get_this_after_step_3
+ACCESS_TOKEN=your_whatsapp_cloud_access_token_here
+PHONE_NUMBER_ID=your_whatsapp_phone_number_id_here
+VERIFY_TOKEN=your_webhook_verify_token_here
 
 WEBHOOK_SECRET=
 ```
 
 ---
 
-### Step 2 — Start infrastructure and get OpenWA API key
+### Step 2 — Start infrastructure
 
-Start PostgreSQL, Redis and OpenWA first:
-
-```bash
-docker compose up postgres redis openwa -d
-```
-
-Wait 30 seconds then get the auto-generated API key:
+Start PostgreSQL and Redis first:
 
 ```bash
-docker exec whatsapp_openwa cat /app/data/.api-key
-```
-
-Copy the key and update `.env`:
-
-```env
-OPENWA_API_KEY=owa_k1_xxxxxxxxxxxxxxxxxxxx
+docker compose up postgres redis -d
 ```
 
 ---
 
-### Step 3 — Create WhatsApp session
+### Step 3 — Build and start the FastAPI app
 
-Open the OpenWA dashboard at **http://localhost:2785**
+```bash
+docker compose build app
+docker compose up app -d
+```
 
-Enter the API key from Step 2 to login.
+Verify it is running:
 
-Then:
-1. Click **Sessions** in the left menu
-2. Click **New Session**
-3. Name it: `finacle-assistant`
-4. Click **Create**
-5. Click **Start** on the session
-6. Scan the QR code with WhatsApp on your phone — WhatsApp → Linked Devices → Link a Device
-7. Wait for status to show **Connected**
+```bash
+curl http://localhost:8001/health
+```
 
-Copy the Session ID shown in the dashboard and update `.env`:
+Expected response:
 
-```env
-OPENWA_SESSION_ID=a02d3dd1-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+```json
+{
+  "status": "healthy",
+  "components": {
+    "api": "healthy",
+    "redis": "connected",
+    "postgres": "connected"
+  }
+}
 ```
 
 ---
 
-### Step 4 — Build and start the FastAPI app
+### Step 4 — Configure WhatsApp Business Cloud webhook
+
+Use the WhatsApp Business Cloud API dashboard to register your webhook URL.
+If you are testing locally, use a public HTTPS tunnel like ngrok to expose your app:
+
+```bash
+ngrok http 8001
+```
+
+Set the webhook URL to your public tunnel root, e.g.:
+
+```
+https://YOUR_NGROK_URL/
+```
+
+Use the same `VERIFY_TOKEN` value from your `.env` when registering the webhook.
+
+---
+
+### Step 5 — Test the full flow
+
+Send a WhatsApp message to the registered phone number. Your FastAPI app will receive the webhook at `/` and process it directly.
+
+Check the logs to see the full trace:
+
+```bash
+docker logs whatsapp_app --tail=50
+```
+
+---
+
+### Step 6 — Test Without WhatsApp
 
 ```bash
 docker compose build app
@@ -171,7 +195,7 @@ Expected response:
 
 ### Step 5 — Set up ngrok tunnel
 
-OpenWA requires a public HTTPS URL for webhooks — local URLs are blocked by SSRF protection.
+WhatsApp Business Cloud API requires a public HTTPS webhook endpoint. Local URLs are not publicly accessible, so use ngrok for local development.
 
 Install ngrok:
 
@@ -201,41 +225,15 @@ https://2cb6-5-151-181-20.ngrok-free.app
 
 ### Step 6 — Register the webhook
 
-Replace the values with your actual OpenWA API key, Session ID and ngrok URL:
+In the Facebook Developer console for your WhatsApp Business app, configure the webhook callback URL to your public ngrok address:
 
-```bash
-curl -X POST http://localhost:2785/api/sessions/YOUR_SESSION_ID/webhooks \
-  -H "X-API-Key: YOUR_OPENWA_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://YOUR_NGROK_URL/webhook/whatsapp",
-    "events": ["message.received"]
-  }'
+```text
+https://YOUR_NGROK_URL/
 ```
 
-Expected response:
+Use the `VERIFY_TOKEN` value from `.env` as the verify token. Subscribe to the `messages` and any additional messaging events your app requires.
 
-```json
-{
-  "id": "ed897686-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-  "active": true,
-  "url": "https://YOUR_NGROK_URL/webhook/whatsapp",
-  "events": ["message.received"]
-}
-```
-
----
-
-### Step 7 — Test the full flow
-
-Send a WhatsApp message to the linked number:
-
-```
-What is my balance for account GB12FNCL00010001234567?
-```
-
-You should receive a reply with the account balance.
-
+If your webhook is configured correctly, Facebook will send a verification request to your app and your app will return the verify token. The application listens on the root path (`/`) for incoming WhatsApp webhook events.
 Check the logs to see the full trace:
 
 ```bash
@@ -269,7 +267,6 @@ curl -X POST http://localhost:8001/api/test/message \
 | http://localhost:8001/docs | Swagger UI |
 | http://localhost:8001/health | Health check |
 | http://localhost:8001/metrics | System metrics |
-| http://localhost:2785 | OpenWA dashboard |
 | http://127.0.0.1:4040 | ngrok inspector |
 
 ---
@@ -330,7 +327,6 @@ To test the **interrupt fix**, send `hi` (or `cancel`/`stop`) partway through an
 |---|---|---|
 | whatsapp_postgres | postgres:15 | 5433 |
 | whatsapp_redis | redis:7-alpine | 6380 |
-| whatsapp_openwa | ghcr.io/rmyndharis/openwa:latest | 2785 |
 | whatsapp_app | whatsapp-banking-app | 8001 |
 
 ---
@@ -361,7 +357,7 @@ Verified: all tables and their constraints exist as expected (`customers` has un
 - `main.py` — FastAPI entry point and webhook receiver
 - `agent/agent.py` — LangGraph agent (registration gate → active workflow → tool-calling LLM); `trace_id` flows from here into every layer below
 - `agent/tools.py` — Banking tools — balance, transactions, spend summary, cheque status, loan status, start cheque workflow
-- `services/whatsapp.py` — OpenWA client to send messages, chat-ID/LID resolution
+- `services/whatsapp.py` — WhatsApp Business Cloud API client to send messages and download media
 - `services/transcription.py` — Groq Whisper voice to text
 - `services/document_parser.py` — Groq Vision OCR for images/PDF/DOCX
 - `services/registration_gate.py` — Looks up the sender in `customers`; greets or starts onboarding; owns `GREETING_KEYWORDS`, reused by the workflow manager to detect a mid-workflow interrupt
@@ -396,7 +392,7 @@ Verified: all tables and their constraints exist as expected (`customers` has un
 
 **ngrok URL changes on every restart.** Each time you restart ngrok you get a new public URL and must re-register the webhook. To get a permanent URL upgrade to a paid ngrok plan or deploy to a cloud server.
 
-**OpenWA session persists** in the `whatsapp_openwa_data` Docker volume. If you delete the volume you need to scan the QR code again.
+**This project no longer uses OpenWA.** WhatsApp integration is now via the WhatsApp Business Cloud API, and no OpenWA session volume is required.
 
 **Groq rate limits** — llama-3.3-70b-versatile has 100K daily tokens on the free tier. Switch to `qwen/qwen3-32b` in `.env` for 500K daily tokens.
 

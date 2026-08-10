@@ -13,10 +13,11 @@ from app.services.whatsapp import (
     extract_phone_number,
     detect_message_type,
     get_message_text,
-    get_media_url,
     get_media_filename,
     get_media_mimetype,
-    get_media_data
+    get_media_data,
+    get_media_id,
+    download_media,
 )
 from app.conversation.renderer import render_and_send
 from app.services.transcription import download_audio, transcribe_audio
@@ -44,8 +45,6 @@ import os
 import base64
 
 logger = get_logger(__name__)
-
-OPENWA_API_KEY = os.getenv("OPENWA_API_KEY", "")
 
 
 def build_document_prompt(active_workflow: dict | None, filename: str) -> str:
@@ -265,7 +264,7 @@ async def handle_incoming_message(payload: dict) -> dict:
 
         elif msg_type == "voice":
             logger.info(f"[{trace_id}] Voice message — transcribing")
-            media_url = get_media_url(payload)
+            media_id = get_media_id(payload)
             media_data = get_media_data(payload)
 
             if media_data:
@@ -277,10 +276,10 @@ async def handle_incoming_message(payload: dict) -> dict:
                 except (ValueError, base64.binascii.Error) as exc:
                     logger.error(f"[{trace_id}] Embedded voice audio decode failed | error={exc}")
                     audio_data = None
-            elif media_url:
-                audio_data = await download_audio(media_url, OPENWA_API_KEY, trace_id)
+            elif media_id:
+                audio_data = await download_media(media_id, trace_id)
             else:
-                logger.error(f"[{trace_id}] No voice media data or URL")
+                logger.error(f"[{trace_id}] No voice media data or media id")
                 audio_data = None
 
             if not audio_data:
@@ -312,12 +311,12 @@ async def handle_incoming_message(payload: dict) -> dict:
 
             logger.info(f"[{trace_id}] Document received")
 
-            media_url = get_media_url(payload)
+            media_id = get_media_id(payload)
             media_data = get_media_data(payload)
             filename = get_media_filename(payload)
             mime_type = get_media_mimetype(payload)
 
-            if not media_url and not media_data:
+            if not media_id and not media_data:
                 logger.error(f"[{trace_id}] No media found")
 
                 await render_and_send(
@@ -368,12 +367,11 @@ async def handle_incoming_message(payload: dict) -> dict:
             else:
 
                 logger.info(
-                    f"[{trace_id}] Downloading document from media URL"
+                    f"[{trace_id}] Downloading document from WhatsApp media ID"
                 )
 
-                file_bytes = await download_document(
-                    media_url=media_url,
-                    api_key=OPENWA_API_KEY,
+                file_bytes = await download_media(
+                    media_id,
                     trace_id=trace_id
                 )
 
