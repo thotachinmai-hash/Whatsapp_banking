@@ -1,8 +1,8 @@
-# HSBC WhatsApp Banking Assistant
+# Finacle Banking WhatsApp Assistant
 
 AI-powered WhatsApp banking assistant that accepts voice, text, and document (image/PDF/DOCX) messages, processes them through a LangGraph AI agent and a step-based workflow engine, and responds with real banking information. Built with FastAPI, LangGraph, Groq LLM, Groq Whisper, Groq Vision (OCR), PostgreSQL, Redis, and OpenWA.
 
-Every incoming message is first matched against a registered-customer database by WhatsApp number (the "@lid"). Known customers get a personalized greeting and service menu; unknown numbers are guided through an Aadhaar/PAN registration flow before anything else. From there, customers can check balances, browse categorized transactions and spend summaries, deposit a cheque by photo (with OCR field validation and a trackable request ID), and check the status of a submitted cheque — all in natural language over WhatsApp.
+Every incoming message is first matched against a registered-customer database by WhatsApp number (the "@lid"). Known customers get a personalized greeting and service menu; unknown numbers are guided through an Aadhaar/PAN registration flow before anything else, which also opens their first account. From there, customers can check balances, browse categorized transactions and spend summaries, transfer money with OTP verification, deposit a cheque by photo, apply for a loan, and update KYC — all in natural language over WhatsApp, with every workflow safely cancellable mid-flow.
 
 ---
 
@@ -10,10 +10,16 @@ Every incoming message is first matched against a registered-customer database b
 
 - **Registration gate** — every message is checked against the `customers` table by phone number.
   - **Registered**: greeted by name with a menu of available services on session start or on an explicit "hi"/"menu"/"help".
-  - **Unregistered**: walked through a conversational onboarding flow (full name → Aadhaar number → PAN number → confirmation) before any banking feature is accessible.
-- **Cheque deposit workflow** — upload a photo of a cheque; Groq Vision OCRs the bank, branch, payee, amount, cheque number, and signatory. Missing mandatory fields (payee, amount) trigger a correction step — re-upload or reply with `Key: value` text. On success, a unique request ID (`CHQ-XXXXXXXX`) is generated and persisted; ask the assistant to "check status of CHQ-XXXXXXXX" any time.
+  - **Unregistered**: walked through a conversational onboarding flow (name → Aadhaar card image → PAN card image → confirmation → account type) before any banking feature is accessible. Confirming creates both the customer record and their first account.
+- **Interruptible workflows** — any active workflow (registration, cheque, loan, KYC, transfer) can be stopped at any step by replying *Cancel*, *Stop*, or a bare greeting like *Hi* that's out of scope for the current step.
+  - For **registration**, this returns to the plain welcome/registration prompt only — an unregistered customer has no accounts or services yet, so the transactional service menu is never shown to them.
+  - For every other workflow, it cancels cleanly ("nothing was submitted or changed") and shows the full service menu, since the customer is already registered and that menu is meaningful to them.
+- **Money transfer** — pick a saved beneficiary or add a new one, choose an amount and source account, confirm, and verify with an SMS OTP (Twilio) before the transfer is authorised.
+- **Cheque deposit** — upload a photo of a cheque; Groq Vision OCRs the bank, branch, payee, amount, cheque number, and signatory. Missing/invalid mandatory fields (payee, amount) trigger a correction step — re-upload or reply with `Key: value` text. On success, a unique request ID (`CHQ-XXXXXXXX`) is generated and persisted; ask the assistant to check its status any time.
+- **Loan application & KYC update** — select a loan type or upload a KYC document, fill in the required fields (by document upload or `Field: value` text), confirm, and get a trackable request ID.
 - **Transactions & spend insights** — transactions are tagged with a category (groceries, bills, rent, salary, transport, entertainment, shopping, etc.). Ask for recent transactions filtered by date range/type/category, or a spend summary broken down by category.
 - **Voice & document support** — voice notes are transcribed with Groq Whisper; images/PDF/DOCX are parsed with Groq Vision.
+- **Correlated logging** — every request gets a short trace ID, threaded through the registration gate, workflow manager, every workflow processor, and every tool call, so a single conversation turn can be followed end-to-end in `logs/app.log`.
 
 ---
 
@@ -31,13 +37,13 @@ flowchart TD
     F --> G
     DOC --> G
     G --> RG{Registration Gate\ncustomers lookup}
-    RG -->|unregistered| ONB[Onboarding Workflow\nname, Aadhaar, PAN]
+    RG -->|unregistered| ONB[Onboarding Workflow\nname, Aadhaar, PAN\ncreates customer + account]
     RG -->|registered, greeting| MENU[Greeting + Service Menu]
     RG -->|registered, normal message| WF{Active Workflow?}
-    WF -->|cheque deposit| CHQ[Cheque Workflow\nvalidate, correct, persist]
+    WF -->|cheque, loan, KYC,\nor transfer| CHQ[Workflow Processor\nvalidate, correct, persist]
     WF -->|none| H[LangGraph Agent\nGroq LLM tool-calling]
-    H -->|tool call| I[Banking Tools\nbalance, transactions,\nspend summary, cheque status]
-    I --> J[(PostgreSQL\naccounts, transactions,\ncustomers, cheque_requests)]
+    H -->|tool call| I[Banking Tools\nbalance, transactions,\nspend summary, cheque/loan status]
+    I --> J[(PostgreSQL\naccounts, transactions, customers,\ncheque/loan/kyc requests)]
     ONB --> J
     CHQ --> J
     H --> K[(Redis\nSession memory + active\nworkflow state, 1h TTL)]
@@ -121,7 +127,7 @@ Enter the API key from Step 2 to login.
 Then:
 1. Click **Sessions** in the left menu
 2. Click **New Session**
-3. Name it: `hsbc-assistant`
+3. Name it: `finacle-assistant`
 4. Click **Create**
 5. Click **Start** on the session
 6. Scan the QR code with WhatsApp on your phone — WhatsApp → Linked Devices → Link a Device
@@ -225,7 +231,7 @@ Expected response:
 Send a WhatsApp message to the linked number:
 
 ```
-What is my balance for account GB12HSBC00010001234567?
+What is my balance for account GB12FNCL00010001234567?
 ```
 
 You should receive a reply with the account balance.
@@ -248,8 +254,8 @@ Or via curl:
 curl -X POST http://localhost:8001/api/test/message \
   -H "Content-Type: application/json" \
   -d '{
-    "phone_number": "447812345678",
-    "message": "What is my balance for account GB12HSBC00010001234567?"
+    "phone_number": "447818658034",
+    "message": "What is my balance for account GB12FNCL00010001234567?"
   }'
 ```
 
@@ -272,11 +278,13 @@ curl -X POST http://localhost:8001/api/test/message \
 
 | Account Number | Holder | Balance | Phone Number | Registered? |
 |---|---|---|---|---|
-| GB12HSBC00010001234567 | John Smith | £2,543.67 | 447812345678 | ✅ Yes |
-| GB12HSBC00010007654321 | Sarah Johnson | £15,750.00 | 447987654321 | ✅ Yes |
-| GB12HSBC00010009876543 | Michael Brown | £892.34 | 447123456789 | ❌ No — use this number to test onboarding |
+| GB12FNCL00010001234567 | John Smith | £2,543.67 | 447818658034 | ✅ Yes |
+| GB12FNCL00010007654321 | Sarah Johnson | £15,750.00 | 919080745760 | ✅ Yes |
+| GB12FNCL00010009876543 | Michael Brown | £892.34 | 447123456789 | ❌ No — use this number to test onboarding |
 
-Sample cheque requests seeded for testing `check_cheque_status` (all belong to John Smith / Sarah Johnson's numbers above):
+`customers.phone_number` must match `accounts.phone_number` for the same person — the registration gate and "which account is linked to this number" lookups both key off it, so a mismatch makes a real customer look unregistered.
+
+Sample cheque requests seeded for testing cheque status lookup (belong to John Smith / Sarah Johnson's numbers above):
 
 | Request ID | Status |
 |---|---|
@@ -292,22 +300,27 @@ Send these as WhatsApp messages or test via Swagger:
 
 ```
 hi
-What is my balance for account GB12HSBC00010001234567?
-Show me the last 5 transactions for account GB12HSBC00010007654321
-How much did I spend on groceries this month for account GB12HSBC00010001234567?
+What is my balance?
+Show me the last 5 transactions
+How much did I spend on groceries this month?
 I want to deposit a cheque
 Check status of CHQ-A1B2C3D4
+I want to apply for a loan
+Transfer £50 to Priya Sharma
 ```
 
-To test **registration/onboarding**, message from `447123456789` (unregistered) and follow the prompts:
+To test **registration/onboarding**, message from `447123456789` (unregistered) and follow the prompts (Aadhaar/PAN are uploaded as document images, not typed):
 
 ```
 hi
 Michael Brown
-345678901299
-CDEFG5678H
+[upload Aadhaar card image]
+[upload PAN card image]
 yes
+1
 ```
+
+To test the **interrupt fix**, send `hi` (or `cancel`/`stop`) partway through any of the above flows — registration returns to the plain welcome prompt with no service menu; every other workflow cancels and shows the full menu.
 
 ---
 
@@ -324,22 +337,21 @@ yes
 
 ## Database Schema
 
-`infra/postgres/init.sql` creates 5 tables, seeded with test data on first init:
+`infra/postgres/init.sql` creates 7 tables, seeded with test data on first init:
 
 | Table | Purpose | Seeded rows |
 |---|---|---|
-| `accounts` | Bank accounts (number, holder, balance, currency, type) | 3 |
+| `accounts` | Bank accounts (number, holder, balance, currency, type). A customer can have more than one — tools that don't get an explicit account number look these up by phone. | 3 |
 | `transactions` | Per-account ledger, tagged with a `category` (groceries, bills, rent, salary, transport, entertainment, shopping, isa, bonus, interest, transfer, other) | 45 (15/account, 3 months) |
-| `customers` | Registered WhatsApp numbers → name, Aadhaar (unique), PAN (unique) | 2 (John Smith, Sarah Johnson) — Michael Brown intentionally left unregistered to test onboarding |
+| `customers` | Registered WhatsApp numbers → name, Aadhaar (unique), PAN (unique), date of birth, guardian name, address | 2 (John Smith, Sarah Johnson) — `447123456789` intentionally left unregistered to test onboarding |
 | `cheque_requests` | Cheque deposit requests, keyed by a unique `request_id` (`CHQ-XXXXXXXX`), with status PENDING/COMPLETED/REJECTED | 3 |
+| `loan_requests` | Loan applications, keyed by `request_id` (`LOAN-XXXXXXXX`), details stored as JSONB | 0 |
+| `kyc_requests` | KYC update submissions, keyed by `request_id` (`KYC-XXXXXXXX`), details stored as JSONB | 0 |
 | `sessions` | Legacy per-phone session counter table (unused by current code — session state actually lives in Redis) | 0 |
 
-Verified: all 5 tables and their constraints exist as expected (`customers` has unique constraints on `phone_number`/`aadhaar_number`/`pan_number`; `cheque_requests` has a unique constraint on `request_id`), no orphaned transactions (every `transactions.account_id` resolves to a real account), and every account's `balance` matches its most recent transaction's `balance_after`.
+Verified: all tables and their constraints exist as expected (`customers` has unique constraints on `phone_number`/`aadhaar_number`/`pan_number`; the `*_requests` tables each have a unique constraint on `request_id`), no orphaned transactions (every `transactions.account_id` resolves to a real account), every account's `balance` matches its most recent transaction's `balance_after`, and `customers.phone_number` matches `accounts.phone_number` for the same person.
 
-Since `init.sql` only runs against an empty Postgres volume, re-seed after schema/data changes with:
-```bash
-docker compose down -v && docker compose up -d postgres redis
-```
+**Postgres always re-initializes from `init.sql` on every `docker compose down` + `up`.** There is no persistent volume for the Postgres data directory (see `docker-compose.yml`) — this is deliberate, so `init.sql` and the running database can never drift out of sync. A plain restart (`docker compose restart postgres`, or leaving containers running) keeps data; removing and recreating the container (`down` then `up`, with or without `-v`) always wipes it back to exactly what `init.sql` defines. This means any real registrations/accounts/cheques created during a session are test data only and will not survive a `down`/`up` cycle — see [Important Notes](#important-notes).
 
 ---
 
@@ -347,27 +359,30 @@ docker compose down -v && docker compose up -d postgres redis
 
 **app/** — Application code
 - `main.py` — FastAPI entry point and webhook receiver
-- `agent/agent.py` — LangGraph agent (registration gate → active workflow → tool-calling LLM)
-- `agent/tools.py` — Banking tools — balance, transactions, spend summary, cheque status, start cheque workflow
-- `services/whatsapp.py` — OpenWA client to send messages
+- `agent/agent.py` — LangGraph agent (registration gate → active workflow → tool-calling LLM); `trace_id` flows from here into every layer below
+- `agent/tools.py` — Banking tools — balance, transactions, spend summary, cheque status, loan status, start cheque workflow
+- `services/whatsapp.py` — OpenWA client to send messages, chat-ID/LID resolution
 - `services/transcription.py` — Groq Whisper voice to text
 - `services/document_parser.py` — Groq Vision OCR for images/PDF/DOCX
-- `services/registration_gate.py` — Looks up the sender in `customers`; greets or starts onboarding
-- `services/menu.py` — Shared service-menu text shown to registered customers
+- `services/registration_gate.py` — Looks up the sender in `customers`; greets or starts onboarding; owns `GREETING_KEYWORDS`, reused by the workflow manager to detect a mid-workflow interrupt
+- `services/menu.py` — Shared service-menu and onboarding-welcome text shown across the app
+- `services/sms.py` — Twilio OTP delivery for money transfers
 - `services/message_handler.py` — Routes voice/text/document, runs agent, sends response
-- `workflows/manager.py` — Routes a message to the active workflow's processor, if any
+- `workflows/manager.py` — Routes a message to the active workflow's processor; owns the cancel/interrupt logic (explicit *Cancel*/*Stop* or a bare greeting) and the workflow-boundary/conversational-question handling that lets customers ask questions without losing their place mid-workflow
 - `workflows/memory.py` — Redis-backed workflow state (create/get/update/complete)
 - `workflows/constants.py` — Workflow types, statuses, and step constants
-- `workflows/processors/onboarding.py` — Name → Aadhaar → PAN → confirm → create customer
+- `workflows/processors/onboarding.py` — Name → Aadhaar image → PAN image → confirm → create customer → select account type → open account
 - `workflows/processors/cheque.py` — OCR validation, correction loop, cheque request persistence
-- `workflows/processors/kyc.py`, `workflows/processors/loan.py` — Stubs, not yet implemented
+- `workflows/processors/loan.py` — Loan type selection, form collection (image or text), confirmation, request persistence
+- `workflows/processors/kyc.py` — KYC document/field collection, confirmation, request persistence
+- `workflows/processors/transfer.py` — Beneficiary selection, amount, source account, confirmation, SMS OTP verification
 - `api/routes.py` — REST API endpoints (accounts, customers, cheque requests — for testing/debugging)
 - `database.py` — PostgreSQL queries
-- `memory.py` — Redis session memory per phone number
+- `memory.py` — Redis session memory per phone number, active-account cache
 - `metrics.py` — Metrics tracking with trace ID
-- `logger.py` — Daily rotating logs
+- `logger.py` — Daily rotating logs, console output
 
-**infra/postgres/init.sql** — Database schema and seed data (`accounts`, `transactions`, `sessions`, `customers`, `cheque_requests`)
+**infra/postgres/init.sql** — Database schema and seed data (`accounts`, `transactions`, `sessions`, `customers`, `cheque_requests`, `loan_requests`, `kyc_requests`)
 
 **Root files**
 - `docker-compose.yml` — All 4 services
@@ -387,16 +402,19 @@ docker compose down -v && docker compose up -d postgres redis
 
 **WEBHOOK_SECRET is optional.** Leave it empty for development. Set a random string in production for webhook authentication.
 
-**Resetting the database.** `infra/postgres/init.sql` only runs against an empty Postgres data volume — editing it has no effect on an already-initialized database. To pick up schema/seed changes: `docker compose down -v && docker compose up -d postgres redis`. This wipes all local data (test data only, safe to recreate).
+**The Postgres database is ephemeral by design.** There is no persistent Docker volume for Postgres data — every `docker compose down` + `up` recreates the container from a clean state and re-runs `infra/postgres/init.sql` from scratch. This is intentional: it guarantees the schema/seed data you see always matches exactly what's in `init.sql`, with no possibility of drift between an old running database and newer code. The trade-off is that **any data created during a session — new registrations, auto-opened accounts, cheque deposits — is lost on the next `down`/`up` cycle.** This is fine for local development and testing, but if you ever want this app to hold real, durable customer data, you'll need to reintroduce a named volume on the `postgres` service in `docker-compose.yml`. A plain `docker compose restart` (or simply leaving containers running) does **not** lose data — only removing and recreating the container does.
 
 ---
 
 ## Known Limitations
 
-- **Groq free-tier daily token limit (100K TPD).** Heavy testing can exhaust this within a session — the app catches `429` responses and replies with "the service is temporarily busy" instead of crashing, but no LLM-driven replies (balance/transactions/spend/cheque-status questions) will work until the quota resets. Registration, greeting/menu, and the cheque upload workflow are unaffected since they don't call the LLM. Switch to `qwen/qwen3-32b` in `.env` for a 500K daily budget if this is a problem.
-- **Loan and KYC workflows** are wired into the menu with document extraction, mandatory-field validation, confirmation, request persistence, and request IDs.
-- **Onboarding collects Aadhaar/PAN as card images** — the existing vision document parser extracts the ID values, which are then format-validated before registration.
+- **Groq free-tier daily token limit (100K TPD).** Heavy testing can exhaust this within a session — the app catches `429` responses and replies with "the service is temporarily busy" instead of crashing, but no LLM-driven replies (balance/transactions/spend/cheque-status questions) will work until the quota resets. Registration, the greeting/menu, and every deterministic workflow (cheque, loan, KYC, transfer) are unaffected since they don't call the LLM. Switch to `qwen/qwen3-32b` in `.env` for a 500K daily budget if this is a problem.
+- **Onboarding collects Aadhaar/PAN as card images**, not typed text — the vision document parser extracts and format-validates the ID values from the photo.
+- **`workflows/memory.py`'s own log lines don't carry a trace ID** (create/get/update/delete workflow state) — every decision made *about* a workflow does (registration gate, workflow manager, every processor), but the low-level Redis read/write lines don't yet. Not a blocker for tracing a conversation, just slightly less granular than the rest.
 
 ### Fixed since last review
 
-- **Multi-turn tool-calling recursion bug (fixed).** `AgentState.messages` in `agent.py` was declared as a plain `list` with no LangGraph reducer, so every graph node's return *replaced* the message history instead of appending to it — the agent lost the original question and prior tool-call context on every hop. In multi-turn conversations (e.g. "hi" → "what's my balance") this reliably caused the agent to loop calling the same tool until it hit the recursion limit and returned a generic error. Fixed by annotating the field with LangGraph's `add_messages` reducer (`Annotated[list, add_messages]`), the standard pattern for LangGraph chat agents. Verified with 6 consecutive multi-turn tool-calling conversations (balance, transactions, spend summary, cheque status) — all succeeded — before the fix's testing exhausted the Groq daily quota.
+- **Mid-workflow interrupts didn't work for a bare greeting, and registration's cancel response was wrong.** Only explicit phrases like "cancel"/"stop" interrupted an active workflow — a plain "hi" sent mid-flow just got reinterpreted as if it were the expected input for that step (e.g. rejected as an invalid name). Separately, cancelling *any* workflow — including registration — showed the full transactional service menu (transfer, balance, cheque, etc.), which is meaningless to someone who isn't registered and has no accounts yet. Fixed in `workflows/manager.py`: a bare greeting ("hi", "menu", "help", ...) now interrupts a workflow exactly like "cancel" does, and cancelling registration specifically returns to the plain welcome/registration prompt instead of the service menu. Every other workflow keeps showing the full menu on cancel, since that customer is already registered.
+- **Brand renamed from HSBC to Finacle Banking** throughout the app, seed data, and config — including the account-number bank code (`GB..HSBC...` → `GB..FNCL...`), the OTP SMS text, and the OpenWA session name default.
+- **Workflow-layer logging had no trace ID and two processors (`transfer.py`, `kyc.py`) had none at all.** `WorkflowManager.handle()`/`start_requested()` and every processor (`onboarding`, `cheque`, `loan`, `kyc`, `transfer`) now accept and log with the same trace ID used everywhere else, and step transitions, validation failures, and request creation/cancellation are now logged consistently across all five workflows — a single conversation turn can be grepped out of `logs/app.log` by its trace ID end-to-end.
+- **`customers.phone_number` didn't match `accounts.phone_number`** for the two seeded registered customers, which would make a real customer look unregistered. Fixed in `init.sql`.

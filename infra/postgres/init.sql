@@ -1,4 +1,4 @@
--- HSBC WhatsApp Banking Assistant — Database Schema
+-- Finacle Banking WhatsApp Assistant — Database Schema
 
 CREATE TABLE IF NOT EXISTS accounts (
     id SERIAL PRIMARY KEY,
@@ -40,6 +40,9 @@ CREATE TABLE IF NOT EXISTS customers (
     full_name VARCHAR(255) NOT NULL,
     aadhaar_number VARCHAR(12) UNIQUE NOT NULL,
     pan_number VARCHAR(10) UNIQUE NOT NULL,
+    date_of_birth VARCHAR(50),
+    guardian_name VARCHAR(255),
+    address TEXT,
     status VARCHAR(20) DEFAULT 'active',
     created_at TIMESTAMP DEFAULT NOW()
 );
@@ -57,6 +60,8 @@ CREATE TABLE IF NOT EXISTS cheque_requests (
     amount_in_words VARCHAR(255),
     cheque_number VARCHAR(50),
     signatory VARCHAR(255),
+    date_written VARCHAR(50),
+    drawer_name VARCHAR(255),
     status VARCHAR(20) DEFAULT 'PENDING',
     created_at TIMESTAMP DEFAULT NOW()
 );
@@ -80,18 +85,79 @@ CREATE TABLE IF NOT EXISTS kyc_requests (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Saved beneficiaries for the money-transfer workflow. Owned by the
+-- customer's phone number; (phone_number, account_number) is unique so
+-- re-adding the same beneficiary updates their name instead of duplicating.
+CREATE TABLE IF NOT EXISTS beneficiaries (
+    id SERIAL PRIMARY KEY,
+    phone_number VARCHAR(20) NOT NULL,
+    beneficiary_name VARCHAR(255) NOT NULL,
+    account_number VARCHAR(30) NOT NULL,
+    bank_name VARCHAR(255),
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE (phone_number, account_number)
+);
+
+-- Money transfers. Created as INITIATED the moment the customer confirms —
+-- there is no OTP/SMS step. status is updated later (e.g. by bank staff, via
+-- the debug endpoint) to COMPLETED or FAILED once the transfer actually
+-- settles on the bank side.
+CREATE TABLE IF NOT EXISTS transfers (
+    id SERIAL PRIMARY KEY,
+    reference VARCHAR(20) UNIQUE NOT NULL,
+    phone_number VARCHAR(20) NOT NULL,
+    source_account VARCHAR(30) NOT NULL,
+    beneficiary_name VARCHAR(255) NOT NULL,
+    beneficiary_account VARCHAR(30) NOT NULL,
+    amount DECIMAL(15, 2) NOT NULL,
+    status VARCHAR(20) DEFAULT 'INITIATED',
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Published loan product terms — the bank's own rate card. Static reference
+-- data, not a customer's application (see loan_requests for that). Exists so
+-- the assistant can answer "what's the interest rate on a personal loan?"
+-- with a real, tool-provided figure instead of either inventing one or
+-- refusing to answer — see app/agent/tools.py::tool_get_loan_product_info().
+-- Rates are illustrative representative APRs for this demo bank, not live
+-- market rates.
+CREATE TABLE IF NOT EXISTS loan_products (
+    id SERIAL PRIMARY KEY,
+    loan_type VARCHAR(50) UNIQUE NOT NULL,
+    display_name VARCHAR(100) NOT NULL,
+    interest_rate_min DECIMAL(5, 2) NOT NULL,
+    interest_rate_max DECIMAL(5, 2) NOT NULL,
+    min_amount DECIMAL(15, 2) NOT NULL,
+    max_amount DECIMAL(15, 2) NOT NULL,
+    min_tenure_months INTEGER NOT NULL,
+    max_tenure_months INTEGER NOT NULL,
+    processing_fee_percent DECIMAL(4, 2) NOT NULL,
+    currency VARCHAR(3) DEFAULT 'GBP',
+    notes TEXT,
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+INSERT INTO loan_products (loan_type, display_name, interest_rate_min, interest_rate_max, min_amount, max_amount, min_tenure_months, max_tenure_months, processing_fee_percent, currency, notes) VALUES
+('personal',  'Personal Loan',  10.50, 15.00,   1000.00,   25000.00,  6,  60, 1.50, 'GBP', 'Unsecured. Final rate depends on credit profile and income.'),
+('home',      'Home Loan',       6.75,  9.25,  25000.00, 500000.00, 60, 360, 0.50, 'GBP', 'Secured against the property. Final rate depends on loan-to-value and credit profile.'),
+('vehicle',   'Vehicle Loan',    8.50, 12.00,   2000.00,   50000.00, 12,  84, 1.00, 'GBP', 'Secured against the vehicle. Final rate depends on vehicle age and credit profile.'),
+('education', 'Education Loan',  7.00, 11.00,   1000.00,  100000.00, 12, 180, 0.75, 'GBP', 'Repayment can often be deferred until after course completion — ask about moratorium terms.');
+
 -- Seed data — 3 test accounts
 INSERT INTO accounts (account_number, account_holder, phone_number, account_type, balance, currency) VALUES
-('GB12HSBC00010001234567', 'John Smith', '447818658034', 'current', 2543.67, 'GBP'),
-('GB12HSBC00010007654321', 'Sarah Johnson', '919080745760', 'savings', 15750.00, 'GBP'),
-('GB12HSBC00010009876543', 'Michael Brown', '447123456789', 'current', 892.34, 'GBP');
+('GB12FNCL00010001234567', 'John Smith', '447818658034', 'current', 2543.67, 'GBP'),
+('GB12FNCL00010007654321', 'Sarah Johnson', '919080745760', 'savings', 15750.00, 'GBP'),
+('GB12FNCL00010009876543', 'Michael Brown', '447123456789', 'current', 892.34, 'GBP');
 
 -- Registered customers — John Smith and Sarah Johnson are registered so the
 -- greeting/menu flow has real matches. Michael Brown is deliberately left
 -- unregistered so the onboarding flow has a real number to test against.
+-- Phone numbers here must match the accounts row above for each person —
+-- the registration gate and get_accounts_by_phone() both key off this
+-- number, so a mismatch makes a "registered" customer look unregistered.
 INSERT INTO customers (phone_number, full_name, aadhaar_number, pan_number) VALUES
-('447812345678', 'John Smith', '234567890123', 'ABCDE1234F'),
-('447987654321', 'Sarah Johnson', '345678901234', 'BXYZP5678K');
+('447818658034', 'John Smith', '234567890123', 'ABCDE1234F'),
+('919080745760', 'Sarah Johnson', '345678901234', 'BXYZP5678K');
 
 -- Transactions for John Smith (account_id=1) — 3 months, categorized,
 -- balance_after runs consistently up to the seeded account balance (2543.67).
@@ -130,26 +196,15 @@ INSERT INTO transactions (account_id, transaction_type, category, amount, descri
 (2, 'credit', 'bonus',    900.00, 'Bonus Payment',                 'BON-M1-001', 15985.00, NOW() - INTERVAL '6 days'),
 (2, 'debit',  'isa',      235.00, 'ISA Transfer',                  'ISA-M1-001', 15750.00, NOW() - INTERVAL '2 days');
 
--- Transactions for Michael Brown (account_id=3) — 3 months, ending at 892.34
-INSERT INTO transactions (account_id, transaction_type, category, amount, description, reference, balance_after, created_at) VALUES
-(3, 'credit', 'salary',        1800.00, 'Salary Payment',       'SAL-M3-001',  1800.00, NOW() - INTERVAL '87 days'),
-(3, 'debit',  'rent',           750.00, 'Rent Payment',         'SO-RENT-M3',  1050.00, NOW() - INTERVAL '84 days'),
-(3, 'debit',  'entertainment',   65.00, 'Sky TV',               'DD-SKY-001',   985.00, NOW() - INTERVAL '78 days'),
-(3, 'debit',  'bills',           45.00, 'Council Tax',          'DD-CT-001',    940.00, NOW() - INTERVAL '70 days'),
-(3, 'debit',  'other',          940.00, 'Credit Card Payment',  'CC-PAY-001',     0.00, NOW() - INTERVAL '62 days'),
-(3, 'credit', 'salary',        1800.00, 'Salary Payment',       'SAL-M2-001',  1800.00, NOW() - INTERVAL '57 days'),
-(3, 'debit',  'rent',           750.00, 'Rent Payment',         'SO-RENT-M2',  1050.00, NOW() - INTERVAL '54 days'),
-(3, 'debit',  'groceries',       38.50, 'Tesco Express',        'POS-TES-001', 1011.50, NOW() - INTERVAL '48 days'),
-(3, 'debit',  'entertainment',   65.00, 'Sky TV',               'DD-SKY-002',   946.50, NOW() - INTERVAL '40 days'),
-(3, 'debit',  'bills',           45.00, 'Council Tax',          'DD-CT-002',    901.50, NOW() - INTERVAL '32 days'),
-(3, 'credit', 'salary',        1800.00, 'Salary Payment',       'SAL-JULY-2026', 2701.50, NOW() - INTERVAL '27 days'),
-(3, 'debit',  'rent',           750.00, 'Rent Payment',         'SO-RENT-002', 1951.50, NOW() - INTERVAL '24 days'),
-(3, 'debit',  'entertainment',   65.00, 'Sky TV',               'DD-SKY-003',  1886.50, NOW() - INTERVAL '16 days'),
-(3, 'debit',  'bills',           45.00, 'Council Tax',          'DD-CT-003',   1841.50, NOW() - INTERVAL '8 days'),
-(3, 'debit',  'other',          940.00, 'Credit Card Payment',  'CC-PAY-002',   892.34, NOW() - INTERVAL '2 days');
-
 -- Sample cheque deposit requests, in different statuses, tied to John Smith
 INSERT INTO cheque_requests (request_id, phone_number, bank_name, branch, payee, amount_in_figures, amount_in_words, cheque_number, signatory, status, created_at) VALUES
-('CHQ-A1B2C3D4', '447812345678', 'HSBC', 'London Central', 'John Smith', '500.00', 'Five Hundred Pounds Only', '000123', 'A. Patel', 'COMPLETED', NOW() - INTERVAL '10 days'),
-('CHQ-E5F6G7H8', '447812345678', 'HSBC', 'London Central', 'John Smith', '1200.00', 'One Thousand Two Hundred Pounds Only', '000124', 'A. Patel', 'PENDING', NOW() - INTERVAL '1 day'),
-('CHQ-J9K1L2M3', '447987654321', 'Barclays', 'Manchester', 'Sarah Johnson', '75.00', 'Seventy Five Pounds Only', '000045', 'R. Khan', 'REJECTED', NOW() - INTERVAL '5 days');
+('CHQ-A1B2C3D4', '447818658034', 'Finacle Banking', 'London Central', 'John Smith', '500.00', 'Five Hundred Pounds Only', '000123', 'A. Patel', 'COMPLETED', NOW() - INTERVAL '10 days'),
+('CHQ-E5F6G7H8', '447818658034', 'Finacle Banking', 'London Central', 'John Smith', '1200.00', 'One Thousand Two Hundred Pounds Only', '000124', 'A. Patel', 'PENDING', NOW() - INTERVAL '1 day'),
+('CHQ-J9K1L2M3', '919080745760', 'Barclays', 'Manchester', 'Sarah Johnson', '75.00', 'Seventy Five Pounds Only', '000045', 'R. Khan', 'REJECTED', NOW() - INTERVAL '5 days');
+
+-- Saved beneficiaries so the transfer workflow has real data to list
+INSERT INTO beneficiaries (phone_number, beneficiary_name, account_number, bank_name) VALUES
+('447818658034', 'Priya Sharma', 'GB29FNCL60161331926819', 'Finacle Banking'),
+('447818658034', 'Alex Morgan', 'GB77FNCL29001847502211', 'Finacle Banking'),
+('919080745760', 'Rahul Verma', 'GB14FNCL74208891736642', 'Finacle Banking'),
+('919080745760', 'Emma Wilson', 'GB05FNCL13590027461938', 'Finacle Banking');

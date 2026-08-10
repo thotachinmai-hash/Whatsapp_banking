@@ -5,10 +5,11 @@ from typing import Any
 
 import psycopg2
 
-from app.database import create_cheque_request
+from app.database import create_cheque_request, get_customer_by_phone
 from app.logger import get_logger
 from app.workflows.constants import STEP_UPLOAD_CHEQUE, STEP_CORRECT_CHEQUE
 from app.workflows.memory import complete_workflow, set_workflow_step, update_workflow_data
+from app.conversation.responses import cheque as templates
 
 logger = get_logger(__name__)
 
@@ -22,6 +23,8 @@ FIELD_LABELS = {
     "amount_in_words": "Amount (Words)",
     "numbers": "Cheque Number",
     "signatory_title": "Signatory",
+    "date_written": "Date",
+    "drawer_name": "Drawer",
 }
 
 # Free-text "Key: value" correction keys mapped onto the extracted content keys.
@@ -59,6 +62,26 @@ def _invalid_fields(content: dict) -> list[str]:
     if parsed is None or parsed <= 0:
         return ["amount_in_figures"]
     return []
+
+
+def _normalize_name(value: Any) -> str:
+    if value is None:
+        return ""
+    text = re.sub(r"[^a-z0-9]+", "", str(value).strip().lower())
+    return text
+
+
+def _payee_matches_customer(content: dict, phone_number: str) -> bool:
+    payee = content.get("payee")
+    if not _is_present(payee):
+        return False
+
+    customer = get_customer_by_phone(phone_number)
+    if not customer:
+        return True
+
+    stored_name = customer.get("full_name") or ""
+    return _normalize_name(stored_name) == _normalize_name(payee)
 
 
 def _parse_amount(value: Any) -> Decimal | None:
@@ -109,6 +132,11 @@ def _normalize_content(content: dict) -> dict:
         "check_number": "numbers",
         "signatory": "signatory_title",
         "bank": "bank_name",
+        "date": "date_written",
+        "cheque_date": "date_written",
+        "drawer": "drawer_name",
+        "issuer_name": "drawer_name",
+        "written_by": "drawer_name",
     }
     for source, target in aliases.items():
         if not _is_present(normalized.get(target)) and _is_present(normalized.get(source)):
@@ -131,18 +159,21 @@ class ChequeWorkflowProcessor:
         phone_number: str,
         query: str,
         parsed_document: dict | None = None,
+        trace_id: str = "",
     ) -> dict[str, Any]:
         """
         Continue an active cheque workflow.
         """
 
         step = workflow["step"]
+        logger.info(f"[{trace_id}] Cheque workflow step | phone={phone_number[-4:]} | step={step}")
 
         if step == STEP_UPLOAD_CHEQUE:
             return await self._handle_upload_cheque(
                 workflow,
                 phone_number,
                 parsed_document,
+                trace_id,
             )
 
         elif step == STEP_CORRECT_CHEQUE:
@@ -151,6 +182,7 @@ class ChequeWorkflowProcessor:
                 phone_number,
                 query,
                 parsed_document,
+                trace_id,
             )
 
         return {
@@ -163,6 +195,7 @@ class ChequeWorkflowProcessor:
         workflow: dict[str, Any],
         phone_number: str,
         parsed_document: dict | None,
+        trace_id: str = "",
     ) -> dict[str, Any]:
         """
         Process the uploaded cheque.
@@ -171,31 +204,25 @@ class ChequeWorkflowProcessor:
         if parsed_document is None:
             return {
                 "handled": True,
-                "response": (
-                    "Please upload the cheque image to continue your cheque deposit."
-                )
+                "response": templates.render_cheque_upload_prompt()
             }
 
         mime_type = parsed_document.get("mime_type")
         if mime_type and not mime_type.startswith("image/"):
             return {
                 "handled": True,
-                "response": "Please upload the cheque as a clear image (JPG, PNG, or WEBP).",
+                "response": templates.render_cheque_not_an_image(),
             }
 
         if not parsed_document.get("success"):
             return {
                 "handled": True,
-                "response": (
-                    "❌ Unable to process the uploaded cheque.\n\n"
-                    f"Reason: {parsed_document.get('error', 'Unknown error')}\n\n"
-                    "Please upload a clear cheque image and try again."
-                )
+                "response": templates.render_cheque_invalid(parsed_document.get("error", "Unknown error"))
             }
 
         content = _normalize_content(parsed_document.get("content", {}))
 
-        return self._validate_or_finalize(phone_number, content)
+        return self._validate_or_finalize(phone_number, content, trace_id)
 
     async def _handle_correct_cheque(
         self,
@@ -203,6 +230,7 @@ class ChequeWorkflowProcessor:
         phone_number: str,
         query: str,
         parsed_document: dict | None,
+        trace_id: str = "",
     ) -> dict[str, Any]:
         """
         Handle correction of a cheque with missing mandatory fields — either
@@ -217,17 +245,13 @@ class ChequeWorkflowProcessor:
             if mime_type and not mime_type.startswith("image/"):
                 return {
                     "handled": True,
-                    "response": "Please upload the cheque as a clear image (JPG, PNG, or WEBP).",
+                "response": templates.render_cheque_not_an_image(),
                 }
 
             if not parsed_document.get("success"):
                 return {
                     "handled": True,
-                    "response": (
-                        "❌ Unable to process the uploaded cheque.\n\n"
-                        f"Reason: {parsed_document.get('error', 'Unknown error')}\n\n"
-                        "Please upload a clear cheque image and try again."
-                    )
+                    "response": templates.render_cheque_invalid(parsed_document.get("error", "Unknown error"))
                 }
 
             new_content = _normalize_content(parsed_document.get("content", {}))
@@ -236,9 +260,15 @@ class ChequeWorkflowProcessor:
                 if _is_present(value):
                     content[key] = value
 
-            return self._validate_or_finalize(phone_number, content)
+            return self._validate_or_finalize(phone_number, content, trace_id)
 
         if query and query.strip():
+
+            if self._is_explanation_question(query):
+                return {
+                    "handled": True,
+                    "response": templates.render_cheque_explanation(workflow.get("data", {}).get("validation_error")),
+                }
 
             updated_any = False
 
@@ -258,65 +288,98 @@ class ChequeWorkflowProcessor:
                     updated_any = True
 
             if not updated_any:
+
+                if self._is_acknowledgment(query):
+                    pending_message = workflow.get("data", {}).get("validation_error")
+                    return {
+                        "handled": True,
+                        "response": templates.render_cheque_pending_reminder(pending_message)
+                    }
+
                 return {
                     "handled": True,
-                    "response": (
-                        "I couldn't read those details. Please either re-upload a "
-                        "clearer cheque image, or reply using this format:\n\n"
-                        "Payee: John Smith\n"
-                        "Amount: 500.00"
-                    )
+                    "response": templates.render_cheque_correction_prompt()
                 }
 
-            return self._validate_or_finalize(phone_number, content)
+            return self._validate_or_finalize(phone_number, content, trace_id)
 
         return {
             "handled": True,
-            "response": (
-                "Please re-upload a clearer cheque image, or provide the missing "
-                "details as text (e.g. `Payee: John Smith`)."
-            )
+            "response": templates.render_cheque_reupload_prompt()
+        }
+
+    @staticmethod
+    def _is_explanation_question(query: str) -> bool:
+        text = query.strip().lower()
+        return "?" in text or any(phrase in text for phrase in (
+            "what is wrong", "what's wrong", "what is the error", "what's the error",
+            "why did", "why is", "why are", "explain", "what happened",
+        ))
+
+    @staticmethod
+    def _is_acknowledgment(query: str) -> bool:
+        """
+        A plain acknowledgment ("okay", "sure", "got it") is not a failed
+        attempt at giving cheque data — it must not get the same "I couldn't
+        read those details" response as genuinely garbled input, since that
+        implies they tried and failed when they didn't try at all.
+        """
+        text = re.sub(r"[^a-z ]", "", query.strip().lower())
+        return text in {
+            "ok", "okay", "kk", "alright", "all right", "sure", "fine",
+            "got it", "gotit", "understood", "noted", "roger", "cool",
+            "right", "yes", "yeah", "yep", "thanks", "thank you",
+            "no problem", "sounds good", "will do",
         }
 
     def _validate_or_finalize(
         self,
         phone_number: str,
         content: dict,
+        trace_id: str = "",
     ) -> dict[str, Any]:
 
         missing = list(dict.fromkeys(
             _missing_fields(content) + _invalid_fields(content)
         ))
 
+        if not _payee_matches_customer(content, phone_number):
+            missing.append("payee")
+
         logger.info(
-            f"Cheque validation | phone={phone_number[-4:]} | missing_or_invalid={missing}"
+            f"[{trace_id}] Cheque validation | phone={phone_number[-4:]} | missing_or_invalid={missing}"
         )
 
         if missing:
 
-            update_workflow_data(phone_number, {"partial_content": content})
             set_workflow_step(phone_number, STEP_CORRECT_CHEQUE)
 
-            missing_labels = ", ".join(FIELD_LABELS.get(f, f) for f in missing)
+            if "payee" in missing and not _is_present(content.get("payee")):
+                message = templates.render_cheque_payee_missing()
+            elif "payee" in missing:
+                customer = get_customer_by_phone(phone_number)
+                expected_name = (customer.get("full_name") if customer else "your registered name")
+                message = templates.render_cheque_payee_mismatch(expected_name)
+            else:
+                message = templates.render_cheque_missing_fields(missing)
+
+            update_workflow_data(phone_number, {
+                "partial_content": content,
+                "validation_error": message,
+            })
 
             return {
                 "handled": True,
-                "response": (
-                    "⚠️ I couldn't detect the following required field(s) on your cheque: "
-                    f"{missing_labels}.\n\n"
-                    "Please re-upload a clearer image, or reply with the missing "
-                    "details, e.g.:\n\n"
-                    "Payee: John Smith\n"
-                    "Amount: 500.00"
-                )
+                "response": message
             }
 
-        return self._finalize_cheque_request(phone_number, content)
+        return self._finalize_cheque_request(phone_number, content, trace_id)
 
     def _finalize_cheque_request(
         self,
         phone_number: str,
         content: dict,
+        trace_id: str = "",
     ) -> dict[str, Any]:
 
         bank_name = content.get("bank_name") if _is_present(content.get("bank_name")) else None
@@ -326,6 +389,8 @@ class ChequeWorkflowProcessor:
         amount_words = content.get("amount_in_words") if _is_present(content.get("amount_in_words")) else None
         cheque_numbers = content.get("numbers") if _is_present(content.get("numbers")) else None
         signatory = content.get("signatory_title") if _is_present(content.get("signatory_title")) else None
+        date_written = content.get("date_written") if _is_present(content.get("date_written")) else None
+        drawer_name = content.get("drawer_name") if _is_present(content.get("drawer_name")) else None
 
         request_id = ""
         for _ in range(3):
@@ -341,17 +406,19 @@ class ChequeWorkflowProcessor:
                     amount_in_words=amount_words,
                     cheque_number=cheque_numbers,
                     signatory=signatory,
+                    date_written=date_written,
+                    drawer_name=drawer_name,
                     status="PENDING",
                 )
                 request_id = candidate
                 break
             except psycopg2.errors.UniqueViolation:
-                logger.warning("Cheque request ID collision; retrying")
+                logger.warning(f"[{trace_id}] Cheque request ID collision; retrying")
             except psycopg2.Error as error:
-                logger.error(f"Cheque request persistence failed | phone={phone_number} | error={error}")
+                logger.error(f"[{trace_id}] Cheque request persistence failed | phone={phone_number[-4:]} | error={error}")
                 return {
                     "handled": True,
-                    "response": "I validated the cheque, but could not save the request right now. Please try again shortly.",
+                    "response": templates.render_cheque_failed(),
                 }
 
         if not request_id:
@@ -359,16 +426,18 @@ class ChequeWorkflowProcessor:
 
         complete_workflow(phone_number)
 
+        logger.info(
+            f"[{trace_id}] Cheque request created | phone={phone_number[-4:]} | request_id={request_id}"
+        )
+
         return {
             "handled": True,
-            "response": (
-                "✅ Cheque deposit request created!\n\n"
-                f"🆔 Request ID: {request_id}\n"
-                f"👤 Payee: {payee}\n"
-                f"💰 Amount: {amount_figures}\n"
-                f"🏦 Bank: {bank_name or 'Not detected'}\n"
-                f"📌 Status: PENDING\n\n"
-                "You can check the status anytime — just ask, e.g. "
-                f'"check status of {request_id}".'
+            "response": templates.render_cheque_summary(
+                request_id=request_id,
+                payee=payee,
+                amount_label=amount_figures,
+                date_written=date_written,
+                drawer_name=drawer_name,
+                bank_name=bank_name,
             )
         }

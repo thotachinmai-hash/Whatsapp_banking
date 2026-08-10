@@ -1,9 +1,20 @@
 from fastapi import APIRouter, HTTPException
-from app.database import execute_query, get_account_by_number, get_cheque_request_by_id
+from pydantic import BaseModel
+from app.database import (
+    execute_query,
+    get_account_by_number,
+    get_cheque_request_by_id,
+    get_transfer_by_reference,
+    update_transfer_status,
+)
 from app.logger import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter()
+
+
+class TransferStatusUpdate(BaseModel):
+    status: str
 
 
 @router.get("/customers", tags=["Customers"], summary="List all registered customers")
@@ -23,6 +34,31 @@ async def get_cheque_request(request_id: str):
     if not cheque_request:
         raise HTTPException(status_code=404, detail="Cheque request not found")
     return {"cheque_request": cheque_request}
+
+
+@router.get("/transfers/{reference}", tags=["Transfers"], summary="Get transfer by reference")
+async def get_transfer(reference: str):
+    """Get a money transfer by its transaction ID (reference)."""
+    transfer = get_transfer_by_reference(reference.strip().upper())
+    if not transfer:
+        raise HTTPException(status_code=404, detail="Transfer not found")
+    return {"transfer": transfer}
+
+
+@router.post("/transfers/{reference}/status", tags=["Transfers"], summary="Update transfer status")
+async def set_transfer_status(reference: str, body: TransferStatusUpdate):
+    """
+    Simulate the bank side settling a transfer — updates its status
+    (e.g. to COMPLETED or FAILED) once it has actually processed.
+    """
+    allowed = {"INITIATED", "COMPLETED", "FAILED"}
+    status = body.status.strip().upper()
+    if status not in allowed:
+        raise HTTPException(status_code=400, detail=f"status must be one of {sorted(allowed)}")
+    transfer = update_transfer_status(reference.strip().upper(), status)
+    if not transfer:
+        raise HTTPException(status_code=404, detail="Transfer not found")
+    return {"transfer": transfer}
 
 
 @router.get("/accounts", tags=["Accounts"], summary="List all accounts")

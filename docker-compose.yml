@@ -12,7 +12,6 @@ services:
       - "5433:5432"
     volumes:
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
-      - whatsapp_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U banking_user -d banking_db"]
       interval: 5s
@@ -64,9 +63,13 @@ services:
       GROQ_API_KEY: ${GROQ_API_KEY}
       GROQ_MODEL: ${GROQ_MODEL:-llama-3.3-70b-versatile}
       GROQ_WHISPER_MODEL: ${GROQ_WHISPER_MODEL:-whisper-large-v3-turbo}
+      GROQ_VISION_MODEL: ${GROQ_VISION_MODEL:-qwen/qwen3.6-27B}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      GEMINI_TTS_MODEL: ${GEMINI_TTS_MODEL:-gemini-2.5-flash-preview-tts}
       OPENWA_URL: http://openwa:2785
       OPENWA_API_KEY: ${OPENWA_API_KEY}
-      OPENWA_SESSION_ID: ${OPENWA_SESSION_ID:-hsbc-assistant}
+      OPENWA_SESSION_ID: ${OPENWA_SESSION_ID:-finacle-assistant}
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
     depends_on:
       postgres:
@@ -84,5 +87,4 @@ services:
       start_period: 40s
 
 volumes:
-  whatsapp_postgres_data:
   whatsapp_openwa_data:

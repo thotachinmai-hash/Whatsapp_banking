@@ -1,30 +1,12 @@
-def build_menu_response(name: str, greeting: bool = True) -> str:
-    """
-    Shared menu-card text shown to a registered customer.
-    """
+"""Compatibility wrapper — Phase 4 moved these into
+app/conversation/responses/ (see docs/current_architecture.md, "Response
+Template Layer — Phase 4"). Kept so existing callers (registration_gate.py,
+workflows/manager.py, workflows/processors/onboarding.py) don't need to
+change. New code should import from app.conversation.responses directly.
+"""
 
-    header = f"Hi {name}, welcome back to HSBC! 👋\n\n" if greeting else ""
+from app.conversation.responses.onboarding import render_onboarding_welcome as build_onboarding_welcome_message
+from app.conversation.responses.common import render_main_menu as build_menu_response
+from app.conversation.responses.status import render_account_summary as build_accounts_summary
 
-    return (
-        header +
-        "Here's what I can help you with:\n\n"
-        "💰 *Check balance* — get your account balance\n"
-        "📄 *View transactions* — recent transactions & spend summary\n"
-        "🏦 *Deposit a cheque* — upload a cheque image\n"
-        "🔍 *Check cheque status* — track a cheque request by ID\n"
-        "📝 *Apply for a loan* — choose a loan and upload the form\n"
-        "🪪 *Update KYC* — upload your KYC form/documents\n\n"
-        "Just type what you'd like to do, or send a message describing your request."
-    )
-
-
-def build_accounts_summary(accounts: list[dict]) -> str:
-    """Format account identifiers and types for the registered-customer menu."""
-    if not accounts:
-        return "Your accounts:\n\nNo active accounts are linked to this mobile number.\n\n"
-
-    lines = ["Your accounts:", ""]
-    for account in accounts:
-        account_type = str(account.get("account_type", "")).title() + " Account"
-        lines.append(f"• {account['account_number']} — {account_type}")
-    return "\n".join(lines) + "\n\n"
+__all__ = ["build_onboarding_welcome_message", "build_menu_response", "build_accounts_summary"]

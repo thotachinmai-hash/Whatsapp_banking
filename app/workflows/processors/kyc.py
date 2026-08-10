@@ -5,8 +5,13 @@ from typing import Any
 import psycopg2
 
 from app.database import create_kyc_request
+from app.logger import get_logger
 from app.workflows.constants import STEP_CONFIRM_KYC, STEP_UPLOAD_KYC_FORM
 from app.workflows.memory import complete_workflow, set_workflow_step, update_workflow_data
+from app.workflows.nlu import interpret_confirmation
+from app.conversation.responses import kyc as templates
+
+logger = get_logger(__name__)
 
 REQUIRED_FIELDS = ("full_name", "date_of_birth", "address", "aadhaar_number", "pan_number")
 LABELS = {"full_name": "Full name", "date_of_birth": "Date of birth", "address": "Address", "aadhaar_number": "Aadhaar number", "pan_number": "PAN number"}
@@ -44,20 +49,33 @@ def _invalid(data: dict) -> list[str]:
     return invalid
 
 
+def _is_acknowledgment(query: str) -> bool:
+    """A plain acknowledgment isn't a failed data-entry attempt — don't
+    respond as if they tried and garbled their KYC details."""
+    text = re.sub(r"[^a-z ]", "", query.strip().lower())
+    return text in {
+        "ok", "okay", "kk", "alright", "all right", "sure", "fine",
+        "got it", "gotit", "understood", "noted", "roger", "cool",
+        "right", "yes", "yeah", "yep", "thanks", "thank you",
+        "no problem", "sounds good", "will do",
+    }
+
+
 class KYCWorkflowHandler:
-    async def handle(self, workflow: dict[str, Any], phone_number: str, query: str, parsed_document: dict | None = None) -> dict[str, Any]:
+    async def handle(self, workflow: dict[str, Any], phone_number: str, query: str, parsed_document: dict | None = None, trace_id: str = "") -> dict[str, Any]:
+        logger.info(f"[{trace_id}] KYC workflow step | phone={phone_number[-4:]} | step={workflow['step']}")
         if workflow["step"] == STEP_UPLOAD_KYC_FORM:
-            return self._collect(workflow, phone_number, query, parsed_document)
+            return self._collect(workflow, phone_number, query, parsed_document, trace_id)
         if workflow["step"] == STEP_CONFIRM_KYC:
-            return self._confirm(workflow, phone_number, query)
+            return self._confirm(workflow, phone_number, query, trace_id)
         return {"handled": True, "response": "The KYC update is in an invalid state. Please start again."}
 
-    def _collect(self, workflow: dict, phone_number: str, query: str, parsed_document: dict | None) -> dict[str, Any]:
+    def _collect(self, workflow: dict, phone_number: str, query: str, parsed_document: dict | None, trace_id: str = "") -> dict[str, Any]:
         data = dict(workflow.get("data", {}))
         extracted = {}
         if parsed_document is not None:
             if not parsed_document.get("success"):
-                return {"handled": True, "response": "I could not read that KYC document. Please upload a clearer image or PDF."}
+                return {"handled": True, "response": templates.render_kyc_invalid()}
             extracted = _extract(parsed_document.get("content", {}))
         elif ":" in query:
             for line in query.splitlines():
@@ -67,30 +85,37 @@ class KYCWorkflowHandler:
                     if target and value.strip():
                         extracted[target] = value.strip()
         elif query.strip():
-            return {"handled": True, "response": "Please upload the KYC document or provide corrections as `Field: value`."}
+            missing_now = [field for field in REQUIRED_FIELDS if not str(data.get(field, "")).strip()]
+            labels_now = ", ".join(LABELS[field] for field in missing_now) or "the remaining details"
+            if _is_acknowledgment(query):
+                return {"handled": True, "response": f"No problem! Whenever you're ready, please upload the KYC document or share {labels_now} as `Field: value`."}
+            return {"handled": True, "response": f"I couldn't read that as KYC information. Please upload the KYC document or provide {labels_now} as `Field: value`."}
         data.update(extracted)
         missing = [field for field in REQUIRED_FIELDS if not str(data.get(field, "")).strip()]
         problems = list(dict.fromkeys(missing + _invalid(data)))
         if problems:
             update_workflow_data(phone_number, data)
-            labels = ", ".join(LABELS[field] for field in problems)
-            return {"handled": True, "response": f"I still need these KYC details: {labels}. Please upload a clearer document or reply with `Field: value`."}
+            logger.info(f"[{trace_id}] KYC form missing/invalid fields | phone={phone_number[-4:]} | fields={problems}")
+            return {"handled": True, "response": templates.render_kyc_missing_fields(problems)}
         data["aadhaar_number"] = re.sub(r"[ -]", "", data["aadhaar_number"])
         data["pan_number"] = data["pan_number"].replace(" ", "").upper()
         update_workflow_data(phone_number, data)
         set_workflow_step(phone_number, STEP_CONFIRM_KYC)
-        return {"handled": True, "response": ("Please confirm your KYC details:\n\n"
-            f"Name: {data['full_name']}\nDate of birth: {data['date_of_birth']}\nAddress: {data['address']}\n"
-            f"Aadhaar: {data['aadhaar_number']}\nPAN: {data['pan_number']}\n\n"
-            "Reply YES to submit the KYC update or NO to cancel.")}
+        logger.info(f"[{trace_id}] KYC form complete, awaiting confirmation | phone={phone_number[-4:]}")
+        return {"handled": True, "response": (
+            templates.render_kyc_summary(data["full_name"], data["date_of_birth"], data["address"])
+            + "\n\n"
+            + templates.render_kyc_confirmation()
+        )}
 
-    def _confirm(self, workflow: dict, phone_number: str, query: str) -> dict[str, Any]:
-        answer = query.strip().lower()
-        if answer in {"no", "n", "cancel"}:
+    def _confirm(self, workflow: dict, phone_number: str, query: str, trace_id: str = "") -> dict[str, Any]:
+        answer = interpret_confirmation(query)
+        if answer == "no":
             complete_workflow(phone_number)
-            return {"handled": True, "response": "Your KYC update was cancelled."}
-        if answer not in {"yes", "y", "confirm"}:
-            return {"handled": True, "response": "Reply YES to submit the KYC update or NO to cancel."}
+            logger.info(f"[{trace_id}] KYC update declined at confirmation | phone={phone_number[-4:]}")
+            return {"handled": True, "response": templates.render_kyc_cancelled()}
+        if answer != "yes":
+            return {"handled": True, "response": templates.render_kyc_confirmation()}
         request_id = ""
         for _ in range(3):
             candidate = f"KYC-{uuid.uuid4().hex[:8].upper()}"
@@ -99,8 +124,10 @@ class KYCWorkflowHandler:
                 request_id = candidate
                 break
             except psycopg2.errors.UniqueViolation:
-                continue
+                logger.warning(f"[{trace_id}] KYC request ID collision; retrying")
         if not request_id:
-            return {"handled": True, "response": "I could not submit the KYC update. Please try again."}
+            logger.error(f"[{trace_id}] KYC request creation failed | phone={phone_number[-4:]}")
+            return {"handled": True, "response": templates.render_kyc_failed()}
         complete_workflow(phone_number)
-        return {"handled": True, "response": f"KYC update submitted successfully.\n\nRequest ID: {request_id}\nStatus: PENDING\n\nOur team will verify your documents and contact you if anything else is required."}
+        logger.info(f"[{trace_id}] KYC request created | phone={phone_number[-4:]} | request_id={request_id}")
+        return {"handled": True, "response": templates.render_kyc_success(request_id)}
