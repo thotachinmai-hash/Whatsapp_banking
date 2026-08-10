@@ -13,7 +13,14 @@ from app.memory import get_redis_health
 from app.metrics import get_metrics
 from app.services.message_handler import handle_incoming_message
 from app.services.document_parser import parse_document
-from app.services.whatsapp import extract_phone_number, get_external_message_id
+from app.services.whatsapp import (
+    extract_phone_number,
+    get_media_id,
+    get_message_text,
+    get_media_filename,
+    get_media_mimetype,
+    download_whatsapp_media,
+)
 from app.services import idempotency
 from app.conversation.renderer import render_and_send
 from app.api.routes import router
@@ -98,9 +105,13 @@ async def whatsapp_webhook(request: Request):
 
         message_type = message.get("type", "")
         media = message.get(message_type, {}) if message_type else {}
-        external_message_id = get_external_message_id(message)
-        if not external_message_id:
-            external_message_id = message.get("id") or message.get("message_id") or ""
+        # Cloud API: use the message's `id` as the external id
+        external_message_id = message.get("id") or message.get("message_id") or ""
+
+        # Normalize media details using whatsapp service helpers
+        media_id = get_media_id(message)
+        file_name = get_media_filename(message)
+        mime_type = get_media_mimetype(message)
 
         logger.info(
             f"[{webhook_trace_id}] message.id={external_message_id} | sender={sender_phone} | type={message_type}"
@@ -127,12 +138,12 @@ async def whatsapp_webhook(request: Request):
         message_data = {
             "from": sender_phone,
             "to": value.get("metadata", {}).get("phone_number_id", ""),
-            "body": message.get("text", {}).get("body", "") if message_type == "text" else "",
+            "body": message.get("text", {}).get("body", "") if message_type == "text" else get_message_text(message) if message_type == "text" else "",
             "type": message_type,
             "media": media,
-            "media_id": media.get("id") if isinstance(media, dict) else "",
-            "mimeType": media.get("mime_type") or media.get("mimeType", ""),
-            "fileName": media.get("filename") or media.get("file_name", ""),
+            "media_id": media_id or (media.get("id") if isinstance(media, dict) else ""),
+            "mimeType": mime_type or (media.get("mime_type") or media.get("mimeType", "")),
+            "fileName": file_name or (media.get("filename") or media.get("file_name", "")),
             "raw": payload
         }
 
