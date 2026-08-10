@@ -147,6 +147,13 @@ async def whatsapp_webhook(request: Request):
             "raw": payload
         }
 
+        # Expose the media object at top-level keys matching Graph API shape
+        # so downstream helpers (get_media_id, get_media_data) can find it.
+        if message_type in ("audio", "voice") and isinstance(media, dict):
+            message_data["audio"] = media
+        elif message_type in ("image", "document", "video") and isinstance(media, dict):
+            message_data[message_type] = media
+
         if value.get("statuses"):
             logger.info("message ignored | status update")
             return {"status": "ignored", "reason": "status_update"}
