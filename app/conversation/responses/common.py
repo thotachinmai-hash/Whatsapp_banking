@@ -86,7 +86,7 @@ def render_help() -> str:
 
 
 def render_main_menu(name: Optional[str] = None, greeting: bool = True) -> StructuredResponse:
-    # header = f"Hi {name}, welcome back to Finacle Banking! \U0001F44B\n\n" if (greeting and name) else ""
+    header = f"Hi {name}, welcome back to Finacle Banking! \U0001F44B\n\n" if (greeting and name) else ""
     body = (
         "\U0001F4CB *What would you like to do?*\n"
         "I can help with transfers, balances, transactions, cheques, loans and KYC.\n\n"
@@ -100,7 +100,7 @@ def render_main_menu(name: Optional[str] = None, greeting: bool = True) -> Struc
         "Reply with a number, type a request, or send a voice note.\n"
         "Reply *Back* or *Cancel* anytime."
     )
-    text = body
+    text = header + body
     interactive = {
         "type": "list",
         "body": {"text": "What would you like to do?"},
