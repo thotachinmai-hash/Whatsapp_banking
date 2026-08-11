@@ -12,6 +12,8 @@ import re
 from decimal import Decimal, InvalidOperation
 from typing import Any, Optional
 
+from app.conversation.renderer import StructuredResponse
+
 _CURRENCY_SYMBOLS = {"GBP": "£", "INR": "₹", "USD": "$", "EUR": "€"}
 
 
@@ -83,22 +85,44 @@ def render_help() -> str:
     return "I can help with balances, transfers, loans, cheques, KYC and transactions.\n\nWhat would you like to do?"
 
 
-def render_main_menu(name: Optional[str] = None, greeting: bool = True) -> str:
+def render_main_menu(name: Optional[str] = None, greeting: bool = True) -> StructuredResponse:
     header = f"Hi {name}, welcome back to Finacle Banking! \U0001F44B\n\n" if (greeting and name) else ""
-    return (
-        header
-        + "\U0001F4CB *What would you like to do?*\n"
-        + "I can help with transfers, balances, transactions, cheques, loans and KYC.\n\n"
-        + "1. \U0001F4B8 *Transfer money*\n"
-        + "2. \U0001F4B0 *Check balance*\n"
-        + "3. \U0001F4C4 *View transactions*\n"
-        + "4. \U0001F9FE *Deposit a cheque*\n"
-        + "5. \U0001F50E *Check cheque status*\n"
-        + "6. \U0001F4DD *Apply for a loan*\n"
-        + "7. \U0001F4C7 *Update KYC*\n\n"
-        + "Reply with a number, type a request, or send a voice note.\n"
-        + "Reply *Back* or *Cancel* anytime."
+    body = (
+        "\U0001F4CB *What would you like to do?*\n"
+        "I can help with transfers, balances, transactions, cheques, loans and KYC.\n\n"
+        "1. \U0001F4B8 *Transfer money*\n"
+        "2. \U0001F4B0 *Check balance*\n"
+        "3. \U0001F4C4 *View transactions*\n"
+        "4. \U0001F9FE *Deposit a cheque*\n"
+        "5. \U0001F50E *Check cheque status*\n"
+        "6. \U0001F4DD *Apply for a loan*\n"
+        "7. \U0001F4C7 *Update KYC*\n\n"
+        "Reply with a number, type a request, or send a voice note.\n"
+        "Reply *Back* or *Cancel* anytime."
     )
+    text = header + body
+    interactive = {
+        "type": "list",
+        "body": {"text": "What would you like to do?"},
+        "action": {
+            "button": "View services",
+            "sections": [
+                {
+                    "title": "Services",
+                    "rows": [
+                        {"id": "transfer_money", "title": "Transfer money", "description": "Send money to someone"},
+                        {"id": "check_balance", "title": "Check balance", "description": "See your account balance"},
+                        {"id": "view_transactions", "title": "View transactions", "description": "See recent transactions"},
+                        {"id": "deposit_cheque", "title": "Deposit a cheque", "description": "Upload a cheque photo"},
+                        {"id": "cheque_status", "title": "Check cheque status", "description": "Track your cheque"},
+                        {"id": "apply_loan", "title": "Apply for a loan", "description": "Start a loan application"},
+                        {"id": "update_kyc", "title": "Update KYC", "description": "Update your profile documents"},
+                    ],
+                }
+            ],
+        },
+    }
+    return StructuredResponse.template(text, template_name="render_main_menu", interactive=interactive)
 
 
 def render_goodbye() -> str:
@@ -109,16 +133,38 @@ def render_cancelled(item: str = "This request") -> str:
     return f"✅ {item} cancelled. Nothing was submitted or changed."
 
 
-def render_back(prompt: str) -> str:
-    return f"{prompt}\n\nReply *Back* or *Cancel* anytime."
+def render_back(prompt: str) -> StructuredResponse:
+    text = f"{prompt}\n\nReply *Back* or *Cancel* anytime."
+    interactive = {
+        "type": "button",
+        "body": {"text": prompt},
+        "action": {
+            "buttons": [
+                {"type": "reply", "reply": {"id": "back", "title": "Back"}},
+                {"type": "reply", "reply": {"id": "cancel", "title": "Cancel"}},
+            ]
+        },
+    }
+    return StructuredResponse.plain(text, interactive=interactive)
 
 
 def render_confirmation(question: str, footer: str = "Reply *Back* or *Cancel* anytime.") -> str:
     return f"{question}\n\n{footer}"
 
 
-def render_yes_no_prompt(question: str) -> str:
-    return f"{question}\n\n1. YES\n2. NO"
+def render_yes_no_prompt(question: str) -> StructuredResponse:
+    text = f"{question}\n\n1. YES\n2. NO"
+    interactive = {
+        "type": "button",
+        "body": {"text": question},
+        "action": {
+            "buttons": [
+                {"type": "reply", "reply": {"id": "yes", "title": "YES"}},
+                {"type": "reply", "reply": {"id": "no", "title": "NO"}},
+            ]
+        },
+    }
+    return StructuredResponse.plain(text, interactive=interactive)
 
 
 def render_retry(message: str = "Please try again.") -> str:

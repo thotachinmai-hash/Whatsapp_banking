@@ -131,14 +131,14 @@ async def whatsapp_webhook(request: Request):
             await render_and_send(
                 "I'm having trouble processing your request right now. Please try again shortly.",
                 sender_phone,
-                webhook_trace_id,
+                webhook_trace_id,   
             )
             return {"status": "error", "reason": "idempotency_unavailable", "trace_id": webhook_trace_id}
 
         message_data = {
             "from": sender_phone,
             "to": value.get("metadata", {}).get("phone_number_id", ""),
-            "body": message.get("text", {}).get("body", "") if message_type == "text" else get_message_text(message) if message_type == "text" else "",
+            "body": message.get("text", {}).get("body", "") if message_type == "text" else get_message_text(message) if message_type in ("text", "interactive") else "",
             "type": message_type,
             "media": media,
             "media_id": media_id or (media.get("id") if isinstance(media, dict) else ""),

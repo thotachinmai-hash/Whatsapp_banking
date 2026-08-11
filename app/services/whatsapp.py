@@ -12,8 +12,20 @@ GRAPH_API_VERSION = os.getenv("GRAPH_API_VERSION", "v25.0")
 GRAPH_API_BASE = f"https://graph.facebook.com/{GRAPH_API_VERSION}"
 
 
-async def send_text_message(phone_number: str, message: str, trace_id: str) -> bool:
+async def send_text_message(phone_number: str, message: str, trace_id: str, interactive: dict | None = None) -> bool:
     url = f"{GRAPH_API_BASE}/{PHONE_NUMBER_ID}/messages"
+
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": phone_number,
+    }
+
+    if interactive:
+        payload["type"] = "interactive"
+        payload["interactive"] = interactive
+    else:
+        payload["type"] = "text"
+        payload["text"] = {"body": message}
 
     try:
         async with httpx.AsyncClient() as client:
@@ -23,12 +35,7 @@ async def send_text_message(phone_number: str, message: str, trace_id: str) -> b
                     "Authorization": f"Bearer {ACCESS_TOKEN}",
                     "Content-Type": "application/json"
                 },
-                json={
-                    "messaging_product": "whatsapp",
-                    "to": phone_number,
-                    "type": "text",
-                    "text": {"body": message}
-                },
+                json=payload,
                 timeout=15.0
             )
 
@@ -196,14 +203,24 @@ def detect_message_type(payload: dict) -> str:
     msg_type = payload.get("type", "")
     if msg_type in ["audio", "voice"]:
         return "voice"
-    if msg_type == "text":
+    if msg_type in ["text", "interactive"]:
         return "text"
-    if msg_type in ["image", "document"]:
+    if msg_type in ["image", "document", "video"]:
         return "document"
     return "unsupported"
 
 
 def get_message_text(payload: dict) -> str:
+    if payload.get("type") == "interactive":
+        interactive = payload.get("interactive", {})
+        if interactive.get("type") == "button_reply":
+            reply = interactive.get("button_reply", {})
+            return reply.get("title", "") or reply.get("id", "") or ""
+        if interactive.get("type") == "list_reply":
+            reply = interactive.get("list_reply", {})
+            return reply.get("title", "") or reply.get("id", "") or ""
+        return ""
+
     text_data = payload.get("body") or payload.get("text", {})
     if isinstance(text_data, dict):
         return text_data.get("body", "") or ""

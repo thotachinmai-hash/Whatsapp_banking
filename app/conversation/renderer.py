@@ -59,14 +59,15 @@ class StructuredResponse(BaseModel):
     kind: ResponseKind = ResponseKind.TEXT
     text: str
     template_name: Optional[str] = None
+    interactive: Optional[dict] = None
 
     @classmethod
-    def template(cls, text: str, template_name: str) -> "StructuredResponse":
-        return cls(kind=ResponseKind.TEMPLATE, text=text, template_name=template_name)
+    def template(cls, text: str, template_name: str, interactive: dict | None = None) -> "StructuredResponse":
+        return cls(kind=ResponseKind.TEMPLATE, text=text, template_name=template_name, interactive=interactive)
 
     @classmethod
-    def plain(cls, text: str) -> "StructuredResponse":
-        return cls(kind=ResponseKind.TEXT, text=text)
+    def plain(cls, text: str, interactive: dict | None = None) -> "StructuredResponse":
+        return cls(kind=ResponseKind.TEXT, text=text, interactive=interactive)
 
 
 ResponseLike = Union[str, StructuredResponse]
@@ -91,7 +92,12 @@ async def render_and_send(response: ResponseLike, phone_number: str, trace_id: s
     """
     structured = as_structured_response(response)
     try:
-        sent = await send_text_message(phone_number, structured.text, trace_id)
+        sent = await send_text_message(
+            phone_number,
+            structured.text,
+            trace_id,
+            interactive=structured.interactive,
+        )
     except Exception as e:
         logger.error(
             f"[{trace_id}] response.render.send_failed | phone={phone_number[-4:]} | "
