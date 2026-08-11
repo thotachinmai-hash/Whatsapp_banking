@@ -3,8 +3,24 @@ import unittest
 from unittest.mock import patch
 
 from app.services.message_handler import build_document_prompt
-from app.workflows.constants import STEP_COLLECT_AADHAAR, STEP_COLLECT_PAN
+from app.workflows.constants import STEP_COLLECT_AADHAAR, STEP_COLLECT_PAN, WORKFLOW_ONBOARDING
 from app.workflows.processors.onboarding import OnboardingWorkflowHandler
+from app.workflows.memory import create_workflow, create_workflow_model, get_workflow
+
+
+class FakeRedis:
+    def __init__(self):
+        self._store = {}
+
+    def setex(self, key, ttl, value):
+        self._store[key] = value
+        return True
+
+    def get(self, key):
+        return self._store.get(key)
+
+    def delete(self, key):
+        return 1 if self._store.pop(key, None) is not None else 0
 
 
 class OnboardingValidationTests(unittest.TestCase):
@@ -88,3 +104,34 @@ class OnboardingValidationTests(unittest.TestCase):
         self.assertTrue(result["handled"])
         self.assertIn("stopped", result["response"].lower())
         mock_complete.assert_called_once_with("919000000000")
+
+
+class OnboardingStartsAtAadhaarTests(unittest.IsolatedAsyncioTestCase):
+    """Registration no longer asks for the customer's name as a separate
+    typed step — it's derived from the Aadhaar/PAN OCR content, the same
+    way date_of_birth/address/guardian_name already were."""
+
+    def setUp(self):
+        self.fake_redis = FakeRedis()
+        patcher = patch("app.workflows.memory.redis_client", self.fake_redis)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.phone = "447700900120"
+        self.handler = OnboardingWorkflowHandler()
+
+    async def test_aadhaar_upload_derives_full_name_with_no_prior_name_step(self):
+        workflow = create_workflow_model(WORKFLOW_ONBOARDING, STEP_COLLECT_AADHAAR)
+        create_workflow(self.phone, workflow)
+        parsed_document = {
+            "mime_type": "image/jpeg",
+            "content": {"aadhaar_number": "123456789012", "full_name": "Jordan Smith"},
+        }
+
+        result = await self.handler.handle(
+            {"step": STEP_COLLECT_AADHAAR}, self.phone, "", parsed_document, "t1"
+        )
+
+        self.assertTrue(result["handled"])
+        stored = get_workflow(self.phone)["data"]
+        self.assertEqual(stored.get("full_name"), "Jordan Smith")
+        self.assertEqual(stored.get("aadhaar_number"), "123456789012")

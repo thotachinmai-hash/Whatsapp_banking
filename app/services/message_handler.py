@@ -12,6 +12,7 @@ from app.metrics import (
 from app.services.whatsapp import (
     extract_phone_number,
     detect_message_type,
+    get_interactive_reply,
     get_message_text,
     get_media_filename,
     get_media_mimetype,
@@ -19,7 +20,7 @@ from app.services.whatsapp import (
     get_media_id,
     download_media,
 )
-from app.conversation.renderer import render_and_send
+from app.conversation.renderer import as_structured_response, render_and_send
 from app.services.transcription import download_audio, transcribe_audio
 from app.services.tts import synthesize_voice_note
 from app.services.whatsapp import send_voice_message
@@ -191,13 +192,20 @@ async def _handle_bare_document_upload(
     return None
 
 
-async def send_voice_reply(response_text: str, chat_id: str, trace_id: str = "") -> bool:
-    """The voice-out half of voice-to-voice: synthesize `response_text`
+async def send_voice_reply(response, chat_id: str, trace_id: str = "") -> bool:
+    """The voice-out half of voice-to-voice: synthesize the response text
     and send it back as a voice note, mirroring how the customer reached
     out. Falls back to a plain text reply (via render_and_send) whenever
     synthesis or sending audio fails, since a voice-in customer still
     needs a reply even if TTS is unavailable.
+
+    `response` may be a plain string or a StructuredResponse carrying
+    WhatsApp interactive buttons/list metadata (see
+    app/conversation/renderer.py) — only the body text is spoken; a
+    voice-in customer can still just say "yes"/"1" back, so the tappable
+    options aren't needed on this path.
     """
+    response_text = as_structured_response(response).text
     synthesized = await synthesize_voice_note(response_text, trace_id=trace_id)
     if synthesized is None:
         logger.info(f"[{trace_id}] Voice reply unavailable — falling back to text")
@@ -261,6 +269,23 @@ async def handle_incoming_message(payload: dict) -> dict:
         if msg_type == "text":
             query = get_message_text(payload)
             logger.info(f"[{trace_id}] Text message | content={query[:50]}")
+
+        elif msg_type == "interactive":
+            reply = get_interactive_reply(payload)
+            if not reply:
+                logger.warning(f"[{trace_id}] Interactive message with no recognizable reply")
+                await render_and_send(
+                    "Sorry, I couldn't read that selection. Please try again.",
+                    from_person,
+                    trace_id,
+                )
+                return {"status": "error", "trace_id": trace_id}
+            # `id` is what every text parser (interpret_confirmation,
+            # digit/menu matching) already expects — see
+            # app/conversation/renderer.py's module docstring for the id
+            # convention. `title` is logged only, never parsed as input.
+            query = reply["id"]
+            logger.info(f"[{trace_id}] Interactive reply | id={reply['id']!r} | title={reply['title']!r}")
 
         elif msg_type == "voice":
             logger.info(f"[{trace_id}] Voice message — transcribing")

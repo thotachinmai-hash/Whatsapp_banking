@@ -46,6 +46,128 @@ async def send_text_message(phone_number: str, message: str, trace_id: str) -> b
         return False
 
 
+async def send_button_message(phone_number: str, body_text: str, buttons: list[dict], trace_id: str) -> bool:
+    """Send a WhatsApp Cloud API reply-buttons interactive message (up to
+    3 tappable choices). Each `buttons` item is {"id": ..., "title": ...}.
+    See https://developers.facebook.com/documentation/business-messaging/whatsapp/messages/interactive-reply-buttons-messages
+    Caller (app/conversation/renderer.py) is responsible for enforcing
+    WhatsApp's limits (≤3 buttons, ≤20-char titles) before calling this —
+    this function does not validate or fall back itself."""
+    url = f"{GRAPH_API_BASE}/{PHONE_NUMBER_ID}/messages"
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": phone_number,
+        "type": "interactive",
+        "interactive": {
+            "type": "button",
+            "body": {"text": body_text},
+            "action": {
+                "buttons": [
+                    {"type": "reply", "reply": {"id": b["id"], "title": b["title"]}}
+                    for b in buttons
+                ]
+            },
+        },
+    }
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                url,
+                headers={"Authorization": f"Bearer {ACCESS_TOKEN}", "Content-Type": "application/json"},
+                json=payload,
+                timeout=15.0,
+            )
+
+        if response.status_code in [200, 201]:
+            logger.info(f"[{trace_id}] WhatsApp button message sent | phone={phone_number[-4:]}")
+            return True
+
+        logger.error(
+            f"[{trace_id}] WhatsApp button send failed | status={response.status_code} | body={response.text[:200]}"
+        )
+        return False
+
+    except Exception as e:
+        logger.error(f"[{trace_id}] WhatsApp button send error | error={e}")
+        return False
+
+
+async def send_list_message(
+    phone_number: str, body_text: str, button_label: str, sections: list[dict], trace_id: str
+) -> bool:
+    """Send a WhatsApp Cloud API list interactive message (a single button
+    that opens up to 10 rows across `sections`). Each section is
+    {"title": ..., "rows": [{"id":..., "title":..., "description":...}]}.
+    See https://developers.facebook.com/documentation/business-messaging/whatsapp/messages/interactive-list-messages
+    Caller (app/conversation/renderer.py) is responsible for enforcing
+    WhatsApp's limits (≤10 rows total, ≤24-char row titles, ≤20-char
+    button label) before calling this."""
+    url = f"{GRAPH_API_BASE}/{PHONE_NUMBER_ID}/messages"
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": phone_number,
+        "type": "interactive",
+        "interactive": {
+            "type": "list",
+            "body": {"text": body_text},
+            "action": {
+                "button": button_label,
+                "sections": [
+                    {
+                        "title": section["title"],
+                        "rows": [
+                            {
+                                "id": row["id"],
+                                "title": row["title"],
+                                **({"description": row["description"]} if row.get("description") else {}),
+                            }
+                            for row in section["rows"]
+                        ],
+                    }
+                    for section in sections
+                ],
+            },
+        },
+    }
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                url,
+                headers={"Authorization": f"Bearer {ACCESS_TOKEN}", "Content-Type": "application/json"},
+                json=payload,
+                timeout=15.0,
+            )
+
+        if response.status_code in [200, 201]:
+            logger.info(f"[{trace_id}] WhatsApp list message sent | phone={phone_number[-4:]}")
+            return True
+
+        logger.error(
+            f"[{trace_id}] WhatsApp list send failed | status={response.status_code} | body={response.text[:200]}"
+        )
+        return False
+
+    except Exception as e:
+        logger.error(f"[{trace_id}] WhatsApp list send error | error={e}")
+        return False
+
+
+def get_interactive_reply(payload: dict) -> dict | None:
+    """Extract a tapped button/list reply from an inbound webhook payload
+    as {"id": ..., "title": ...}, or None if this isn't an interactive
+    reply. `id` is the value processors should treat as the customer's
+    reply text (chosen to match a token the existing text parsers already
+    accept — see app/workflows/nlu.py, app/workflows/processors/*);
+    `title` is the human-readable label, kept only for logging."""
+    interactive = payload.get("interactive")
+    if not isinstance(interactive, dict):
+        return None
+    reply = interactive.get("button_reply") or interactive.get("list_reply")
+    if not isinstance(reply, dict) or not reply.get("id"):
+        return None
+    return {"id": reply["id"], "title": reply.get("title", "")}
+
+
 async def get_media_url(media_id: str, trace_id: str) -> str | None:
     url = f"{GRAPH_API_BASE}/{media_id}"
     try:
@@ -200,6 +322,8 @@ def detect_message_type(payload: dict) -> str:
         return "text"
     if msg_type in ["image", "document"]:
         return "document"
+    if msg_type == "interactive":
+        return "interactive"
     return "unsupported"
 
 

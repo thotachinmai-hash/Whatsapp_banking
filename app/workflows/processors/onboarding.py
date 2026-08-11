@@ -7,10 +7,9 @@ import psycopg2
 from app.database import create_customer, create_zero_balance_account
 from app.logger import get_logger
 from app.memory import cache_active_account
-from app.services.menu import build_menu_response
+from app.conversation.responses.common import render_main_menu_list
 from app.conversation.responses import onboarding as templates
 from app.workflows.constants import (
-    STEP_COLLECT_NAME,
     STEP_COLLECT_AADHAAR,
     STEP_COLLECT_PAN,
     STEP_CONFIRM_REGISTRATION,
@@ -23,6 +22,8 @@ from app.workflows.memory import (
     update_workflow_data,
 )
 from app.workflows.nlu import interpret_confirmation
+from app.services.llm_understanding import interpret_choice_llm, is_llm_fallback_enabled
+from app.conversation.renderer import InteractiveButton, InteractiveListRow, InteractiveListSection, StructuredResponse
 
 logger = get_logger(__name__)
 
@@ -37,10 +38,34 @@ PROFILE_FIELD_ALIASES = {
 }
 
 
+_ACCOUNT_TYPE_ROWS = [("1", "savings", "Savings Account"), ("2", "current", "Current Account"), ("3", "salary", "Salary Account")]
+
+
+def account_type_list_prompt(intro: str) -> StructuredResponse:
+    """Tap-to-reply account-type list — row ids "1"/"2"/"3" match
+    _handle_select_account_type's `aliases` dict exact lookup."""
+    rows = [InteractiveListRow(id=digit, title=title) for digit, _key, title in _ACCOUNT_TYPE_ROWS]
+    return StructuredResponse.list_of(intro, "Choose account", [InteractiveListSection(title="Account types", rows=rows)])
+
+
+def _yes_no_prompt(body: str) -> StructuredResponse:
+    """Tap-to-reply Yes/No confirmation — ids "yes"/"no" are the exact
+    tokens interpret_confirmation()'s regex matches."""
+    return StructuredResponse.buttons_of(
+        body, [InteractiveButton(id="yes", title="Yes, confirm"), InteractiveButton(id="no", title="No, restart")]
+    )
+
+
 class OnboardingWorkflowHandler:
     """
-    Collects the name over text, then Aadhaar and PAN as images processed by
-    the document parser, before creating the customer record.
+    Collects Aadhaar and PAN as images processed by the document parser,
+    before creating the customer record. The customer's name, date of
+    birth, address, and guardian name are all extracted from these two
+    documents (see _extract_profile_fields) rather than asked for
+    separately — Aadhaar and PAN are the source of truth for identity, and
+    asking the customer to also type their name invites a mismatch the
+    Aadhaar/PAN cross-check (_validate_profile_data) would then have to
+    police anyway.
     """
 
     async def handle(
@@ -55,10 +80,7 @@ class OnboardingWorkflowHandler:
         step = workflow["step"]
         logger.info(f"[{trace_id}] Onboarding workflow step | phone={phone_number[-4:]} | step={step}")
 
-        if step == STEP_COLLECT_NAME:
-            return self._handle_collect_name(phone_number, query, trace_id)
-
-        elif step == STEP_COLLECT_AADHAAR:
+        if step == STEP_COLLECT_AADHAAR:
             return self._handle_collect_aadhaar(phone_number, query, parsed_document, trace_id)
 
         elif step == STEP_COLLECT_PAN:
@@ -73,36 +95,6 @@ class OnboardingWorkflowHandler:
         return {
             "handled": True,
             "response": "Unknown registration step."
-        }
-
-    def _handle_collect_name(self, phone_number: str, query: str, trace_id: str = "") -> dict[str, Any]:
-
-        if self._is_stop_command(query):
-            complete_workflow(phone_number)
-            logger.info(f"[{trace_id}] Registration cancelled at name step | phone={phone_number[-4:]}")
-            return {
-                "handled": True,
-                "response": templates.render_registration_cancelled()
-            }
-
-        name = query.strip()
-
-        if len(name) < 3 or not re.match(r"^[A-Za-z .'-]+$", name):
-            return {
-                "handled": True,
-                "response": (
-                    "That doesn't look like a valid name. "
-                    "Please enter your full name (letters only)."
-                )
-            }
-
-        update_workflow_data(phone_number, {"full_name": name})
-        set_workflow_step(phone_number, STEP_COLLECT_AADHAAR)
-        logger.info(f"[{trace_id}] Registration name collected | phone={phone_number[-4:]}")
-
-        return {
-            "handled": True,
-            "response": templates.render_ask_aadhaar(name)
         }
 
     def _handle_collect_aadhaar(
@@ -232,20 +224,14 @@ class OnboardingWorkflowHandler:
 
         workflow_data = (get_workflow(phone_number) or {}).get("data", {}) or {}
 
-        return {
-            "handled": True,
-            "response": (
-                templates.render_registration_summary(
-                    phone_number=phone_number,
-                    full_name=workflow_data.get("full_name", ""),
-                    date_of_birth=workflow_data.get("date_of_birth", ""),
-                    guardian_name=workflow_data.get("guardian_name", ""),
-                    address=workflow_data.get("address", ""),
-                )
-                + "\n\n"
-                + templates.render_registration_confirmation()
-            )
-        }
+        summary = templates.render_registration_summary(
+            phone_number=phone_number,
+            full_name=workflow_data.get("full_name", ""),
+            date_of_birth=workflow_data.get("date_of_birth", ""),
+            guardian_name=workflow_data.get("guardian_name", ""),
+            address=workflow_data.get("address", ""),
+        )
+        return {"handled": True, "response": _yes_no_prompt(summary)}
 
     def _handle_confirm_registration(
         self,
@@ -259,7 +245,11 @@ class OnboardingWorkflowHandler:
         # (pre-dates the shared interpreter and is specific to this step —
         # not a general "no" phrasing worth adding to interpret_confirmation
         # itself).
-        answer = interpret_confirmation(query)
+        llm_fallback = (
+            (lambda text: interpret_choice_llm(text, ["yes", "no"], "Confirm or restart the registration details summary just shown."))
+            if is_llm_fallback_enabled() else None
+        )
+        answer = interpret_confirmation(query, llm_fallback=llm_fallback)
         is_restart = query.strip().lower() == "restart"
 
         if self._is_stop_command(query):
@@ -302,11 +292,9 @@ class OnboardingWorkflowHandler:
 
             return {
                 "handled": True,
-                "response": (
-                    templates.render_registration_success()
-                    + "\n\n"
-                    + templates.render_account_type_prompt()
-                )
+                "response": account_type_list_prompt(
+                    templates.render_registration_success() + "\n\nWhich account would you like to open?"
+                ),
             }
 
         elif answer == "no" or is_restart:
@@ -319,7 +307,7 @@ class OnboardingWorkflowHandler:
 
         return {
             "handled": True,
-            "response": "Please reply *YES* to confirm or *NO* to start over."
+            "response": _yes_no_prompt("Please reply *YES* to confirm or *NO* to start over."),
         }
 
     def _handle_select_account_type(
@@ -348,7 +336,7 @@ class OnboardingWorkflowHandler:
         if not account_type:
             return {
                 "handled": True,
-                "response": templates.render_account_type_invalid(),
+                "response": account_type_list_prompt("Sorry, I didn't catch that — which account type?"),
             }
 
         data = workflow.get("data", {})
@@ -376,10 +364,9 @@ class OnboardingWorkflowHandler:
         complete_workflow(phone_number)
         return {
             "handled": True,
-            "response": (
-                templates.render_account_created(account["account_number"], account_type)
-                + "\n\n"
-                + build_menu_response(data.get("full_name", "Customer"), greeting=False)
+            "response": render_main_menu_list(
+                data.get("full_name", "Customer"), greeting=False,
+                prefix=templates.render_account_created(account["account_number"], account_type),
             ),
         }
 

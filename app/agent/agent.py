@@ -371,7 +371,7 @@ async def run_agent(
     trace_id: str,
     parsed_document: dict | None = None,
     detected_language: str | None = None,
-) -> str:
+):
     """Thin entry point — see app/conversation/manager.py::ConversationManager
     for the actual turn orchestration (Phase 5). Kept here as a stable,
     unchanged external signature for message_handler.py/main.py, and as a

@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from app.services.registration_gate import check_registration_gate
-from app.workflows.constants import STEP_COLLECT_NAME, WORKFLOW_ONBOARDING
+from app.workflows.constants import STEP_COLLECT_AADHAAR, WORKFLOW_ONBOARDING
 from app.workflows.manager import WorkflowManager
 from app.workflows.memory import create_workflow, create_workflow_model, get_workflow
 
@@ -87,7 +87,7 @@ class ResumePendingServiceTests(unittest.IsolatedAsyncioTestCase):
     async def test_resumes_cheque_deposit_after_successful_registration(self):
         workflow = create_workflow_model(
             WORKFLOW_ONBOARDING,
-            STEP_COLLECT_NAME,
+            STEP_COLLECT_AADHAAR,
             data={"pending_service_query": "I want to deposit a cheque"},
         )
         create_workflow("447700900114", workflow)
@@ -116,7 +116,7 @@ class ResumePendingServiceTests(unittest.IsolatedAsyncioTestCase):
     async def test_does_not_resume_after_cancelled_registration(self):
         workflow = create_workflow_model(
             WORKFLOW_ONBOARDING,
-            STEP_COLLECT_NAME,
+            STEP_COLLECT_AADHAAR,
             data={"pending_service_query": "I want to deposit a cheque"},
         )
         create_workflow("447700900115", workflow)

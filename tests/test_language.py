@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from app.services.language import detect_language, should_attempt_detection, translate_text
+from app.services.language import detect_explicit_language_change, detect_language, should_attempt_detection, translate_text
 
 
 def _mock_response(content: str) -> MagicMock:
@@ -74,6 +74,26 @@ class TranslateTextTests(unittest.TestCase):
         with patch("app.services.language._get_client") as mock_get_client:
             mock_get_client.return_value.chat.completions.create.return_value = _mock_response("")
             self.assertEqual(translate_text("Your balance is 100", "es"), "Your balance is 100")
+
+
+class DetectExplicitLanguageChangeTests(unittest.TestCase):
+    def test_recognizes_common_phrasings(self) -> None:
+        self.assertEqual(detect_explicit_language_change("reply in Spanish please"), "es")
+        self.assertEqual(detect_explicit_language_change("please switch to Hindi"), "hi")
+        self.assertEqual(detect_explicit_language_change("speak English"), "en")
+
+    def test_plain_message_in_another_language_is_not_a_change_request(self) -> None:
+        # This function only recognizes META-requests about language, not
+        # text merely written in one — should_attempt_detection/
+        # detect_language handle the latter for non-ASCII text.
+        self.assertIsNone(detect_explicit_language_change("cuál es mi saldo"))
+        self.assertIsNone(detect_explicit_language_change("check my balance"))
+
+    def test_unsupported_language_name_returns_none(self) -> None:
+        self.assertIsNone(detect_explicit_language_change("reply in Klingon"))
+
+    def test_empty_message_returns_none(self) -> None:
+        self.assertIsNone(detect_explicit_language_change(""))
 
 
 if __name__ == "__main__":

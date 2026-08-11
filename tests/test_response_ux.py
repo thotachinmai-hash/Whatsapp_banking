@@ -6,13 +6,23 @@ Follows the project's unittest convention (no pytest installed here).
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from app.conversation.renderer import ResponseKind, StructuredResponse, as_structured_response, render_and_send
+from app.conversation.renderer import (
+    InteractiveButton,
+    InteractiveListRow,
+    InteractiveListSection,
+    ResponseKind,
+    StructuredResponse,
+    as_structured_response,
+    render_and_send,
+)  # as_structured_response also used by LlmFallbackWorkflowTests below
 from app.conversation.responses.common import (
     WORKFLOW_STEP_HINTS,
+    render_main_menu_list,
     render_workflow_boundary,
     render_workflow_boundary_with_step,
     render_workflow_step_hint,
 )
+from app.workflows.processors.onboarding import account_type_list_prompt
 from app.workflows.constants import (
     STEP_COLLECT_AADHAAR,
     STEP_UPLOAD_CHEQUE,
@@ -77,6 +87,72 @@ class ResponseRendererTests(unittest.IsolatedAsyncioTestCase):
             result = await render_and_send("Hello", "447700900000", "trace-3")
         self.assertFalse(result)
 
+    async def test_render_and_send_buttons(self):
+        response = StructuredResponse.buttons_of(
+            "Ready to send this?",
+            [InteractiveButton(id="1", title="Yes, send it"), InteractiveButton(id="2", title="Edit amount")],
+        )
+        with patch("app.conversation.renderer.send_button_message", new=AsyncMock(return_value=True)) as mock_send:
+            result = await render_and_send(response, "447700900000", "trace-5")
+        self.assertTrue(result)
+        mock_send.assert_awaited_once_with(
+            "447700900000", "Ready to send this?",
+            [{"id": "1", "title": "Yes, send it"}, {"id": "2", "title": "Edit amount"}],
+            "trace-5",
+        )
+
+    async def test_render_and_send_list(self):
+        section = InteractiveListSection(title="Loan types", rows=[
+            InteractiveListRow(id="1", title="Personal Loan"),
+            InteractiveListRow(id="2", title="Home Loan"),
+        ])
+        response = StructuredResponse.list_of("Choose a loan type", "Choose", [section])
+        with patch("app.conversation.renderer.send_list_message", new=AsyncMock(return_value=True)) as mock_send:
+            result = await render_and_send(response, "447700900000", "trace-6")
+        self.assertTrue(result)
+        mock_send.assert_awaited_once()
+        args = mock_send.call_args.args
+        self.assertEqual(args[0], "447700900000")
+        self.assertEqual(args[1], "Choose a loan type")
+        self.assertEqual(args[2], "Choose")
+
+    async def test_too_many_buttons_falls_back_to_text(self):
+        response = StructuredResponse.buttons_of(
+            "Pick one",
+            [InteractiveButton(id=str(i), title=f"Option {i}") for i in range(1, 5)],
+        )
+        with patch("app.conversation.renderer.send_button_message", new=AsyncMock(return_value=True)) as mock_buttons, \
+             patch("app.conversation.renderer.send_text_message", new=AsyncMock(return_value=True)) as mock_text:
+            result = await render_and_send(response, "447700900000", "trace-7")
+        self.assertTrue(result)
+        mock_buttons.assert_not_called()
+        mock_text.assert_awaited_once()
+        sent_text = mock_text.call_args.args[1]
+        self.assertIn("Pick one", sent_text)
+        self.assertIn("Option 1", sent_text)
+
+    async def test_too_many_list_rows_falls_back_to_text(self):
+        section = InteractiveListSection(
+            title="Accounts", rows=[InteractiveListRow(id=str(i), title=f"Account {i}") for i in range(1, 12)]
+        )
+        response = StructuredResponse.list_of("Choose an account", "Choose", [section])
+        with patch("app.conversation.renderer.send_list_message", new=AsyncMock(return_value=True)) as mock_list, \
+             patch("app.conversation.renderer.send_text_message", new=AsyncMock(return_value=True)) as mock_text:
+            result = await render_and_send(response, "447700900000", "trace-8")
+        self.assertTrue(result)
+        mock_list.assert_not_called()
+        mock_text.assert_awaited_once()
+
+    async def test_interactive_send_exception_falls_back_to_text(self):
+        response = StructuredResponse.buttons_of(
+            "Confirm?", [InteractiveButton(id="yes", title="Yes"), InteractiveButton(id="no", title="No")]
+        )
+        with patch("app.conversation.renderer.send_button_message", new=AsyncMock(side_effect=RuntimeError("boom"))), \
+             patch("app.conversation.renderer.send_text_message", new=AsyncMock(return_value=True)) as mock_text:
+            result = await render_and_send(response, "447700900000", "trace-9")
+        self.assertTrue(result)
+        mock_text.assert_awaited_once()
+
     async def test_render_and_send_delivery_declined(self):
         with patch("app.conversation.renderer.send_text_message", new=AsyncMock(return_value=False)):
             result = await render_and_send("Hello", "447700900000", "trace-4")
@@ -84,9 +160,14 @@ class ResponseRendererTests(unittest.IsolatedAsyncioTestCase):
 
     def test_renderer_hides_openwa_details(self):
         # StructuredResponse never carries a chat id, session id, or any
-        # OpenWA-shaped payload — only text + provenance metadata.
+        # OpenWA-shaped payload — only text + provenance metadata, plus
+        # the interactive button/list shape (still just ids/titles, no
+        # transport-level detail).
         fields = set(StructuredResponse.model_fields.keys())
-        self.assertEqual(fields, {"kind", "text", "template_name"})
+        self.assertEqual(
+            fields,
+            {"kind", "text", "template_name", "buttons", "list_button_label", "list_sections"},
+        )
 
 
 # ─── Part 2/3: reusable templates ───────────────────────────────────────
@@ -227,6 +308,198 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
             result = await self.manager.handle(self.phone, "send 500", trace_id="t6")
 
         self.assertNotEqual(result.get("reprocess_query"), "send 500")
+
+
+# ─── LLM-fallback behaviors (side-question resume, workflow jump) ───────
+
+class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
+    """These behaviors only activate when LLM_FALLBACK_ENABLED is set —
+    with it off (the default, exercised by every other test in this file),
+    behavior is unchanged from before these features existed."""
+
+    def setUp(self):
+        self.manager = WorkflowManager()
+        self.phone = "447700900097"
+        self.fake_redis = FakeRedis()
+        patcher = patch("app.workflows.memory.redis_client", self.fake_redis)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        env_patcher = patch.dict("os.environ", {"LLM_FALLBACK_ENABLED": "true"})
+        env_patcher.start()
+        self.addCleanup(env_patcher.stop)
+
+    async def test_side_question_answered_and_step_resumed_in_one_turn(self):
+        workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
+        create_workflow(self.phone, workflow)
+
+        with patch(
+            "app.workflows.manager.answer_side_question",
+            return_value="Your interest rate depends on the loan type.",
+        ):
+            result = await self.manager.handle(
+                self.phone, "What's the interest rate on a personal loan?", trace_id="t1"
+            )
+
+        self.assertTrue(result["handled"])
+        response = result["response"].lower()
+        self.assertIn("interest rate", response)
+        self.assertIn("upload a clear image of the cheque", response)
+
+    async def test_side_question_resume_does_not_change_workflow_state(self):
+        from app.workflows.memory import get_workflow
+
+        workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
+        create_workflow(self.phone, workflow)
+        workflow_id_before = get_workflow(self.phone)["workflow_id"]
+
+        with patch("app.workflows.manager.answer_side_question", return_value="Some answer."):
+            await self.manager.handle(self.phone, "What's the interest rate on a loan?", trace_id="t2")
+
+        after = get_workflow(self.phone)
+        self.assertEqual(after["workflow_id"], workflow_id_before)
+        self.assertEqual(after["step"], STEP_UPLOAD_CHEQUE)
+
+    async def test_llm_answer_failure_falls_back_to_reprocess_query(self):
+        workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
+        create_workflow(self.phone, workflow)
+
+        with patch("app.workflows.manager.answer_side_question", return_value=None):
+            result = await self.manager.handle(
+                self.phone, "What's the interest rate on a personal loan?", trace_id="t3"
+            )
+
+        self.assertFalse(result["handled"])
+        self.assertEqual(result.get("reprocess_query"), "What's the interest rate on a personal loan?")
+
+    async def test_confident_workflow_jump_asks_confirmation_first(self):
+        from app.services.llm_understanding import JumpTarget
+
+        workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
+        create_workflow(self.phone, workflow)
+
+        with patch(
+            "app.workflows.manager.detect_step_or_workflow_jump",
+            return_value=JumpTarget(target_workflow="loan", confidence=0.9),
+        ):
+            result = await self.manager.handle(self.phone, "actually let me apply for a loan instead", trace_id="t4")
+
+        self.assertTrue(result["handled"])
+        # The confirmation prompt is now a StructuredResponse with tap-to-
+        # reply Continue/Switch buttons (see app/conversation/renderer.py).
+        response = as_structured_response(result["response"])
+        self.assertIn("switch", response.text.lower())
+        self.assertEqual({b.id for b in response.buttons}, {"continue", "switch"})
+        from app.workflows.memory import get_workflow
+        # Not jumped yet — still the original workflow, now awaiting confirmation.
+        self.assertEqual(get_workflow(self.phone)["type"], WORKFLOW_CHEQUE)
+        self.assertTrue(get_workflow(self.phone)["data"].get("pending_stop_confirmation"))
+
+    async def test_confirming_the_jump_starts_the_target_workflow(self):
+        from app.services.llm_understanding import JumpTarget
+        from app.workflows.memory import get_workflow
+
+        workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
+        create_workflow(self.phone, workflow)
+
+        with patch(
+            "app.workflows.manager.detect_step_or_workflow_jump",
+            return_value=JumpTarget(target_workflow="loan", confidence=0.9),
+        ):
+            await self.manager.handle(self.phone, "actually let me apply for a loan instead", trace_id="t5")
+
+        result = await self.manager.handle(self.phone, "switch", trace_id="t6")
+
+        self.assertTrue(result["handled"])
+        self.assertEqual(get_workflow(self.phone)["type"], "loan")
+
+    async def test_declining_the_jump_resumes_the_original_workflow(self):
+        from app.services.llm_understanding import JumpTarget
+        from app.workflows.memory import get_workflow
+
+        workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
+        create_workflow(self.phone, workflow)
+
+        with patch(
+            "app.workflows.manager.detect_step_or_workflow_jump",
+            return_value=JumpTarget(target_workflow="loan", confidence=0.9),
+        ):
+            await self.manager.handle(self.phone, "actually let me apply for a loan instead", trace_id="t7")
+
+        result = await self.manager.handle(self.phone, "continue", trace_id="t8")
+
+        self.assertTrue(result["handled"])
+        self.assertEqual(get_workflow(self.phone)["type"], WORKFLOW_CHEQUE)
+        self.assertEqual(get_workflow(self.phone)["step"], STEP_UPLOAD_CHEQUE)
+
+
+# ─── Interactive list conversions (menu-style prompts) ──────────────────
+
+class InteractiveListConversionTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.manager = WorkflowManager()
+        self.phone = "447700900096"
+        self.fake_redis = FakeRedis()
+        patcher = patch("app.workflows.memory.redis_client", self.fake_redis)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    async def test_loan_start_returns_list_with_four_types(self):
+        result = self.manager.start_requested(self.phone, "I want a loan", trace_id="t1")
+        self.assertTrue(result["handled"])
+        response = as_structured_response(result["response"])
+        self.assertEqual(response.kind, ResponseKind.LIST)
+        rows = [row for section in response.list_sections for row in section.rows]
+        self.assertEqual({row.id for row in rows}, {"1", "2", "3", "4"})
+        self.assertEqual({row.title for row in rows}, {"Personal Loan", "Home Loan", "Vehicle Loan", "Education Loan"})
+
+    async def test_tapped_loan_type_row_id_advances_the_workflow(self):
+        from app.workflows.constants import STEP_UPLOAD_LOAN_FORM
+
+        self.manager.start_requested(self.phone, "I want a loan", trace_id="t2")
+        result = await self.manager.handle(self.phone, "2", trace_id="t3")
+        self.assertTrue(result["handled"])
+        from app.workflows.memory import get_workflow
+        workflow = get_workflow(self.phone)
+        self.assertEqual(workflow["step"], STEP_UPLOAD_LOAN_FORM)
+        self.assertEqual(workflow["data"]["loan_type"], "home")
+
+    async def test_transfer_beneficiary_list_row_ids_are_digits_plus_new(self):
+        from app.workflows.constants import STEP_SELECT_BENEFICIARY, WORKFLOW_TRANSFER
+        from app.workflows.memory import create_workflow, create_workflow_model
+
+        workflow = create_workflow_model(WORKFLOW_TRANSFER, STEP_SELECT_BENEFICIARY)
+        create_workflow(self.phone, workflow)
+        beneficiaries = [
+            {"beneficiary_name": "Priya", "account_number": "GB12FNCL00010001234567"},
+            {"beneficiary_name": "Amit", "account_number": "GB12FNCL00010009999999"},
+        ]
+        with patch("app.workflows.processors.transfer.get_beneficiaries_by_phone", return_value=beneficiaries):
+            result = self.manager.transfer_handler._beneficiary_prompt(self.phone)
+        response = as_structured_response(result["response"])
+        self.assertEqual(response.kind, ResponseKind.LIST)
+        rows = [row for section in response.list_sections for row in section.rows]
+        self.assertEqual([row.id for row in rows], ["1", "2", "new"])
+
+    async def test_beneficiary_list_falls_back_to_text_beyond_ten_rows(self):
+        beneficiaries = [
+            {"beneficiary_name": f"Person {i}", "account_number": f"GB12FNCL0001000{i:07d}"} for i in range(10)
+        ]
+        with patch("app.workflows.processors.transfer.get_beneficiaries_by_phone", return_value=beneficiaries):
+            result = self.manager.transfer_handler._beneficiary_prompt(self.phone)
+        # 10 beneficiaries + 1 "add new" row = 11 > WhatsApp's 10-row cap.
+        self.assertIsInstance(result["response"], str)
+
+    async def test_main_menu_list_has_seven_rows_with_expected_ids(self):
+        response = render_main_menu_list("Alex", greeting=False)
+        self.assertEqual(response.kind, ResponseKind.LIST)
+        rows = [row for section in response.list_sections for row in section.rows]
+        self.assertEqual([row.id for row in rows], ["1", "2", "3", "4", "5", "6", "7"])
+
+    async def test_onboarding_account_type_list_row_ids_match_aliases(self):
+        response = account_type_list_prompt("Which account?")
+        rows = [row for section in response.list_sections for row in section.rows]
+        self.assertEqual([row.id for row in rows], ["1", "2", "3"])
+        self.assertEqual([row.title for row in rows], ["Savings Account", "Current Account", "Salary Account"])
 
 
 # ─── Part 13: Back / Cancel ─────────────────────────────────────────────

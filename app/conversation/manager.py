@@ -28,9 +28,19 @@ from app.conversation.guidance.policy import build_guidance
 from app.conversation.guidance.responses import render_action_info, render_guidance
 from app.conversation.intent import classify_intent
 from app.conversation.intent.text_clean import clean_noisy_text
-from app.services.language import DEFAULT_LANGUAGE, MIN_DETECTABLE_LENGTH, detect_language, should_attempt_detection, translate_text
+from app.services.language import (
+    DEFAULT_LANGUAGE,
+    MIN_DETECTABLE_LENGTH,
+    detect_explicit_language_change,
+    detect_language,
+    should_attempt_detection,
+    translate_text,
+)
+from app.services.llm_understanding import is_llm_fallback_enabled
+from app.conversation.intent.classifier import default_llm_classify
+from app.conversation.renderer import ResponseLike, StructuredResponse, as_structured_response
 from app.conversation.responses.common import render_cancelled, render_clarification, render_low_confidence
-from app.conversation.responses.common import render_main_menu, render_out_of_scope, render_service_unavailable
+from app.conversation.responses.common import render_main_menu_list, render_out_of_scope, render_service_unavailable
 from app.conversation.responses.errors import render_agent_error
 from app.conversation.router import route_intent
 from app.conversation.workflow_adapter import start_workflow_directly
@@ -106,7 +116,7 @@ class ConversationManager:
         llm_fallback: LlmFallbackFn,
         parsed_document: Optional[dict] = None,
         detected_language: Optional[str] = None,
-    ) -> str:
+    ) -> ResponseLike:
         """Run one full conversation turn and return the response text.
 
         Never raises — any failure anywhere in the turn is caught, logged
@@ -271,14 +281,17 @@ class ConversationManager:
         transcription (Whisper already detected it) always wins over a
         fresh text-based detection. For text: a bare "yes"/"1" reply is too
         short to mean anything either way, so it keeps whatever language
-        this conversation already established. But a real, plain-ASCII
-        message of normal length is a clear signal the customer is typing
-        in English right now — that must reset detected_language back to
-        English, not just skip re-detection, otherwise a single earlier
-        foreign-language voice note (or a mis-detected one — Whisper isn't
-        perfect on short clips) sticks translating every reply for the rest
-        of the conversation even after the customer has moved on to plain
-        English text."""
+        this conversation already established.
+
+        Sticky, explicit-opt-in only: once a non-English language is
+        established, a later plain-ASCII message (a bare "yes", a number,
+        an ASCII-typed reply) does NOT silently reset the conversation back
+        to English — the customer never asked for that. Language only
+        changes on a genuine non-ASCII detection (should_attempt_detection)
+        or an explicit meta-request ("reply in English", "switch to
+        Hindi") — see detect_explicit_language_change. If no non-English
+        language is active, the ASCII fast path is unchanged (no LLM call,
+        stays English)."""
         if detected_language:
             context.detected_language = detected_language
             return
@@ -287,6 +300,12 @@ class ConversationManager:
             return
         if should_attempt_detection(message):
             context.detected_language = detect_language(message, trace_id=trace_id)
+            return
+        if context.detected_language and context.detected_language != DEFAULT_LANGUAGE:
+            explicit = detect_explicit_language_change(message)
+            if explicit:
+                context.detected_language = explicit
+            # else: stays sticky, no change.
         else:
             context.detected_language = DEFAULT_LANGUAGE
 
@@ -294,7 +313,8 @@ class ConversationManager:
         if context is None:
             return None
         try:
-            result = classify_intent(message, context=context, trace_id=trace_id)
+            llm_classify = default_llm_classify if is_llm_fallback_enabled() else None
+            result = classify_intent(message, context=context, trace_id=trace_id, llm_classify=llm_classify)
             context.last_intent = result.intent
             context.intent_confidence = result.confidence
             logger.info(
@@ -359,7 +379,7 @@ class ConversationManager:
             context.allowed_actions = []
             self._register_progress(context)
             return self._finish(
-                context, phone_number, query, render_main_menu(), trace_id, pending_action=None
+                context, phone_number, query, render_main_menu_list(), trace_id, pending_action=None
             )
 
         workflow_type = WORKFLOW_FOR_ACTION.get(selected)
@@ -481,12 +501,23 @@ class ConversationManager:
         context: Optional[ConversationContext],
         phone_number: str,
         query: str,
-        response: str,
+        response: ResponseLike,
         trace_id: str,
         pending_action: Any = _UNSET,
-    ) -> str:
+    ) -> ResponseLike:
         if context is not None and pending_action is not _UNSET:
             context.pending_action = pending_action
+
+        # `response` may be a plain string or a StructuredResponse carrying
+        # WhatsApp interactive buttons/list metadata (see
+        # app/conversation/renderer.py) — either way, `.text` is the body
+        # that gets translated/logged/persisted; the interactive metadata
+        # (if any) passes through untouched to the eventual render_and_send
+        # call. Button/list option titles are NOT translated in this
+        # version — only the body text — a known limitation for non-English
+        # interactive prompts.
+        was_structured = isinstance(response, StructuredResponse)
+        structured = as_structured_response(response)
 
         # Every response generated above this point is authored in
         # English (templates, RAG/LLM output, error text). Translate once,
@@ -495,14 +526,14 @@ class ConversationManager:
         # above. See app/services/language.py; never blocks the turn on
         # failure — it falls back to the original English text.
         if context is not None and context.detected_language != DEFAULT_LANGUAGE:
-            response = translate_text(response, context.detected_language, trace_id=trace_id)
+            structured.text = translate_text(structured.text, context.detected_language, trace_id=trace_id)
 
         # Session history (app/memory.py) is a separate, unchanged
         # mechanism from ConversationContext — see docs/current_architecture.md,
         # "Conversation Context — Phase 1". Never logs the raw message —
         # only Redis stores it, under the same TTL/retention as before.
         append_to_session(phone_number, "user", query)
-        append_to_session(phone_number, "assistant", response[:500])
-        self._persist(context, phone_number, trace_id, response)
+        append_to_session(phone_number, "assistant", structured.text[:500])
+        self._persist(context, phone_number, trace_id, structured.text)
         logger.info(f"[{trace_id}] conversation.turn.completed | phone={phone_number[-4:]}")
-        return response
+        return structured if was_structured else structured.text

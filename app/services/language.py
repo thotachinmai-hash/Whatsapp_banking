@@ -14,7 +14,9 @@ back to English/the original text rather than raising or guessing.
 """
 
 import os
+import re
 import time
+from typing import Optional
 
 from dotenv import load_dotenv
 from groq import Groq
@@ -123,6 +125,40 @@ def detect_language(text: str, trace_id: str = "") -> str:
     except Exception as e:
         logger.error(f"[{trace_id}] Language detection failed | error={e}")
         return DEFAULT_LANGUAGE
+
+
+# Display name -> ISO code, including a couple of common alternate names,
+# used only to detect an EXPLICIT meta-request to change language ("reply
+# in Spanish", "switch to Hindi") — as opposed to a message merely WRITTEN
+# in that language, which should never be classified as a change request
+# by this (already-ASCII, by construction — see should_attempt_detection)
+# path.
+_LANGUAGE_NAME_TO_CODE = {name.lower(): code for code, name in SUPPORTED_LANGUAGES.items()}
+_LANGUAGE_NAME_TO_CODE.update({"english": "en", "deutsch": "de", "espanol": "es", "español": "es"})
+
+_LANGUAGE_CHANGE_RE = re.compile(
+    r"\b(?:reply|respond|speak|talk|switch|change)\b"
+    r"(?:\s+to\s+me)?(?:\s+back)?(?:\s+(?:in|to))?\s+([a-z]+)\b",
+    re.I,
+)
+
+
+def detect_explicit_language_change(message: str) -> Optional[str]:
+    """Return an ISO 639-1 code only when `message` is a META-request about
+    which language to use ("reply in Spanish", "switch to Hindi", "speak
+    English please") — never when it's simply written in another language
+    (that's should_attempt_detection/detect_language's job, and only fires
+    on non-ASCII text). Regex-based rather than an LLM call: this pattern
+    covers the natural phrasings for this request cheaply, and stays
+    consistent with this app's rule-first style (see
+    app/conversation/intent/rules.py). Returns None if no supported
+    language is named."""
+    if not message or not message.strip():
+        return None
+    match = _LANGUAGE_CHANGE_RE.search(message)
+    if not match:
+        return None
+    return _LANGUAGE_NAME_TO_CODE.get(match.group(1).strip().lower())
 
 
 def translate_text(text: str, target_language: str, trace_id: str = "") -> str:

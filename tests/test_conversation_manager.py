@@ -306,6 +306,47 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("123456", joined)
 
 
+class LanguageStickinessTests(unittest.TestCase):
+    """Language changes only on a real non-ASCII detection or an explicit
+    meta-request — a later plain-ASCII message (a bare "yes", a number)
+    must NOT silently reset the conversation back to English. See
+    ConversationManager._update_language."""
+
+    def setUp(self):
+        self.manager, _ = _manager_with()
+
+    def test_hindi_stays_sticky_through_a_bare_ascii_reply(self):
+        context = _fresh_context()
+        with patch("app.conversation.manager.detect_language", return_value="hi"):
+            self.manager._update_language(context, "मेरा बैलेंस क्या है", None, "t")
+        self.assertEqual(context.detected_language, "hi")
+
+        # A later plain-ASCII, non-trivial-length message must not reset it.
+        with patch("app.conversation.manager.detect_language") as mock_detect:
+            self.manager._update_language(context, "5000", None, "t")
+        mock_detect.assert_not_called()
+        self.assertEqual(context.detected_language, "hi")
+
+    def test_explicit_request_switches_language(self):
+        context = _fresh_context()
+        context.detected_language = "hi"
+        self.manager._update_language(context, "reply in English please", None, "t")
+        self.assertEqual(context.detected_language, "en")
+
+    def test_plain_english_conversation_never_calls_detection(self):
+        context = _fresh_context()
+        with patch("app.conversation.manager.detect_language") as mock_detect:
+            self.manager._update_language(context, "check my balance please", None, "t")
+        mock_detect.assert_not_called()
+        self.assertEqual(context.detected_language, "en")
+
+    def test_voice_hint_always_wins(self):
+        context = _fresh_context()
+        context.detected_language = "hi"
+        self.manager._update_language(context, "5000", "es", "t")
+        self.assertEqual(context.detected_language, "es")
+
+
 class ConversationManagerArchitectureBoundaryTests(unittest.IsolatedAsyncioTestCase):
     """Verifies the orchestrator/business-logic boundary the task requires."""
 

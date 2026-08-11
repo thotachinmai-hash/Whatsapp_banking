@@ -12,7 +12,9 @@ from app.workflows.constants import (
     STEP_UPLOAD_LOAN_FORM,
 )
 from app.workflows.memory import clear_workflow_data, complete_workflow, set_workflow_step, update_workflow_data
-from app.workflows.nlu import interpret_confirmation
+from app.workflows.nlu import interpret_confirmation, interpret_menu_choice
+from app.services.llm_understanding import interpret_choice_llm, is_llm_fallback_enabled
+from app.conversation.renderer import InteractiveButton, InteractiveListRow, InteractiveListSection, StructuredResponse
 from app.conversation.responses import loan as templates
 
 logger = get_logger(__name__)
@@ -70,6 +72,58 @@ ACKNOWLEDGMENTS = {
 
 def _key(value: str) -> str:
     return re.sub(r"[^a-z0-9]", "", value.lower())
+
+
+def _llm_fallback(options: list[str], context: str):
+    if not is_llm_fallback_enabled():
+        return None
+    return lambda text: interpret_choice_llm(text, options, context)
+
+
+def loan_type_list_prompt(intro: str) -> StructuredResponse:
+    """Tap-to-reply loan-type list — row ids "1".."4" match LOAN_TYPES'
+    exact dict lookup (see detect_loan_type_from_text), so a typed digit
+    still works exactly as before if the list send falls back to text.
+    Shared by this processor's own re-prompt and by
+    app/workflows/manager.py::start_requested's loan-start branch, so the
+    two can no longer drift out of sync the way their separate hardcoded
+    copies used to."""
+    rows = [
+        InteractiveListRow(id=digit, title=LOAN_LABELS[loan_type])
+        for digit, loan_type in LOAN_TYPES.items()
+    ]
+    return StructuredResponse.list_of(intro, "Choose loan type", [InteractiveListSection(title="Loan types", rows=rows)])
+
+
+def _yes_no_prompt(body: str) -> StructuredResponse:
+    """Tap-to-reply Yes/No confirmation — ids "yes"/"no" are the exact
+    tokens interpret_confirmation()'s regex matches (no digit fast-path
+    exists for this prompt, unlike transfer's numbered confirm)."""
+    return StructuredResponse.buttons_of(
+        body, [InteractiveButton(id="yes", title="Yes, submit"), InteractiveButton(id="no", title="No, cancel")]
+    )
+
+
+def detect_loan_type_from_text(text: str) -> str | None:
+    """Pull a loan type out of free text ("I'd like a home loan of 50000")
+    so a customer who already states it when starting the workflow skips
+    the separate "which loan type?" step — same digit/name/synonym
+    matching _select_type uses, factored out so the workflow starter
+    (app/workflows/manager.py::WorkflowManager.start_requested) can reuse
+    it instead of always asking from scratch."""
+    value = (text or "").strip().lower()
+    loan_type = LOAN_TYPES.get(value)
+    if not loan_type:
+        for candidate in LOAN_TYPES.values():
+            if candidate in value:
+                loan_type = candidate
+                break
+    if not loan_type:
+        for synonym, candidate in LOAN_TYPE_SYNONYMS.items():
+            if synonym in value:
+                loan_type = candidate
+                break
+    return loan_type
 
 
 def _is_acknowledgment(text: str) -> bool:
@@ -134,20 +188,18 @@ class LoanWorkflowHandler:
         return {"handled": True, "response": "The loan application is in an invalid state. Please start again."}
 
     def _select_type(self, workflow: dict[str, Any], phone_number: str, query: str, trace_id: str = "") -> dict[str, Any]:
-        value = query.strip().lower()
-        loan_type = LOAN_TYPES.get(value)
+        loan_type = detect_loan_type_from_text(query)
         if not loan_type:
-            for candidate in LOAN_TYPES.values():
-                if candidate in value:
-                    loan_type = candidate
-                    break
+            menu_options = list(LOAN_TYPES.keys()) + list(LOAN_TYPES.values())
+            llm_choice = interpret_menu_choice(
+                query, menu_options,
+                llm_fallback=_llm_fallback(menu_options, "Choose a loan type: 1 Personal, 2 Home, 3 Vehicle, 4 Education."),
+            )
+            loan_type = LOAN_TYPES.get(llm_choice, llm_choice) if llm_choice else None
         if not loan_type:
-            for synonym, candidate in LOAN_TYPE_SYNONYMS.items():
-                if synonym in value:
-                    loan_type = candidate
-                    break
-        if not loan_type:
-            return {"handled": True, "response": templates.render_loan_type_prompt()}
+            return {"handled": True, "response": loan_type_list_prompt(
+                "\U0001F4DD Sorry, I didn't catch that — which of these?"
+            )}
 
         pending_content = workflow.get("data", {}).get("pending_document_content")
         update_workflow_data(phone_number, {"loan_type": loan_type})
@@ -291,24 +343,23 @@ class LoanWorkflowHandler:
                 return templates.render_loan_field_explanation(field, definitions[field], current)
         return f"ℹ️ {FIELD_LABELS[current_field]} means {definitions[current_field]}. {FIELD_PROMPTS[current_field]}"
 
-    def _confirmation(self, data: dict) -> str:
-        return (
-            templates.render_loan_summary(
-                loan_type=data.get("loan_type"),
-                account_number=data["account_number"],
-                applicant_name=data["applicant_name"],
-                monthly_income=data["monthly_income"],
-                requested_amount=data["requested_amount"],
-                tenure_months=data["tenure_months"],
-                employment_type=data["employment_type"],
-                purpose=data["purpose"],
-            )
-            + "\n\n"
-            + templates.render_loan_confirmation()
+    def _confirmation(self, data: dict) -> StructuredResponse:
+        summary = templates.render_loan_summary(
+            loan_type=data.get("loan_type"),
+            account_number=data["account_number"],
+            applicant_name=data["applicant_name"],
+            monthly_income=data["monthly_income"],
+            requested_amount=data["requested_amount"],
+            tenure_months=data["tenure_months"],
+            employment_type=data["employment_type"],
+            purpose=data["purpose"],
         )
+        return _yes_no_prompt(summary)
 
     def _confirm(self, workflow: dict[str, Any], phone_number: str, query: str, trace_id: str = "") -> dict[str, Any]:
-        answer = interpret_confirmation(query)
+        answer = interpret_confirmation(
+            query, llm_fallback=_llm_fallback(["yes", "no"], "Confirm or cancel the loan application summary just shown.")
+        )
         if answer == "no":
             complete_workflow(phone_number)
             logger.info(f"[{trace_id}] Loan application declined at confirmation | phone={phone_number[-4:]}")
@@ -317,7 +368,7 @@ class LoanWorkflowHandler:
             # Deliberately distinct wording from render_loan_confirmation() —
             # matches pre-Phase-4 behavior (this reprompt already used
             # slightly different phrasing than the initial summary).
-            return {"handled": True, "response": "Reply YES to submit the loan request or NO to cancel."}
+            return {"handled": True, "response": _yes_no_prompt("Reply YES to submit the loan request or NO to cancel.")}
         data = workflow.get("data", {})
         request_id = ""
         for _ in range(3):

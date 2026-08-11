@@ -9,6 +9,8 @@ from app.logger import get_logger
 from app.workflows.constants import STEP_CONFIRM_KYC, STEP_UPLOAD_KYC_FORM
 from app.workflows.memory import complete_workflow, set_workflow_step, update_workflow_data
 from app.workflows.nlu import interpret_confirmation
+from app.services.llm_understanding import interpret_choice_llm, is_llm_fallback_enabled
+from app.conversation.renderer import InteractiveButton, StructuredResponse
 from app.conversation.responses import kyc as templates
 
 logger = get_logger(__name__)
@@ -47,6 +49,14 @@ def _invalid(data: dict) -> list[str]:
     if data.get("pan_number") and not re.fullmatch(r"[A-Z]{5}[0-9]{4}[A-Z]", data["pan_number"].replace(" ", "").upper()):
         invalid.append("pan_number")
     return invalid
+
+
+def _yes_no_prompt(body: str) -> StructuredResponse:
+    """Tap-to-reply Yes/No confirmation — ids "yes"/"no" are the exact
+    tokens interpret_confirmation()'s regex matches."""
+    return StructuredResponse.buttons_of(
+        body, [InteractiveButton(id="yes", title="Yes, submit"), InteractiveButton(id="no", title="No, cancel")]
+    )
 
 
 def _is_acknowledgment(query: str) -> bool:
@@ -102,20 +112,21 @@ class KYCWorkflowHandler:
         update_workflow_data(phone_number, data)
         set_workflow_step(phone_number, STEP_CONFIRM_KYC)
         logger.info(f"[{trace_id}] KYC form complete, awaiting confirmation | phone={phone_number[-4:]}")
-        return {"handled": True, "response": (
-            templates.render_kyc_summary(data["full_name"], data["date_of_birth"], data["address"])
-            + "\n\n"
-            + templates.render_kyc_confirmation()
-        )}
+        summary = templates.render_kyc_summary(data["full_name"], data["date_of_birth"], data["address"])
+        return {"handled": True, "response": _yes_no_prompt(summary)}
 
     def _confirm(self, workflow: dict, phone_number: str, query: str, trace_id: str = "") -> dict[str, Any]:
-        answer = interpret_confirmation(query)
+        llm_fallback = (
+            (lambda text: interpret_choice_llm(text, ["yes", "no"], "Confirm or cancel the KYC details summary just shown."))
+            if is_llm_fallback_enabled() else None
+        )
+        answer = interpret_confirmation(query, llm_fallback=llm_fallback)
         if answer == "no":
             complete_workflow(phone_number)
             logger.info(f"[{trace_id}] KYC update declined at confirmation | phone={phone_number[-4:]}")
             return {"handled": True, "response": templates.render_kyc_cancelled()}
         if answer != "yes":
-            return {"handled": True, "response": templates.render_kyc_confirmation()}
+            return {"handled": True, "response": _yes_no_prompt(templates.render_kyc_confirmation())}
         request_id = ""
         for _ in range(3):
             candidate = f"KYC-{uuid.uuid4().hex[:8].upper()}"

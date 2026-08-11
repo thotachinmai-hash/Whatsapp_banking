@@ -15,17 +15,9 @@ def render_onboarding_welcome() -> str:
         "\U0001F44B Welcome to Finacle Banking!\n\n"
         "You're not registered with us yet. Let's get you set up — "
         "it only takes a minute.\n\n"
-        "First, what is your full name?"
+        "First, please upload a clear image of your Aadhaar card. "
+        "I'll pick up your name and other details from it."
     )
-
-
-def render_ask_name() -> str:
-    return "What is your full name?"
-
-
-def render_ask_aadhaar(name: Optional[str] = None) -> str:
-    lead = f"Thanks, {name}. " if name else ""
-    return f"{lead}Now please upload a clear image of your Aadhaar card."
 
 
 def render_ask_pan() -> str:

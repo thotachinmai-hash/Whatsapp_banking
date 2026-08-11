@@ -6,14 +6,21 @@ own `answer in {"yes", "y", "confirm"}` / `{"no", "n", "cancel"}` check)
 so natural phrasing ("yeah go ahead," "nah, that's wrong, cancel it")
 works the same everywhere, not just wherever someone happened to widen it.
 
-Rule-based only for now — the phrase/pattern lists below are wide enough
-to cover natural confirmation/denial phrasing without adding per-message
-LLM latency or cost. If a future case needs it, an optional LLM fallback
-can be added the same way app/conversation/intent/classifier.py's
-`llm_classify` parameter works: called only when the rules return None.
+Rule-first — the phrase/pattern lists below are wide enough to cover
+natural confirmation/denial phrasing without adding per-message LLM
+latency or cost for the common case. Both `interpret_confirmation` and
+`interpret_menu_choice` accept an optional `llm_fallback` callable, called
+ONLY when the rules return None, the same way
+app/conversation/intent/classifier.py's `llm_classify` parameter works —
+callers typically bind this to
+app/services/llm_understanding.py::interpret_choice_llm, gated behind
+`is_llm_fallback_enabled()`.
 """
 
 import re
+from typing import Callable, Optional
+
+ChoiceFallbackFn = Callable[[str], Optional[str]]
 
 # Idioms that contain a denial-looking word ("no") but function as an
 # affirmative/neutral-positive reply — checked before the deny pattern so
@@ -37,13 +44,17 @@ _AFFIRM_RE = re.compile("|".join(_AFFIRM_PATTERNS), re.I)
 _DENY_RE = re.compile("|".join(_DENY_PATTERNS), re.I)
 
 
-def interpret_confirmation(text: str) -> str | None:
+def interpret_confirmation(text: str, llm_fallback: Optional[ChoiceFallbackFn] = None) -> str | None:
     """Return "yes", "no", or None (genuinely unclear) for a free-form
     reply to a confirmation prompt.
 
     Deliberately returns None rather than guessing when both an affirm and
     a deny signal are present ("yeah no don't") — a banking confirmation
     step should re-ask rather than act on an ambiguous reply.
+
+    `llm_fallback` is optional and only consulted when the rules above
+    return None (no signal either way) — it never overrides a rule-based
+    match. Default None keeps every existing caller's behavior unchanged.
     """
     if not text or not text.strip():
         return None
@@ -63,4 +74,45 @@ def interpret_confirmation(text: str) -> str | None:
         return "no"
     if affirm and not deny:
         return "yes"
+
+    if llm_fallback is not None:
+        try:
+            result = llm_fallback(text)
+        except Exception:
+            result = None
+        if result in ("yes", "no"):
+            return result
+    return None
+
+
+def interpret_menu_choice(
+    text: str,
+    options: list[str],
+    llm_fallback: Optional[ChoiceFallbackFn] = None,
+) -> Optional[str]:
+    """Resolve a free-form reply against a numbered/named menu's literal
+    list of valid option values (e.g. digit indices "1".."4", or actual
+    beneficiary/account labels). Rule pass: an exact (case-insensitive)
+    match against `options`. `llm_fallback` — only consulted on a rule
+    miss — should be bound to a function that already knows the same
+    `options` list (see app/services/llm_understanding.py::
+    interpret_choice_llm) so it can resolve phrasing like "the second one"
+    or "nah, cancel it" without inventing a choice that wasn't offered.
+    Callers keep their own cheap digit/substring matching ahead of this for
+    the common case — this exists for the residual free-text cases those
+    don't cover.
+    """
+    if not text or not text.strip() or not options:
+        return None
+    stripped = text.strip()
+    for option in options:
+        if stripped.lower() == str(option).lower():
+            return option
+    if llm_fallback is not None:
+        try:
+            result = llm_fallback(text)
+        except Exception:
+            result = None
+        if result in options:
+            return result
     return None

@@ -16,8 +16,10 @@ from app.workflows.constants import (
     WORKFLOW_TRANSFER,
 )
 from app.workflows.memory import complete_workflow, create_workflow, create_workflow_model, set_workflow_step, update_workflow_data
-from app.workflows.nlu import interpret_confirmation
-from app.conversation.responses.common import mask_account_number as _mask_account
+from app.workflows.nlu import interpret_confirmation, interpret_menu_choice
+from app.services.llm_understanding import interpret_choice_llm, is_llm_fallback_enabled
+from app.conversation.renderer import InteractiveButton, InteractiveListRow, InteractiveListSection, StructuredResponse
+from app.conversation.responses.common import format_currency, mask_account_number as _mask_account
 from app.conversation.responses import transfer as templates
 
 logger = get_logger(__name__)
@@ -50,6 +52,15 @@ def _looks_like_account_number(candidate: str) -> bool:
         and candidate.isalnum()
         and any(ch.isdigit() for ch in candidate)
     )
+
+
+def _llm_fallback(options: list[str], context: str):
+    """Bind an LLM choice fallback for `options`, or None when the feature
+    flag is off — see interpret_menu_choice/interpret_confirmation in
+    app/workflows/nlu.py for how this is consumed."""
+    if not is_llm_fallback_enabled():
+        return None
+    return lambda text: interpret_choice_llm(text, options, context)
 
 
 def has_transferable_balance(phone_number: str) -> bool:
@@ -188,7 +199,9 @@ class TransferWorkflowProcessor:
         if step == STEP_SELECT_SOURCE_ACCOUNT:
             return self._source_account(workflow, phone_number, text)
         if step == STEP_CONFIRM_TRANSFER:
-            confirmation = interpret_confirmation(text)
+            confirmation = interpret_confirmation(
+                text, llm_fallback=_llm_fallback(["yes", "no"], "Confirm or edit the transfer summary just shown.")
+            )
             if command in {"1", "confirm transfer"} or confirmation == "yes":
                 data = workflow.get("data", {})
                 reference = f"TRF-{secrets.token_hex(4).upper()}"
@@ -276,6 +289,18 @@ class TransferWorkflowProcessor:
         if choice in {str(len(beneficiaries) + 1), "new", "new beneficiary", "someone new", "add", "add beneficiary", "add new"}:
             set_workflow_step(phone_number, STEP_COLLECT_BENEFICIARY_NAME)
             return {"handled": True, "response": templates.render_new_beneficiary()}
+
+        menu_options = [str(i) for i in range(1, len(beneficiaries) + 2)] + [b["beneficiary_name"] for b in beneficiaries]
+        llm_choice = interpret_menu_choice(
+            text, menu_options,
+            llm_fallback=_llm_fallback(menu_options, "Choose a saved beneficiary by number/name, or 'new' to add one."),
+        )
+        if llm_choice and llm_choice.isdigit():
+            return self._beneficiary(workflow, phone_number, llm_choice)
+        if llm_choice:
+            matched = next((b for b in beneficiaries if b["beneficiary_name"] == llm_choice), None)
+            if matched:
+                return self._beneficiary(workflow, phone_number, str(beneficiaries.index(matched) + 1))
         return self._beneficiary_prompt(phone_number, "Please choose one of the options below.")
 
     def _amount(self, workflow: dict, phone_number: str, text: str) -> dict:
@@ -309,6 +334,15 @@ class TransferWorkflowProcessor:
             if len(type_matches) == 1:
                 account = type_matches[0]
         if not account:
+            menu_options = [str(i) for i in range(1, len(accounts) + 1)] + [a["account_number"] for a in accounts]
+            llm_choice = interpret_menu_choice(
+                text, menu_options,
+                llm_fallback=_llm_fallback(menu_options, "Choose a source account by number or account number."),
+            )
+            if llm_choice and llm_choice.isdigit():
+                return self._source_account(workflow, phone_number, llm_choice)
+            if llm_choice:
+                return self._source_account(workflow, phone_number, llm_choice)
             return self._source_prompt(phone_number, "Please choose one of the numbered accounts.")
 
         data = workflow.get("data", {})
@@ -332,16 +366,13 @@ class TransferWorkflowProcessor:
 
         update_workflow_data(phone_number, {"source_account": account["account_number"]})
         set_workflow_step(phone_number, STEP_CONFIRM_TRANSFER)
-        return {"handled": True, "response": (
-            templates.render_transfer_summary(
-                beneficiary_name=data.get("beneficiary_name"),
-                beneficiary_account_masked=data.get("beneficiary_account"),
-                amount_label=data.get("amount"),
-                source_account_label=account["account_number"],
-            )
-            + "\n\n"
-            + templates.render_transfer_confirmation()
-        )}
+        summary = templates.render_transfer_summary(
+            beneficiary_name=data.get("beneficiary_name"),
+            beneficiary_account_masked=data.get("beneficiary_account"),
+            amount_label=data.get("amount"),
+            source_account_label=account["account_number"],
+        )
+        return {"handled": True, "response": self._confirm_prompt(summary)}
 
     def _back(self, workflow: dict, phone_number: str) -> dict:
         previous = {
@@ -362,8 +393,19 @@ class TransferWorkflowProcessor:
         if previous == STEP_SELECT_SOURCE_ACCOUNT:
             return self._source_prompt(phone_number)
         if previous == STEP_CONFIRM_TRANSFER:
-            return self._ask("Reply 1 to confirm this transfer or 2 to edit the amount.", "Reply Back or Cancel.")
+            return self._confirm_prompt("Let's review this transfer again.")
         return self._ask("What is the beneficiary's name?", "Reply Back or Cancel.")
+
+    @staticmethod
+    def _confirm_prompt(summary: str) -> dict:
+        """Ready-to-send confirmation with tap-to-reply Yes/Edit buttons —
+        ids "1"/"2" match the digit fast-path STEP_CONFIRM_TRANSFER already
+        checks (see handle()), so a typed "1"/"2" still works exactly as
+        before if the interactive send falls back to plain text."""
+        return StructuredResponse.buttons_of(
+            summary,
+            [InteractiveButton(id="1", title="Yes, send it"), InteractiveButton(id="2", title="Edit amount")],
+        )
 
     @staticmethod
     def _parse_amount(text: str) -> Decimal | None:
@@ -387,13 +429,49 @@ class TransferWorkflowProcessor:
             # Nothing saved yet — go straight to adding the first one instead
             # of showing an empty list with only a "someone new" option.
             set_workflow_step(phone_number, STEP_COLLECT_BENEFICIARY_NAME)
-        return {"handled": True, "response": templates.render_beneficiary_selection(beneficiaries, error=error)}
+            return {"handled": True, "response": templates.render_beneficiary_selection(beneficiaries, error=error)}
+        # 1 extra row for "Add new beneficiary" — beyond WhatsApp's 10-row
+        # cap, fall back to the plain numbered text list rather than fail.
+        if len(beneficiaries) + 1 > 10:
+            return {"handled": True, "response": templates.render_beneficiary_selection(beneficiaries, error=error)}
+        rows = [
+            InteractiveListRow(
+                id=str(index), title=b["beneficiary_name"][:24],
+                description=_mask_account(b["account_number"]),
+            )
+            for index, b in enumerate(beneficiaries, 1)
+        ]
+        rows.append(InteractiveListRow(id="new", title="Add new beneficiary"))
+        intro = f"{error}\n\n" if error else ""
+        intro += "\U0001F464 Sure, who would you like to pay?"
+        return {"handled": True, "response": StructuredResponse.list_of(
+            intro, "Choose beneficiary", [InteractiveListSection(title="Beneficiaries", rows=rows)]
+        )}
 
     @staticmethod
     def _amount_prompt(error: str | None = None) -> dict:
-        return {"handled": True, "response": templates.render_transfer_amount_prompt(error=error)}
+        quick_amounts = [("1", "£25"), ("2", "£50"), ("3", "£100"), ("4", "£250"), ("5", "A different amount")]
+        rows = [InteractiveListRow(id=digit, title=label) for digit, label in quick_amounts]
+        intro = f"{error}\n\n" if error else ""
+        intro += "\U0001F4B0 How much would you like to send?"
+        return {"handled": True, "response": StructuredResponse.list_of(
+            intro, "Choose amount", [InteractiveListSection(title="Quick amounts", rows=rows)]
+        )}
 
     @staticmethod
     def _source_prompt(phone_number: str, error: str | None = None) -> dict:
         accounts = get_accounts_by_phone(phone_number)
-        return {"handled": True, "response": templates.render_source_account_prompt(accounts, error=error)}
+        if len(accounts) > 10:
+            return {"handled": True, "response": templates.render_source_account_prompt(accounts, error=error)}
+        rows = [
+            InteractiveListRow(
+                id=str(index), title=f"{str(a['account_type']).title()} · {a['account_number']}"[:24],
+                description=f"Balance {format_currency(a['balance'], a.get('currency', 'GBP'))}",
+            )
+            for index, a in enumerate(accounts, 1)
+        ]
+        intro = f"{error}\n\n" if error else ""
+        intro += "\U0001F3E6 Which account should this come from?"
+        return {"handled": True, "response": StructuredResponse.list_of(
+            intro, "Choose account", [InteractiveListSection(title="Your accounts", rows=rows)]
+        )}

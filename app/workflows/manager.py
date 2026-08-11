@@ -8,7 +8,7 @@ from app.workflows.constants import (
     WORKFLOW_KYC,
     WORKFLOW_ONBOARDING,
     WORKFLOW_TRANSFER,
-    STEP_COLLECT_NAME,
+    STEP_COLLECT_AADHAAR,
     STEP_SELECT_LOAN_TYPE,
     STEP_UPLOAD_KYC_FORM,
     STEP_UPLOAD_CHEQUE,
@@ -19,14 +19,16 @@ from app.workflows.memory import complete_workflow
 from app.workflows.memory import set_workflow_step
 from app.services.registration_gate import GREETING_KEYWORDS
 from app.conversation.responses.transfer import render_insufficient_balance
-from app.conversation.responses.common import render_goodbye, render_workflow_boundary_with_step, render_workflow_step_hint
+from app.conversation.responses.common import render_goodbye, render_main_menu_list, render_workflow_boundary_with_step, render_workflow_step_hint
 from app.conversation.responses.cheque import render_cheque_deposit_started
-from app.conversation.responses.loan import render_loan_application_started
 from app.conversation.responses.kyc import render_kyc_update_started
 from app.conversation.intent.rules import BANKING_DOMAIN_KEYWORDS
+from app.services.llm_understanding import answer_side_question, detect_step_or_workflow_jump, is_llm_fallback_enabled
+from app.conversation.renderer import InteractiveButton, StructuredResponse
+from app.conversation.workflow_adapter import start_workflow_directly
 
 from app.workflows.processors.cheque import ChequeWorkflowProcessor
-from app.workflows.processors.loan import LoanWorkflowHandler
+from app.workflows.processors.loan import LoanWorkflowHandler, detect_loan_type_from_text, loan_type_list_prompt
 from app.workflows.processors.kyc import KYCWorkflowHandler
 from app.workflows.processors.onboarding import OnboardingWorkflowHandler
 from app.workflows.processors.transfer import TransferWorkflowProcessor, has_transferable_balance, start_transfer_from_text
@@ -93,11 +95,10 @@ class WorkflowManager:
                 logger.info(f"[{trace_id}] Exit acknowledged | phone={phone_number[-4:]} | trigger={query[:20]!r}")
                 return {"handled": True, "response": render_goodbye()}
             if _is_back_command(query):
-                from app.services.menu import build_menu_response
                 from app.database import get_customer_by_phone
                 customer = get_customer_by_phone(phone_number)
                 name = customer.get("full_name", "there") if customer else "there"
-                return {"handled": True, "response": build_menu_response(name, greeting=False)}
+                return {"handled": True, "response": render_main_menu_list(name, greeting=False)}
             return {"handled": False, "response": None}
 
         workflow_type = workflow["type"]
@@ -105,7 +106,7 @@ class WorkflowManager:
         # Resolve a pending "do you want to stop?" confirmation (see the
         # cancel/closing-word branch below) before anything else this turn.
         if workflow.get("data", {}).get("pending_stop_confirmation"):
-            return _resolve_pending_stop(workflow, workflow_type, phone_number, query, trace_id)
+            return _resolve_pending_stop(workflow, workflow_type, phone_number, query, trace_id, self.transfer_handler)
 
         # An explicit stop/cancel word, or a natural closing phrase ("thanks,
         # that's all", "bye"), must not silently abandon real in-progress
@@ -134,10 +135,10 @@ class WorkflowManager:
             )
             return {
                 "handled": True,
-                "response": (
+                "response": StructuredResponse.buttons_of(
                     f"You have an active {label.lower()} in progress. Would you like to "
-                    "continue, or stop here?\n\nReply *continue* to keep going, or "
-                    "*stop* to end it."
+                    "continue, or stop here?",
+                    [InteractiveButton(id="continue", title="Continue"), InteractiveButton(id="stop", title="Stop")],
                 ),
             }
 
@@ -152,13 +153,12 @@ class WorkflowManager:
                     f"[{trace_id}] Onboarding interrupted and restarted | "
                     f"phone={phone_number[-4:]} | trigger={query[:20]!r}"
                 )
-                new_workflow = create_workflow_model(WORKFLOW_ONBOARDING, STEP_COLLECT_NAME)
+                new_workflow = create_workflow_model(WORKFLOW_ONBOARDING, STEP_COLLECT_AADHAAR)
                 create_workflow(phone_number, new_workflow)
                 from app.services.menu import build_onboarding_welcome_message
                 return {"handled": True, "response": build_onboarding_welcome_message()}
 
             label = _WORKFLOW_LABELS.get(workflow_type, "This request")
-            from app.services.menu import build_menu_response
             from app.database import get_customer_by_phone
             customer = get_customer_by_phone(phone_number)
             name = customer.get("full_name", "there") if customer else "there"
@@ -168,9 +168,8 @@ class WorkflowManager:
             )
             return {
                 "handled": True,
-                "response": (
-                    f"✅ {label} cancelled. Nothing was submitted or changed.\n\n"
-                    + build_menu_response(name, greeting=False)
+                "response": render_main_menu_list(
+                    name, greeting=False, prefix=f"✅ {label} cancelled. Nothing was submitted or changed."
                 ),
             }
 
@@ -192,6 +191,21 @@ class WorkflowManager:
                 logger.info(
                     f"Workflow-related question | workflow={workflow_type} | phone={phone_number[-4:]}"
                 )
+                if is_llm_fallback_enabled():
+                    answer = answer_side_question(query, workflow_type, workflow.get("step"), trace_id)
+                    if answer:
+                        hint = render_workflow_step_hint(workflow_type, workflow.get("step"))
+                        logger.info(
+                            f"[{trace_id}] Side question answered mid-workflow, resuming step | "
+                            f"workflow={workflow_type} | phone={phone_number[-4:]}"
+                        )
+                        return {
+                            "handled": True,
+                            "response": f"{answer}\n\n{hint}" if hint else answer,
+                        }
+                # LLM unavailable/disabled/declined to answer — fall back to
+                # the original behavior: let the router/LLM answer it next,
+                # workflow state left untouched, resuming on the next message.
                 return {"handled": False, "response": None, "reprocess_query": query}
 
         # An incomplete document workflow must not swallow unrelated requests.
@@ -209,6 +223,32 @@ class WorkflowManager:
             and not _is_current_workflow_input(workflow, query)
             and _looks_like_new_service_request(query, workflow_type)
         ):
+            if is_llm_fallback_enabled():
+                jump = detect_step_or_workflow_jump(query, workflow_type, workflow.get("step"), trace_id)
+                if jump and jump.target_workflow:
+                    label = _WORKFLOW_LABELS.get(workflow_type, "request")
+                    target_label = _WORKFLOW_LABELS.get(jump.target_workflow, jump.target_workflow)
+                    update_workflow_data(phone_number, {
+                        "pending_stop_confirmation": True,
+                        "pending_stop_was_closing": False,
+                        "pending_jump_workflow": jump.target_workflow,
+                        "pending_jump_query": query,
+                    })
+                    logger.info(
+                        f"[{trace_id}] Workflow jump requested, confirming | from={workflow_type} | "
+                        f"to={jump.target_workflow} | phone={phone_number[-4:]}"
+                    )
+                    return {
+                        "handled": True,
+                        "response": StructuredResponse.buttons_of(
+                            f"You have an active {label.lower()} in progress. Would you like to "
+                            f"continue that, or switch to {target_label.lower()} instead?",
+                            [
+                                InteractiveButton(id="continue", title="Continue"),
+                                InteractiveButton(id="switch", title=f"Switch to {target_label}"[:20]),
+                            ],
+                        ),
+                    }
             return {"handled": True, "response": _workflow_boundary_message(workflow_type, workflow.get("step"))}
 
         logger.info(
@@ -325,7 +365,9 @@ class WorkflowManager:
             if action == "loan":
                 workflow = create_workflow_model(WORKFLOW_LOAN, STEP_SELECT_LOAN_TYPE)
                 create_workflow(phone_number, workflow)
-                return {"handled": True, "response": render_loan_application_started()}
+                return {"handled": True, "response": loan_type_list_prompt(
+                    "\U0001F4DD Let's get your loan application going! What kind of loan are you after?"
+                )}
             if action == "kyc":
                 workflow = create_workflow_model(WORKFLOW_KYC, STEP_UPLOAD_KYC_FORM)
                 create_workflow(phone_number, workflow)
@@ -347,14 +389,15 @@ class WorkflowManager:
         if any(word in normalized for word in ("loan", "borrow", "finance")) and not is_lookup:
             workflow = create_workflow_model(WORKFLOW_LOAN, STEP_SELECT_LOAN_TYPE)
             create_workflow(phone_number, workflow)
-            return {
-                "handled": True,
-                "response": (
-                    "📝 *Loan application started*\n\nAvailable loan types:\n\n"
-                    "1. Personal Loan\n2. Home Loan\n3. Vehicle Loan\n4. Education Loan\n\n"
-                    "Reply with a number or name. I will then ask for the loan form.\n\nReply *Cancel* to stop."
-                ),
-            }
+            # If the loan type was already stated in this same message
+            # ("I'd like a personal loan"), skip straight past the "which
+            # loan type?" step instead of asking again.
+            loan_type = detect_loan_type_from_text(query)
+            if loan_type:
+                return self.loan_handler._select_type(workflow, phone_number, query, trace_id)
+            return {"handled": True, "response": loan_type_list_prompt(
+                "\U0001F4DD *Loan application started* — what kind of loan are you after?"
+            )}
         if any(word in normalized for word in ("kyc", "know your customer", "update my details")):
             workflow = create_workflow_model(WORKFLOW_KYC, STEP_UPLOAD_KYC_FORM)
             create_workflow(phone_number, workflow)
@@ -573,7 +616,7 @@ def _is_closing_word(query: str) -> bool:
 
 
 _RESUME_RE = re.compile(r"\b(continue|resume|keep going|carry on|go ?ahead|proceed)\b", re.I)
-_CONFIRM_STOP_RE = re.compile(r"\b(stop|cancel|end|quit|exit)\b", re.I)
+_CONFIRM_STOP_RE = re.compile(r"\b(stop|cancel|end|quit|exit|switch)\b", re.I)
 
 
 def _interpret_stop_or_continue(text: str) -> str | None:
@@ -607,19 +650,28 @@ def _resolve_pending_stop(
     phone_number: str,
     query: str,
     trace_id: str,
+    transfer_handler: Any = None,
 ) -> dict[str, Any]:
     """Act on the customer's answer to "do you want to stop your {X}, or
-    continue?" (asked by the cancel/closing-word branch in handle()).
-    "continue" resumes at the exact step they were on; "stop" actually
-    cancels — with the closing note or the plain cancellation message
-    depending on whether a genuine goodbye ("bye", "thanks, that's all") or
-    a plain stop word ("cancel", "stop") triggered the question in the
-    first place."""
+    continue?" (asked by the cancel/closing-word branch, and by the
+    workflow-jump branch, in handle()). "continue" resumes at the exact
+    step they were on; "stop" actually cancels — either ending the
+    conversation/returning to the menu (plain cancel/closing-word trigger),
+    or, if this confirmation was asked because the customer's message
+    looked like a request for a DIFFERENT workflow (pending_jump_workflow),
+    starting that workflow instead of just cancelling to the menu."""
     label = _WORKFLOW_LABELS.get(workflow_type, "request")
     answer = _interpret_stop_or_continue(query)
+    jump_workflow = workflow.get("data", {}).get("pending_jump_workflow")
+    jump_query = workflow.get("data", {}).get("pending_jump_query", "")
 
     if answer == "continue":
-        update_workflow_data(phone_number, {"pending_stop_confirmation": False, "pending_stop_was_closing": False})
+        update_workflow_data(phone_number, {
+            "pending_stop_confirmation": False,
+            "pending_stop_was_closing": False,
+            "pending_jump_workflow": None,
+            "pending_jump_query": None,
+        })
         logger.info(f"[{trace_id}] Workflow stop declined, resuming | type={workflow_type} | phone={phone_number[-4:]}")
         hint = render_workflow_step_hint(workflow_type, workflow.get("step"))
         resume_text = f"No problem, let's continue with your {label.lower()}."
@@ -630,19 +682,24 @@ def _resolve_pending_stop(
         complete_workflow(phone_number)
         logger.info(
             f"[{trace_id}] Workflow stop confirmed | type={workflow_type} | "
-            f"phone={phone_number[-4:]} | closing={was_closing}"
+            f"phone={phone_number[-4:]} | closing={was_closing} | jump_to={jump_workflow or 'none'}"
         )
+        if jump_workflow:
+            started = start_workflow_directly(
+                jump_workflow, phone_number, transfer_handler=transfer_handler,
+                query=jump_query, trace_id=trace_id,
+            )
+            if started and started.get("handled"):
+                return started
         if was_closing:
             return {"handled": True, "response": render_goodbye()}
-        from app.services.menu import build_menu_response
         from app.database import get_customer_by_phone
         customer = get_customer_by_phone(phone_number)
         name = customer.get("full_name", "there") if customer else "there"
         return {
             "handled": True,
-            "response": (
-                f"✅ {label} cancelled. Nothing was submitted or changed.\n\n"
-                + build_menu_response(name, greeting=False)
+            "response": render_main_menu_list(
+                name, greeting=False, prefix=f"✅ {label} cancelled. Nothing was submitted or changed."
             ),
         }
 
@@ -671,11 +728,10 @@ def _handle_back_for_workflow(workflow: dict[str, Any], phone_number: str) -> di
         "SELECT_LOAN_TYPE": (None, "📝 You are already at the first loan step. Reply *Cancel* to stop."),
         "CONFIRM_KYC": ("UPLOAD_KYC_FORM", "📄 Back to KYC details. Please upload the document or reply with corrections."),
         "UPLOAD_KYC_FORM": (None, "📄 You are already at the first KYC step. Reply *Cancel* to stop."),
-        "COLLECT_AADHAAR": ("COLLECT_NAME", "👤 Back to your name. What is your full name?"),
+        "COLLECT_AADHAAR": (None, "🪪 You are already at the first registration step. Please upload a clear image of your Aadhaar card."),
         "COLLECT_PAN": ("COLLECT_AADHAAR", "🪪 Back to Aadhaar. Please upload the Aadhaar card image."),
         "CONFIRM_REGISTRATION": ("COLLECT_PAN", "🪪 Back to PAN. Please upload the PAN card image."),
         "SELECT_ACCOUNT_TYPE": ("CONFIRM_REGISTRATION", "🔎 Back to confirmation. Please review your registration details."),
-        "COLLECT_NAME": (None, "👤 You are already at the first registration step. What is your full name?"),
     }.get(step, (None, "You are already at the first step. Reply *Cancel* to stop."))
     if previous[0]:
         set_workflow_step(phone_number, previous[0])

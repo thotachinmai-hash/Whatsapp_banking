@@ -3,8 +3,9 @@ from typing import Any
 from app.database import get_accounts_by_phone, get_customer_by_phone
 from app.logger import get_logger
 from app.memory import get_session_history
-from app.services.menu import build_accounts_summary, build_menu_response, build_onboarding_welcome_message
-from app.workflows.constants import STEP_COLLECT_NAME, WORKFLOW_ONBOARDING
+from app.conversation.responses.common import render_main_menu_list
+from app.services.menu import build_accounts_summary, build_onboarding_welcome_message
+from app.workflows.constants import STEP_COLLECT_AADHAAR, WORKFLOW_ONBOARDING
 from app.workflows.memory import create_workflow, create_workflow_model, get_workflow
 
 logger = get_logger(__name__)
@@ -48,9 +49,9 @@ async def check_registration_gate(
             )
             return {
                 "handled": True,
-                "response": (
-                    build_accounts_summary(get_accounts_by_phone(phone_number))
-                    + build_menu_response(customer["full_name"])
+                "response": render_main_menu_list(
+                    customer["full_name"], greeting=True,
+                    prefix=build_accounts_summary(get_accounts_by_phone(phone_number)),
                 ),
             }
 
@@ -75,7 +76,7 @@ async def check_registration_gate(
 
     workflow = create_workflow_model(
         workflow_type=WORKFLOW_ONBOARDING,
-        step=STEP_COLLECT_NAME,
+        step=STEP_COLLECT_AADHAAR,
     )
     if not _is_greeting(query) and _is_unregistered_service_request(query):
         # Remember what they actually wanted so it can be resumed

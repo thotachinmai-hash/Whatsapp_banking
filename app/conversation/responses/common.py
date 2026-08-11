@@ -12,6 +12,8 @@ import re
 from decimal import Decimal, InvalidOperation
 from typing import Any, Optional
 
+from app.conversation.renderer import InteractiveListRow, InteractiveListSection, StructuredResponse
+
 _CURRENCY_SYMBOLS = {"GBP": "£", "INR": "₹", "USD": "$", "EUR": "€"}
 
 
@@ -99,6 +101,32 @@ def render_main_menu(name: Optional[str] = None, greeting: bool = True) -> str:
         + "Reply with a number, type a request, or send a voice note.\n"
         + "Reply *Back* or *Cancel* anytime."
     )
+
+
+_MAIN_MENU_ROWS = [
+    ("1", "Transfer money", "\U0001F4B8 Send money to a beneficiary"),
+    ("2", "Check balance", "\U0001F4B0 View your account balance"),
+    ("3", "View transactions", "\U0001F4C4 See recent transactions"),
+    ("4", "Deposit a cheque", "\U0001F9FE Upload a cheque image"),
+    ("5", "Check cheque status", "\U0001F50E Track a submitted cheque"),
+    ("6", "Apply for a loan", "\U0001F4DD Start a loan application"),
+    ("7", "Update KYC", "\U0001F4C7 Update your identity details"),
+]
+
+
+def render_main_menu_list(name: Optional[str] = None, greeting: bool = True, prefix: str = "") -> StructuredResponse:
+    """Tap-to-reply main menu — row ids "1".."7" match the digit lookup
+    `menu_actions` already uses in app/workflows/manager.py::start_requested,
+    so a typed digit still works exactly as before if the list send falls
+    back to text. `prefix` lets a caller prepend other text (e.g. a
+    cancellation notice) into the SAME message instead of concatenating a
+    second render_main_menu() call, which isn't possible once this is a
+    list instead of a plain string."""
+    header = f"Hi {name}, welcome back to Finacle Banking! \U0001F44B\n\n" if (greeting and name) else ""
+    body = f"{prefix}\n\n" if prefix else ""
+    body += header + "\U0001F4CB *What would you like to do?*"
+    rows = [InteractiveListRow(id=digit, title=title, description=desc) for digit, title, desc in _MAIN_MENU_ROWS]
+    return StructuredResponse.list_of(body, "Menu", [InteractiveListSection(title="Services", rows=rows)])
 
 
 def render_goodbye() -> str:
@@ -229,7 +257,6 @@ WORKFLOW_STEP_HINTS = {
     ("cheque", "CORRECT_CHEQUE"): "Please correct the detail I flagged, either by re-uploading the cheque image or typing the correction.",
     ("kyc", "UPLOAD_KYC_FORM"): "Please upload your KYC document, or tell me what needs updating.",
     ("kyc", "CONFIRM_KYC"): "Please review your details above and reply YES to confirm or NO to cancel.",
-    ("onboarding", "COLLECT_NAME"): "Please tell me your full name to get started.",
     ("onboarding", "COLLECT_AADHAAR"): "We're currently waiting for your Aadhaar card — please upload a clear image of it.",
     ("onboarding", "COLLECT_PAN"): "We're currently waiting for your PAN card — please upload a clear image of it.",
     ("onboarding", "CONFIRM_REGISTRATION"): "Please review your details above and reply YES to confirm or NO to cancel.",

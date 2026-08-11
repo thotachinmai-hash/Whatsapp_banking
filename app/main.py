@@ -153,6 +153,8 @@ async def whatsapp_webhook(request: Request):
             message_data["audio"] = media
         elif message_type in ("image", "document", "video") and isinstance(media, dict):
             message_data[message_type] = media
+        elif message_type == "interactive" and isinstance(media, dict):
+            message_data["interactive"] = media
 
         if value.get("statuses"):
             logger.info("message ignored | status update")
