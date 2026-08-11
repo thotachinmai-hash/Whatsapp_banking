@@ -46,11 +46,13 @@ async def check_registration_gate(
             logger.info(
                 f"[{trace_id}] Registration gate | greeting shown | phone={phone_number[-4:]}"
             )
+            menu_response = build_menu_response(customer["full_name"])
+            menu_text = menu_response.text if hasattr(menu_response, "text") else str(menu_response)
             return {
                 "handled": True,
                 "response": (
                     build_accounts_summary(get_accounts_by_phone(phone_number))
-                    + build_menu_response(customer["full_name"])
+                    + menu_text
                 ),
             }
 

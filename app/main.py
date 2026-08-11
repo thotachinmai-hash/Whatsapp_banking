@@ -25,6 +25,7 @@ from app.services import idempotency
 from app.conversation.renderer import render_and_send
 from app.api.routes import router
 from app.agent.agent import run_agent
+from app.services.button_handler import resolve_button_action, is_interactive_message, extract_interactive_response
 
 
 load_dotenv()
@@ -149,6 +150,15 @@ async def whatsapp_webhook(request: Request):
 
         # Expose the media object at top-level keys matching Graph API shape
         # so downstream helpers (get_media_id, get_media_data) can find it.
+        if message_type == "interactive":
+            button_id, button_title = extract_interactive_response(message)
+            if button_id or button_title:
+                resolved_command = resolve_button_action(button_id,button_title)
+                message_data["body"] = resolved_command
+                logger.info(
+                    f"[{webhook_trace_id}] interactive.button_click | button_id={button_id} | "
+                    f"button_title={button_title} | resolved_to={resolved_command}"
+                )
         if message_type in ("audio", "voice") and isinstance(media, dict):
             message_data["audio"] = media
         elif message_type in ("image", "document", "video") and isinstance(media, dict):
