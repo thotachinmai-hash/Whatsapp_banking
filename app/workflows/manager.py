@@ -166,11 +166,13 @@ class WorkflowManager:
                 f"[{trace_id}] Workflow interrupted | type={workflow_type} | "
                 f"phone={phone_number[-4:]} | trigger={query[:20]!r}"
             )
+            menu_response = build_menu_response(name, greeting=False)
+            menu_text = menu_response.text if hasattr(menu_response, "text") else str(menu_response)    
             return {
                 "handled": True,
                 "response": (
                     f"✅ {label} cancelled. Nothing was submitted or changed.\n\n"
-                    + build_menu_response(name, greeting=False)
+                    + menu_text
                 ),
             }
 
@@ -638,11 +640,13 @@ def _resolve_pending_stop(
         from app.database import get_customer_by_phone
         customer = get_customer_by_phone(phone_number)
         name = customer.get("full_name", "there") if customer else "there"
+        menu_response = build_menu_response(name, greeting=False)
+        menu_text = menu_response.text if hasattr(menu_response, "text") else str(menu_response)
         return {
             "handled": True,
             "response": (
                 f"✅ {label} cancelled. Nothing was submitted or changed.\n\n"
-                + build_menu_response(name, greeting=False)
+                + menu_text
             ),
         }
 
