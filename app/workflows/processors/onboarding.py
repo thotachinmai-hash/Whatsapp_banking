@@ -374,12 +374,14 @@ class OnboardingWorkflowHandler:
         )
 
         complete_workflow(phone_number)
+        menu_response = build_menu_response(data.get("full_name", "Customer"), greeting=False)
+        menu_text = menu_response.text if hasattr(menu_response, "text") else str(menu_response)
         return {
             "handled": True,
             "response": (
                 templates.render_account_created(account["account_number"], account_type)
                 + "\n\n"
-                + build_menu_response(data.get("full_name", "Customer"), greeting=False)
+                + menu_text
             ),
         }
 
