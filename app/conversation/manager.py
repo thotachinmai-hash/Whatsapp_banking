@@ -39,6 +39,7 @@ from app.memory import append_to_session
 from app.services.registration_gate import check_registration_gate
 from app.workflows.manager import WorkflowManager
 from app.workflows.memory import get_workflow
+from app.conversation.renderer import StructuredResponse, ResponseLike
 
 logger = get_logger(__name__)
 
@@ -481,12 +482,14 @@ class ConversationManager:
         context: Optional[ConversationContext],
         phone_number: str,
         query: str,
-        response: str,
+        response: ResponseLike,
         trace_id: str,
         pending_action: Any = _UNSET,
     ) -> str:
         if context is not None and pending_action is not _UNSET:
             context.pending_action = pending_action
+
+        response_text = response.text if isinstance(response, StructuredResponse) else str(response)
 
         # Every response generated above this point is authored in
         # English (templates, RAG/LLM output, error text). Translate once,
@@ -495,14 +498,16 @@ class ConversationManager:
         # above. See app/services/language.py; never blocks the turn on
         # failure — it falls back to the original English text.
         if context is not None and context.detected_language != DEFAULT_LANGUAGE:
-            response = translate_text(response, context.detected_language, trace_id=trace_id)
+            response_text = translate_text(
+                response_text, context.detected_language, trace_id=trace_id
+            )
 
         # Session history (app/memory.py) is a separate, unchanged
         # mechanism from ConversationContext — see docs/current_architecture.md,
         # "Conversation Context — Phase 1". Never logs the raw message —
         # only Redis stores it, under the same TTL/retention as before.
         append_to_session(phone_number, "user", query)
-        append_to_session(phone_number, "assistant", response[:500])
-        self._persist(context, phone_number, trace_id, response)
+        append_to_session(phone_number, "assistant", response_text[:500])
+        self._persist(context, phone_number, trace_id, response_text)
         logger.info(f"[{trace_id}] conversation.turn.completed | phone={phone_number[-4:]}")
-        return response
+        return response_text
