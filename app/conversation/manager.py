@@ -183,6 +183,38 @@ class ConversationManager:
             if guidance_response is not None:
                 return guidance_response
 
+            if action in ("OUT_OF_SCOPE", "CLARIFICATION_REQUIRED") and query.strip() in {
+                "1", "2", "3", "4", "5", "6", "7",
+            }:
+                # A tapped main-menu row (or a typed bare digit) carries no
+                # words for the intent classifier to work with, so it can
+                # legitimately fall out as OUT_OF_SCOPE/CLARIFICATION_REQUIRED
+                # even though WorkflowManager.start_requested()'s digit map
+                # (see app/workflows/manager.py::menu_actions) knows exactly
+                # what "2" means. Give that deterministic check one try
+                # before giving up. Deliberately gated to an exact digit
+                # match only (not the rest of start_requested()'s keyword
+                # matching) — CLARIFICATION_REQUIRED also covers a
+                # low-confidence WORKFLOW_EXECUTING_INTENTS guess (e.g. "I
+                # might want a loan"), and the router's whole point there is
+                # to ask rather than guess before starting a financial
+                # workflow; a bare digit has no such ambiguity to protect
+                # against.
+                deterministic = self.workflow_manager.start_requested(phone_number, query, trace_id=trace_id)
+                if deterministic["handled"]:
+                    self._register_progress(context)
+                    return self._finish(
+                        context, phone_number, query, deterministic["response"], trace_id, pending_action=None
+                    )
+                if deterministic.get("reprocess_query"):
+                    # Digit rows with no dedicated workflow of their own
+                    # (balance, transactions, cheque status) resolve here to
+                    # a clear text query instead — let the LLM+tools path
+                    # below answer it rather than telling the customer their
+                    # unambiguous menu tap was out of scope.
+                    query = deterministic["reprocess_query"]
+                    action = "BANKING_LLM"
+
             if action == "OUT_OF_SCOPE":
                 return self._finish(
                     context, phone_number, query, render_out_of_scope(), trace_id, pending_action=None

@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 from app.conversation.context import ConversationContext
+from app.conversation.intent.models import IntentResult
 from app.conversation.manager import ConversationManager
 from app.workflows.constants import STEP_CONFIRM_TRANSFER
 
@@ -406,6 +407,99 @@ class ConversationManagerArchitectureBoundaryTests(unittest.IsolatedAsyncioTestC
                 "447818658034", "Tell me a joke", "tb2", llm_fallback=_fake_llm_fallback
             )
         self.assertEqual(response, render_out_of_scope())
+
+
+class ConversationManagerMenuTapTests(unittest.IsolatedAsyncioTestCase):
+    """A tapped main-menu row (e.g. WhatsApp list_reply id "2") arrives as a
+    bare digit with no active workflow — the intent classifier can easily
+    misread that as OUT_OF_SCOPE or CLARIFICATION_REQUIRED since a lone
+    digit carries no banking vocabulary. WorkflowManager.start_requested()'s
+    digit map already knows exactly what "2" means; the manager must give it
+    a chance before giving up on an unambiguous menu tap."""
+
+    def _patches(self, context=None):
+        context = context if context is not None else _fresh_context()
+        return (
+            patch("app.conversation.manager.build_context", return_value=context),
+            patch("app.conversation.manager.check_registration_gate", new=AsyncMock(return_value=None)),
+            patch("app.conversation.manager.get_workflow", return_value=None),
+            patch("app.conversation.manager.append_to_session"),
+        )
+
+    async def test_out_of_scope_digit_falls_back_to_start_requested(self):
+        """Row "1" (Transfer money) tapped while the classifier reports
+        OUT_OF_SCOPE must still start the transfer workflow, not tell the
+        customer their menu tap was out of scope."""
+        from app.conversation.router import RoutingDecision
+
+        manager, wf = _manager_with(
+            start_requested_result={"handled": True, "response": "transfer-started"}
+        )
+        p1, p2, p3, p4 = self._patches()
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True), \
+             patch("app.conversation.manager.route_intent", return_value=RoutingDecision(action="OUT_OF_SCOPE")), \
+             patch.object(ConversationManager, "_classify_intent", return_value=IntentResult(intent="unknown", confidence=0.0)):
+            response = await manager.handle_message(
+                "447818658034", "1", "tm1", llm_fallback=_fake_llm_fallback
+            )
+        self.assertEqual(response, "transfer-started")
+        self.assertIn(("447818658034", "1"), wf.start_requested_calls)
+
+    async def test_clarification_required_digit_falls_back_to_start_requested(self):
+        """Same protection for CLARIFICATION_REQUIRED (a low-confidence
+        guess), which a bare menu-row digit can also land on."""
+        from app.conversation.router import RoutingDecision
+
+        manager, wf = _manager_with(
+            start_requested_result={"handled": True, "response": "kyc-started"}
+        )
+        p1, p2, p3, p4 = self._patches()
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True), \
+             patch("app.conversation.manager.route_intent", return_value=RoutingDecision(action="CLARIFICATION_REQUIRED", reason="kyc_update_request")), \
+             patch.object(ConversationManager, "_classify_intent", return_value=IntentResult(intent="unknown", confidence=0.0)):
+            response = await manager.handle_message(
+                "447818658034", "7", "tm2", llm_fallback=_fake_llm_fallback
+            )
+        self.assertEqual(response, "kyc-started")
+
+    async def test_out_of_scope_digit_with_no_dedicated_workflow_reaches_llm(self):
+        """Rows like "2" (Check balance) have no dedicated workflow of their
+        own — start_requested() resolves them to a reprocess_query instead
+        of handled=True. That query must still reach the LLM+tools path
+        rather than being told it's out of scope."""
+        from app.conversation.router import RoutingDecision
+
+        manager, wf = _manager_with(
+            start_requested_result={"handled": False, "response": None, "reprocess_query": "check my balance"}
+        )
+        p1, p2, p3, p4 = self._patches()
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True), \
+             patch("app.conversation.manager.route_intent", return_value=RoutingDecision(action="OUT_OF_SCOPE")), \
+             patch.object(ConversationManager, "_classify_intent", return_value=IntentResult(intent="unknown", confidence=0.0)):
+            response = await manager.handle_message(
+                "447818658034", "2", "tm3", llm_fallback=_fake_llm_fallback
+            )
+        self.assertEqual(response, "llm-answer:check my balance")
+
+    async def test_out_of_scope_non_digit_is_unaffected(self):
+        """The deterministic fallback must only trigger for an exact menu
+        digit — an ordinary out-of-scope message keeps its existing
+        behavior untouched."""
+        from app.conversation.responses.common import render_out_of_scope
+        from app.conversation.router import RoutingDecision
+
+        manager, wf = _manager_with(
+            start_requested_result={"handled": True, "response": "should-not-be-used"}
+        )
+        p1, p2, p3, p4 = self._patches()
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True), \
+             patch("app.conversation.manager.route_intent", return_value=RoutingDecision(action="OUT_OF_SCOPE")), \
+             patch.object(ConversationManager, "_classify_intent", return_value=IntentResult(intent="unknown", confidence=0.0)):
+            response = await manager.handle_message(
+                "447818658034", "Tell me a joke", "tm4", llm_fallback=_fake_llm_fallback
+            )
+        self.assertEqual(response, render_out_of_scope())
+        self.assertEqual(wf.start_requested_calls, [])
 
 
 if __name__ == "__main__":
