@@ -135,3 +135,29 @@ class OnboardingStartsAtAadhaarTests(unittest.IsolatedAsyncioTestCase):
         stored = get_workflow(self.phone)["data"]
         self.assertEqual(stored.get("full_name"), "Jordan Smith")
         self.assertEqual(stored.get("aadhaar_number"), "123456789012")
+
+    async def test_initial_yes_starts_registration_with_aadhaar_prompt(self):
+        workflow = create_workflow_model(WORKFLOW_ONBOARDING, STEP_COLLECT_AADHAAR)
+        create_workflow(self.phone, workflow)
+
+        result = await self.handler.handle(
+            {"step": STEP_COLLECT_AADHAAR}, self.phone, "yes", None, "t2"
+        )
+
+        self.assertTrue(result["handled"])
+        self.assertEqual(
+            result["response"],
+            "Great! Please upload a clear image of your Aadhaar card to begin registration."
+        )
+
+    async def test_initial_no_declines_registration(self):
+        workflow = create_workflow_model(WORKFLOW_ONBOARDING, STEP_COLLECT_AADHAAR)
+        create_workflow(self.phone, workflow)
+
+        with patch("app.workflows.processors.onboarding.complete_workflow") as mock_complete:
+            result = await self.handler.handle({"step": STEP_COLLECT_AADHAAR}, self.phone, "no", None, "t3")
+
+        self.assertTrue(result["handled"])
+        self.assertEqual(result["response"], "We are not proceeding with your registration but you can still chat with us.")
+        mock_complete.assert_called_once_with(self.phone)
+        self.assertIsNone(get_workflow(self.phone))

@@ -105,6 +105,21 @@ class OnboardingWorkflowHandler:
         trace_id: str = "",
     ) -> dict[str, Any]:
 
+        normalized = (query or "").strip().lower()
+        if normalized == "yes":
+            return {
+                "handled": True,
+                "response": templates.render_ask_aadhaar()
+            }
+
+        if normalized == "no":
+            complete_workflow(phone_number)
+            logger.info(f"[{trace_id}] Registration declined at Aadhaar prompt | phone={phone_number[-4:]}")
+            return {
+                "handled": True,
+                "response": templates.render_registration_declined_initial()
+            }
+
         if self._is_stop_command(query):
             complete_workflow(phone_number)
             logger.info(f"[{trace_id}] Registration cancelled at Aadhaar step | phone={phone_number[-4:]}")

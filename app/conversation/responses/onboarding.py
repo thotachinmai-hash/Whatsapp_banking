@@ -9,15 +9,23 @@ screen (which echoed the digits back) — see docs/current_architecture.md.
 
 from typing import Optional
 
+from app.conversation.renderer import InteractiveButton, StructuredResponse
 
-def render_onboarding_welcome() -> str:
-    return (
+
+def render_onboarding_welcome() -> StructuredResponse:
+    return StructuredResponse.buttons_of(
         "\U0001F44B Welcome to Finacle Banking!\n\n"
-        "You're not registered with us yet. Let's get you set up — "
-        "it only takes a minute.\n\n"
-        "First, please upload a clear image of your Aadhaar card. "
-        "I'll pick up your name and other details from it."
+        "You are not registered with us yet.\n\n"
+        "Would you like to proceed with registration?",
+        [
+            InteractiveButton(id="yes", title="Yes, register"),
+            InteractiveButton(id="no", title="No, thanks"),
+        ],
     )
+
+
+def render_ask_aadhaar() -> str:
+    return "Great! Please upload a clear image of your Aadhaar card to begin registration."
 
 
 def render_ask_pan() -> str:
@@ -102,6 +110,10 @@ def render_registration_cancelled() -> str:
 
 def render_registration_declined() -> str:
     return "No problem — send any message to start registration again."
+
+
+def render_registration_declined_initial() -> str:
+    return "We are not proceeding with your registration but you can still chat with us."
 
 
 def render_account_type_prompt() -> str:
