@@ -80,9 +80,9 @@ cp .env.example .env
 Edit `.env` and fill in your values:
 
 ```env
-GROQ_API_KEY=your_groq_api_key_here
-GROQ_MODEL=llama-3.3-70b-versatile
-GROQ_WHISPER_MODEL=whisper-large-v3-turbo
+SARVAM_API_KEY=your_SARVAM_API_KEY_here
+SARVAM_MODEL=llama-3.3-70b-versatile
+SARVAM_STT=whisper-large-v3-turbo
 
 DATABASE_URL=postgresql://banking_user:banking_pass@localhost:5433/banking_db
 REDIS_URL=redis://localhost:6380

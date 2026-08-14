@@ -39,13 +39,13 @@ services:
     environment:
       DATABASE_URL: postgresql://banking_user:banking_pass@postgres:5432/banking_db
       REDIS_URL: redis://redis:6379
-      GROQ_API_KEY: ${GROQ_API_KEY}
-      GROQ_MODEL: ${GROQ_MODEL:-llama-3.3-70b-versatile}
-      GROQ_WHISPER_MODEL: ${GROQ_WHISPER_MODEL:-whisper-large-v3-turbo}
-      GROQ_VISION_MODEL: ${GROQ_VISION_MODEL:-qwen/qwen3.6-27B}
+      SARVAM_API_KEY: ${SARVAM_API_KEY}
+      SARVAM_MODEL: ${SARVAM_MODEL:-llama-3.3-70b-versatile}
+      SARVAM_STT: ${SARVAM_STT:-whisper-large-v3-turbo}
+      SARVAM_VISION: ${SARVAM_VISION:-qwen/qwen3.6-27B}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
-      GEMINI_TTS_MODEL: ${GEMINI_TTS_MODEL:-gemini-2.5-flash-preview-tts}
+      SARVAM_TTS: ${SARVAM_TTS:-gemini-2.5-flash-preview-tts}
       ACCESS_TOKEN: ${ACCESS_TOKEN}
       PHONE_NUMBER_ID: ${PHONE_NUMBER_ID}
       VERIFY_TOKEN: ${VERIFY_TOKEN}

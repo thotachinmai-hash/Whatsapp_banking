@@ -189,7 +189,7 @@ def _get_groq_client():
     if _groq_client is None:
         from groq import Groq
 
-        _groq_client = Groq(api_key=os.getenv("GROQ_API_KEY", ""))
+        _groq_client = Groq(api_key=os.getenv("SARVAM_API_KEY", ""))
     return _groq_client
 
 
@@ -221,7 +221,7 @@ def default_llm_classify(
 
     try:
         client = _get_groq_client()
-        model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+        model = os.getenv("SARVAM_MODEL", "llama-3.3-70b-versatile")
         response = client.chat.completions.create(
             model=model,
             temperature=0,

@@ -10,8 +10,8 @@ from app.services.language import MIN_DETECTABLE_LENGTH
 load_dotenv()
 logger = get_logger(__name__)
 
-groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-WHISPER_MODEL = os.getenv("GROQ_WHISPER_MODEL", "whisper-large-v3-turbo")
+groq_client = Groq(api_key=os.getenv("SARVAM_API_KEY"))
+WHISPER_MODEL = os.getenv("SARVAM_STT", "whisper-large-v3-turbo")
 
 # Whisper's verbose_json response names the detected language in full
 # (lowercase English name), not as an ISO code — map onto the same

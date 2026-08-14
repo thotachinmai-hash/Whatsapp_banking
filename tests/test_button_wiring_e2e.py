@@ -175,6 +175,34 @@ class OnboardingButtonTests(ButtonWiringTestCase):
         mock_create.assert_not_called()
         self.assertIsNone(get_workflow(self.phone))
 
+    async def test_tapping_yes_at_welcome_asks_for_aadhaar(self):
+        workflow = create_workflow_model(WORKFLOW_ONBOARDING, STEP_COLLECT_AADHAAR)
+        create_workflow(self.phone, workflow)
+
+        result = await self.manager.handle(self.phone, "yes", trace_id="ot6")
+
+        self.assertTrue(result["handled"])
+        self.assertEqual(
+            result["response"],
+            "Great! Please upload a clear image of your Aadhaar card to begin registration."
+        )
+        stored = get_workflow(self.phone)
+        self.assertIsNotNone(stored)
+        self.assertEqual(stored["step"], STEP_COLLECT_AADHAAR)
+
+    async def test_tapping_no_at_welcome_declines_registration(self):
+        workflow = create_workflow_model(WORKFLOW_ONBOARDING, STEP_COLLECT_AADHAAR)
+        create_workflow(self.phone, workflow)
+
+        result = await self.manager.handle(self.phone, "no", trace_id="ot7")
+
+        self.assertTrue(result["handled"])
+        self.assertEqual(
+            result["response"],
+            "We are not proceeding with your registration but you can still chat with us."
+        )
+        self.assertIsNone(get_workflow(self.phone))
+
     async def test_tapped_account_type_row_creates_account(self):
         workflow = create_workflow_model(WORKFLOW_ONBOARDING, STEP_SELECT_ACCOUNT_TYPE, data={"full_name": "Alex Doe"})
         create_workflow(self.phone, workflow)

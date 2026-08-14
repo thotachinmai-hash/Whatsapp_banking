@@ -35,12 +35,12 @@ def _get_client():
     if _client is None:
         from groq import Groq
 
-        _client = Groq(api_key=os.getenv("GROQ_API_KEY", ""))
+        _client = Groq(api_key=os.getenv("SARVAM_API_KEY", ""))
     return _client
 
 
 def _model() -> str:
-    return os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    return os.getenv("SARVAM_MODEL", "llama-3.3-70b-versatile")
 
 
 def is_llm_fallback_enabled() -> bool:
@@ -48,7 +48,7 @@ def is_llm_fallback_enabled() -> bool:
     of this app's rule-based matching (flexible yes/no & menu matching,
     mid-workflow side-question answering, step/workflow-jump detection,
     and the free-intent LLM classifier fallback). Default off so tests and
-    any environment without a GROQ_API_KEY stay on the original,
+    any environment without a SARVAM_API_KEY stay on the original,
     deterministic behavior unless explicitly opted in."""
     return os.getenv("LLM_FALLBACK_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
 

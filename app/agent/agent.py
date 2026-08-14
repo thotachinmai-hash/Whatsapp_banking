@@ -48,10 +48,10 @@ class AgentState(TypedDict):
 
 
 def get_llm() -> ChatGroq:
-    model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    model = os.getenv("SARVAM_MODEL", "llama-3.3-70b-versatile")
     return ChatGroq(
         model=model,
-        api_key=convert_to_secret_str(os.getenv("GROQ_API_KEY", "")),
+        api_key=convert_to_secret_str(os.getenv("SARVAM_API_KEY", "")),
         temperature=0
     )
 

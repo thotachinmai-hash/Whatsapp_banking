@@ -2,7 +2,7 @@
 
 Scoped to the languages Meta officially lists as supported for Llama 3.3
 (the model this app already uses for every LLM-answered turn — see
-GROQ_MODEL in .env) — reliability outside this set is not guaranteed by
+SARVAM_MODEL in .env) — reliability outside this set is not guaranteed by
 the underlying model, so detection is constrained to it rather than
 guessing at broader support this app can't actually back up.
 
@@ -32,7 +32,7 @@ _client: Groq | None = None
 def _get_client() -> Groq:
     global _client
     if _client is None:
-        _client = Groq(api_key=os.getenv("GROQ_API_KEY", ""))
+        _client = Groq(api_key=os.getenv("SARVAM_API_KEY", ""))
     return _client
 
 
@@ -59,7 +59,7 @@ MIN_DETECTABLE_LENGTH = 4
 
 
 def _model() -> str:
-    return os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    return os.getenv("SARVAM_MODEL", "llama-3.3-70b-versatile")
 
 
 def should_attempt_detection(text: str) -> bool:

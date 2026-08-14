@@ -1,4 +1,4 @@
-"""Text-to-speech via Gemini's TTS model (GEMINI_TTS_MODEL in .env) — the
+"""Text-to-speech via Gemini's TTS model (SARVAM_TTS in .env) — the
 text-out half of voice-to-voice. Voice-in already existed
 (app/services/transcription.py, Groq Whisper); this is the previously
 unused half, using the GEMINI_API_KEY that was already present in .env.
@@ -24,7 +24,7 @@ load_dotenv()
 logger = get_logger(__name__)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_TTS_MODEL = os.getenv("GEMINI_TTS_MODEL", "gemini-2.5-flash-preview-tts")
+SARVAM_TTS = os.getenv("SARVAM_TTS", "gemini-2.5-flash-preview-tts")
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 
 # One prebuilt voice per supported language — Gemini's TTS voices are not
@@ -85,7 +85,7 @@ async def synthesize_speech(text: str, trace_id: str = "", voice: str = DEFAULT_
         return None
 
     start = time.time()
-    url = f"{GEMINI_BASE_URL}/models/{GEMINI_TTS_MODEL}:generateContent?key={GEMINI_API_KEY}"
+    url = f"{GEMINI_BASE_URL}/models/{SARVAM_TTS}:generateContent?key={GEMINI_API_KEY}"
     payload = {
         "contents": [{"parts": [{"text": text}]}],
         "generationConfig": {

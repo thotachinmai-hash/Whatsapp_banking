@@ -17,11 +17,11 @@ load_dotenv()
 logger = get_logger(__name__)
 
 groq_client = Groq(
-    api_key=os.getenv("GROQ_API_KEY")
+    api_key=os.getenv("SARVAM_API_KEY")
 )
 
 VISION_MODEL = os.getenv(
-    "GROQ_VISION_MODEL",
+    "SARVAM_VISION",
     "qwen/qwen3.6-27B"
 )
 

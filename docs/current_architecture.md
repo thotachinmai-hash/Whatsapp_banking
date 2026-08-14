@@ -1768,16 +1768,16 @@ Three distinct call sites, all Groq-hosted models, none behind a shared
 abstraction:
 
 1. **Main conversational agent** — `app/agent/agent.py::get_llm()` /
-   `build_agent()`. Model from `GROQ_MODEL` env var (default
+   `build_agent()`. Model from `SARVAM_MODEL` env var (default
    `llama-3.3-70b-versatile`), `temperature=0`, tool-bound via
    `llm.bind_tools(tools)`, invoked inside the LangGraph `agent_node`.
    System prompt is inlined as an f-string in `build_agent()` (includes the
    active-workflow context so the LLM knows not to re-litigate it).
 2. **Voice transcription** — `app/services/transcription.py::transcribe_audio()`.
-   `groq_client.audio.transcriptions.create(model=GROQ_WHISPER_MODEL, ...)`.
+   `groq_client.audio.transcriptions.create(model=SARVAM_STT, ...)`.
 3. **Document/vision OCR** — `app/services/document_parser.py`
    (`_parse_image`, `_parse_pdf`, `_parse_docx`). All three call
-   `groq_client.chat.completions.create(model=GROQ_VISION_MODEL, temperature=0, ...)`
+   `groq_client.chat.completions.create(model=SARVAM_VISION, temperature=0, ...)`
    with a prompt built per-workflow-step in
    `message_handler.py::build_document_prompt()`.
 
