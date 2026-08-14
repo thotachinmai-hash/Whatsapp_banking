@@ -2,7 +2,7 @@ import os
 import time
 import tempfile
 import httpx
-from app.services.groq_compat import Groq
+from app.services.sarvam_client import get_sarvam_client
 from dotenv import load_dotenv
 from app.logger import get_logger
 from app.services.language import MIN_DETECTABLE_LENGTH
@@ -10,18 +10,7 @@ from app.services.language import MIN_DETECTABLE_LENGTH
 load_dotenv()
 logger = get_logger(__name__)
 
-groq_client = Groq(api_key=os.getenv("SARVAM_API_KEY"))
-WHISPER_MODEL = os.getenv("SARVAM_STT", "saaras:v3")
-
-# Whisper's verbose_json response names the detected language in full
-# (lowercase English name), not as an ISO code — map onto the same
-# SUPPORTED_LANGUAGES codes app/services/language.py uses everywhere else,
-# so a voice message and a typed message in the same language are treated
-# identically downstream.
-_WHISPER_LANGUAGE_TO_CODE = {
-    "english": "en", "german": "de", "french": "fr", "italian": "it",
-    "portuguese": "pt", "hindi": "hi", "spanish": "es", "thai": "th",
-}
+STT_MODEL = os.getenv("SARVAM_STT", "saaras:v3")
 
 
 async def download_audio(media_url: str, api_key: str, trace_id: str) -> bytes | None:
@@ -46,10 +35,11 @@ async def download_audio(media_url: str, api_key: str, trace_id: str) -> bytes |
 
 async def transcribe_audio(audio_data: bytes, trace_id: str) -> tuple[str | None, str | None]:
     """
-    Transcribe audio using Groq whisper-large-v3-turbo.
+    Transcribe audio using Sarvam's speech-to-text (SARVAM_STT in .env,
+    e.g. saaras:v3).
 
     Returns (text, language_code) — language_code is an ISO 639-1 code
-    from app.services.language.SUPPORTED_LANGUAGES if Whisper's own
+    from app.services.language.SUPPORTED_LANGUAGES if Sarvam's own
     detection matched one of them, else None (caller falls back to
     text-based detection on the transcript, same as a typed message).
     On failure, returns (None, None).
@@ -64,37 +54,39 @@ async def transcribe_audio(audio_data: bytes, trace_id: str) -> tuple[str | None
             temp_path = temp_file.name
             temp_file.write(audio_data)
 
-        # verbose_json (rather than plain "text") also reports Whisper's
-        # own detected spoken language, so voice messages don't need a
-        # second, separate detection call the way typed text does.
         with open(temp_path, "rb") as audio_file:
-            transcription = groq_client.audio.transcriptions.create(
-                model=WHISPER_MODEL,
+            transcription = get_sarvam_client().speech_to_text.transcribe(
                 file=audio_file,
-                response_format="verbose_json"
+                model=STT_MODEL,
+                mode="transcribe",
             )
 
         duration = (time.time() - start) * 1000
-        text = str(getattr(transcription, "text", "")).strip()
-        language_name = str(getattr(transcription, "language", "")).strip().lower()
-        language_code = _WHISPER_LANGUAGE_TO_CODE.get(language_name)
-        # Whisper's own language guess is unreliable on a handful of words
+        text = (transcription.transcript or "").strip()
+        # Sarvam reports the detected language as a BCP-47 tag (e.g.
+        # "hi-IN", "en-IN") — take the leading subtag as the ISO 639-1 code
+        # app.services.language.SUPPORTED_LANGUAGES uses everywhere else,
+        # so a voice message and a typed message in the same language are
+        # treated identically downstream.
+        raw_language = (transcription.language_code or "").strip().lower()
+        language_code = raw_language.split("-")[0] or None
+        # Sarvam's own language guess is unreliable on a handful of words
         # ("Ok.", "Yes") — too little audio to carry real linguistic signal,
         # the same reason app/services/language.py won't run text-based
-        # detection below MIN_DETECTABLE_LENGTH. Trusting it anyway is what
-        # let a one-word "Ok." get mis-tagged Portuguese and then stick for
-        # the rest of the conversation. Drop the tag here so the caller
-        # falls back to text-based detection on the transcript instead,
-        # which applies that same length gate.
+        # detection below MIN_DETECTABLE_LENGTH. Trusting it anyway risks a
+        # one-word reply getting mis-tagged and then sticking for the rest
+        # of the conversation. Drop the tag here so the caller falls back
+        # to text-based detection on the transcript instead, which applies
+        # that same length gate.
         if language_code and len(text) < MIN_DETECTABLE_LENGTH:
             logger.info(
-                f"[{trace_id}] Whisper language tag ignored | reason=transcript_too_short | "
-                f"language={language_name} | text={text!r}"
+                f"[{trace_id}] STT language tag ignored | reason=transcript_too_short | "
+                f"language={raw_language} | text={text!r}"
             )
             language_code = None
         logger.info(
             f"[{trace_id}] Transcription complete | duration={duration:.2f}ms | "
-            f"language={language_name or 'unknown'} | text={text[:50]}"
+            f"language={raw_language or 'unknown'} | text={text[:50]}"
         )
         return text or None, language_code
 

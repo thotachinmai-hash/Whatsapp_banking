@@ -7,8 +7,9 @@ import time
 
 import httpx
 from dotenv import load_dotenv
-from app.services.groq_compat import Groq
+from app.services.sarvam_client import get_sarvam_client
 from docx import Document
+from pypdf import PdfReader
 
 from app.logger import get_logger
 
@@ -16,14 +17,17 @@ load_dotenv()
 
 logger = get_logger(__name__)
 
-groq_client = Groq(
-    api_key=os.getenv("SARVAM_API_KEY")
-)
+CHAT_MODEL = os.getenv("SARVAM_MODEL", "sarvam-105b")
 
-VISION_MODEL = os.getenv(
-    "SARVAM_VISION",
-    "qwen/qwen3.6-27B"
-)
+# NOTE: as of this wiring, Sarvam's public chat-completions API rejects
+# image_url content blocks on this account/model ("Input should be a
+# valid string") even though the SDK's request schema declares support
+# for them — so _parse_image below is not currently functional against
+# Sarvam. A working fix needs Sarvam's separate, async Document
+# Intelligence job API (create_upload_url -> digitise/extract -> poll
+# get_status -> get_results), not a drop-in client swap. Left as-is
+# rather than silently guessed at.
+VISION_MODEL = os.getenv("SARVAM_VISION", "sarvam-105b")
 
 
 async def download_document(
@@ -188,9 +192,11 @@ async def _parse_image(
 
     image = base64.b64encode(file_bytes).decode()
 
-    response = groq_client.chat.completions.create(
+    response = get_sarvam_client().chat.completions(
         model=VISION_MODEL,
         temperature=0,
+        max_tokens=1500,
+        reasoning_effort="low",
         messages=[
             {
                 "role": "user",
@@ -221,27 +227,32 @@ async def _parse_pdf(
     prompt: str
 ) -> dict:
 
-    pdf = base64.b64encode(file_bytes).decode()
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp:
+        temp.write(file_bytes)
+        temp_path = temp.name
 
-    response = groq_client.chat.completions.create(
-        model=VISION_MODEL,
+    try:
+        reader = PdfReader(temp_path)
+        text = "\n".join(page.extract_text() or "" for page in reader.pages)
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+    response = get_sarvam_client().chat.completions(
+        model=CHAT_MODEL,
         temperature=0,
+        max_tokens=1500,
+        reasoning_effort="low",
         messages=[
             {
                 "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": prompt
-                    },
-                    {
-                        "type": "file",
-                        "file": {
-                            "filename": filename,
-                            "file_data": f"data:application/pdf;base64,{pdf}"
-                        }
-                    }
-                ]
+                "content": f"""
+{prompt}
+
+Document Content:
+
+{text}
+"""
             }
         ]
     )
@@ -278,9 +289,11 @@ async def _parse_docx(
         if os.path.exists(temp_path):
             os.remove(temp_path)
 
-    response = groq_client.chat.completions.create(
-        model=VISION_MODEL,
+    response = get_sarvam_client().chat.completions(
+        model=CHAT_MODEL,
         temperature=0,
+        max_tokens=1500,
+        reasoning_effort="low",
         messages=[
             {
                 "role": "user",

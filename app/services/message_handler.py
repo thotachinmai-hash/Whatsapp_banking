@@ -192,7 +192,7 @@ async def _handle_bare_document_upload(
     return None
 
 
-async def send_voice_reply(response, chat_id: str, trace_id: str = "") -> bool:
+async def send_voice_reply(response, chat_id: str, trace_id: str = "", language: str | None = None) -> bool:
     """The voice-out half of voice-to-voice: synthesize the response text
     and send it back as a voice note, mirroring how the customer reached
     out. Falls back to a plain text reply (via render_and_send) whenever
@@ -204,9 +204,13 @@ async def send_voice_reply(response, chat_id: str, trace_id: str = "") -> bool:
     app/conversation/renderer.py) — only the body text is spoken; a
     voice-in customer can still just say "yes"/"1" back, so the tappable
     options aren't needed on this path.
+
+    `language` is the ISO 639-1 code Whisper/Sarvam STT detected for the
+    customer's original voice message (see transcribe_audio), used to pick
+    a matching TTS voice language rather than always defaulting to English.
     """
     response_text = as_structured_response(response).text
-    synthesized = await synthesize_voice_note(response_text, trace_id=trace_id)
+    synthesized = await synthesize_voice_note(response_text, trace_id=trace_id, language=language)
     if synthesized is None:
         logger.info(f"[{trace_id}] Voice reply unavailable — falling back to text")
         return await render_and_send(response_text, chat_id, trace_id)
@@ -315,7 +319,7 @@ async def handle_incoming_message(payload: dict) -> dict:
                 )
                 return {"status": "error", "trace_id": trace_id}
 
-            # Transcribe with Groq Whisper
+            # Transcribe with Sarvam STT
             transcribe_start = time.time()
             query, detected_language = await transcribe_audio(audio_data, trace_id)
             transcribe_duration = (time.time() - transcribe_start) * 1000
@@ -532,7 +536,7 @@ async def handle_incoming_message(payload: dict) -> dict:
         # fallback if speech synthesis fails) when the customer sent voice,
         # matching how they reached out; text otherwise.
         if is_voice_message:
-            send_success = await send_voice_reply(response, from_person, trace_id)
+            send_success = await send_voice_reply(response, from_person, trace_id, language=detected_language)
         else:
             send_success = await render_and_send(response, from_person, trace_id)
         log_whatsapp_send(send_success, trace_id)

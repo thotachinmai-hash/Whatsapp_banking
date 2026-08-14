@@ -1,81 +1,59 @@
 import base64
-import wave
-import io
 import unittest
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.services.tts import _pcm_to_wav, synthesize_speech, synthesize_voice_note
-
-
-class PcmToWavTests(unittest.TestCase):
-    def test_produces_a_valid_wav_file(self) -> None:
-        pcm = b"\x00\x01" * 1000  # arbitrary 16-bit samples
-        wav_bytes = _pcm_to_wav(pcm)
-        with wave.open(io.BytesIO(wav_bytes), "rb") as w:
-            self.assertEqual(w.getnchannels(), 1)
-            self.assertEqual(w.getframerate(), 24000)
-            self.assertEqual(w.getsampwidth(), 2)
-            self.assertEqual(w.getnframes(), 1000)
+from app.services.tts import synthesize_speech, synthesize_voice_note
 
 
 class SynthesizeSpeechTests(unittest.IsolatedAsyncioTestCase):
     async def test_returns_none_when_no_api_key(self) -> None:
-        with patch("app.services.tts.GEMINI_API_KEY", ""):
+        with patch("app.services.tts.os.getenv", return_value=""):
             self.assertIsNone(await synthesize_speech("hello"))
 
     async def test_returns_none_for_empty_text(self) -> None:
-        with patch("app.services.tts.GEMINI_API_KEY", "fake-key"):
-            self.assertIsNone(await synthesize_speech(""))
-            self.assertIsNone(await synthesize_speech("   "))
+        self.assertIsNone(await synthesize_speech(""))
+        self.assertIsNone(await synthesize_speech("   "))
 
     async def test_returns_wav_bytes_on_success(self) -> None:
-        pcm = b"\x00\x01" * 500
-        inline_data = {"data": base64.b64encode(pcm).decode("ascii")}
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "candidates": [{"content": {"parts": [{"inlineData": inline_data}]}}]
-        }
-        mock_client = AsyncMock()
-        mock_client.__aenter__.return_value.post = AsyncMock(return_value=mock_response)
+        wav_bytes = b"RIFF....WAVEfmt "
+        mock_response = SimpleNamespace(audios=[base64.b64encode(wav_bytes).decode("ascii")])
+        mock_client = MagicMock()
+        mock_client.text_to_speech.convert.return_value = mock_response
 
-        with patch("app.services.tts.GEMINI_API_KEY", "fake-key"), \
-             patch("app.services.tts.httpx.AsyncClient", return_value=mock_client):
+        with patch("app.services.tts.get_sarvam_client", return_value=mock_client):
             result = await synthesize_speech("hello there")
 
-        self.assertIsNotNone(result)
-        with wave.open(io.BytesIO(result), "rb") as w:
-            self.assertEqual(w.getnframes(), 500)
+        self.assertEqual(result, wav_bytes)
+        mock_client.text_to_speech.convert.assert_called_once()
+        self.assertEqual(mock_client.text_to_speech.convert.call_args.kwargs["language_code"], "en-IN")
 
-    async def test_returns_none_on_non_200_status(self) -> None:
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-        mock_response.text = "server error"
-        mock_client = AsyncMock()
-        mock_client.__aenter__.return_value.post = AsyncMock(return_value=mock_response)
+    async def test_uses_matching_language_code_when_supported(self) -> None:
+        wav_bytes = b"RIFF"
+        mock_response = SimpleNamespace(audios=[base64.b64encode(wav_bytes).decode("ascii")])
+        mock_client = MagicMock()
+        mock_client.text_to_speech.convert.return_value = mock_response
 
-        with patch("app.services.tts.GEMINI_API_KEY", "fake-key"), \
-             patch("app.services.tts.httpx.AsyncClient", return_value=mock_client):
-            result = await synthesize_speech("hello")
+        with patch("app.services.tts.get_sarvam_client", return_value=mock_client):
+            await synthesize_speech("namaste", language="hi")
 
-        self.assertIsNone(result)
+        self.assertEqual(mock_client.text_to_speech.convert.call_args.kwargs["language_code"], "hi-IN")
 
     async def test_returns_none_when_response_has_no_audio(self) -> None:
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"candidates": [{"content": {"parts": [{"text": "oops"}]}}]}
-        mock_client = AsyncMock()
-        mock_client.__aenter__.return_value.post = AsyncMock(return_value=mock_response)
+        mock_response = SimpleNamespace(audios=[])
+        mock_client = MagicMock()
+        mock_client.text_to_speech.convert.return_value = mock_response
 
-        with patch("app.services.tts.GEMINI_API_KEY", "fake-key"), \
-             patch("app.services.tts.httpx.AsyncClient", return_value=mock_client):
+        with patch("app.services.tts.get_sarvam_client", return_value=mock_client):
             result = await synthesize_speech("hello")
 
         self.assertIsNone(result)
 
     async def test_returns_none_on_exception(self) -> None:
-        with patch("app.services.tts.GEMINI_API_KEY", "fake-key"), \
-             patch("app.services.tts.httpx.AsyncClient", side_effect=RuntimeError("boom")):
+        mock_client = MagicMock()
+        mock_client.text_to_speech.convert.side_effect = RuntimeError("boom")
+
+        with patch("app.services.tts.get_sarvam_client", return_value=mock_client):
             result = await synthesize_speech("hello")
 
         self.assertIsNone(result)

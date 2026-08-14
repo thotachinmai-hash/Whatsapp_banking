@@ -29,28 +29,28 @@ class FeatureFlagTests(unittest.TestCase):
 class InterpretChoiceLlmTests(unittest.TestCase):
     def test_valid_choice_returned(self) -> None:
         client = MagicMock()
-        client.chat.completions.create.return_value = _mock_response('{"choice": "2"}')
+        client.chat.completions.return_value = _mock_response('{"choice": "2"}')
         with patch.object(lu, "_get_client", return_value=client):
             result = lu.interpret_choice_llm("the second one", ["1", "2", "3"], "pick an account")
         self.assertEqual(result, "2")
 
     def test_choice_not_in_options_returns_none(self) -> None:
         client = MagicMock()
-        client.chat.completions.create.return_value = _mock_response('{"choice": "5"}')
+        client.chat.completions.return_value = _mock_response('{"choice": "5"}')
         with patch.object(lu, "_get_client", return_value=client):
             result = lu.interpret_choice_llm("garbage", ["1", "2", "3"], "pick an account")
         self.assertIsNone(result)
 
     def test_malformed_json_returns_none(self) -> None:
         client = MagicMock()
-        client.chat.completions.create.return_value = _mock_response("not json at all")
+        client.chat.completions.return_value = _mock_response("not json at all")
         with patch.object(lu, "_get_client", return_value=client):
             result = lu.interpret_choice_llm("hmm", ["1", "2"], "context")
         self.assertIsNone(result)
 
     def test_client_exception_returns_none(self) -> None:
         client = MagicMock()
-        client.chat.completions.create.side_effect = RuntimeError("boom")
+        client.chat.completions.side_effect = RuntimeError("boom")
         with patch.object(lu, "_get_client", return_value=client):
             result = lu.interpret_choice_llm("hmm", ["1", "2"], "context")
         self.assertIsNone(result)
@@ -60,27 +60,27 @@ class InterpretChoiceLlmTests(unittest.TestCase):
         with patch.object(lu, "_get_client", return_value=client):
             self.assertIsNone(lu.interpret_choice_llm("", ["1", "2"], "context"))
             self.assertIsNone(lu.interpret_choice_llm("hi", [], "context"))
-        client.chat.completions.create.assert_not_called()
+        client.chat.completions.assert_not_called()
 
 
 class AnswerSideQuestionTests(unittest.TestCase):
     def test_returns_answer_text(self) -> None:
         client = MagicMock()
-        client.chat.completions.create.return_value = _mock_response("Interest rates vary by loan type.")
+        client.chat.completions.return_value = _mock_response("Interest rates vary by loan type.")
         with patch.object(lu, "_get_client", return_value=client):
             result = lu.answer_side_question("what's the interest rate?", "cheque", "UPLOAD_CHEQUE")
         self.assertEqual(result, "Interest rates vary by loan type.")
 
     def test_none_sentinel_returns_none(self) -> None:
         client = MagicMock()
-        client.chat.completions.create.return_value = _mock_response("NONE")
+        client.chat.completions.return_value = _mock_response("NONE")
         with patch.object(lu, "_get_client", return_value=client):
             result = lu.answer_side_question("approve my loan now", "loan", "CONFIRM_LOAN")
         self.assertIsNone(result)
 
     def test_client_exception_returns_none(self) -> None:
         client = MagicMock()
-        client.chat.completions.create.side_effect = RuntimeError("boom")
+        client.chat.completions.side_effect = RuntimeError("boom")
         with patch.object(lu, "_get_client", return_value=client):
             result = lu.answer_side_question("hello", "loan", "CONFIRM_LOAN")
         self.assertIsNone(result)
@@ -89,7 +89,7 @@ class AnswerSideQuestionTests(unittest.TestCase):
 class DetectStepOrWorkflowJumpTests(unittest.TestCase):
     def test_confident_jump_returns_target(self) -> None:
         client = MagicMock()
-        client.chat.completions.create.return_value = _mock_response(
+        client.chat.completions.return_value = _mock_response(
             '{"target_workflow": "loan", "confidence": 0.9}'
         )
         with patch.object(lu, "_get_client", return_value=client):
@@ -99,7 +99,7 @@ class DetectStepOrWorkflowJumpTests(unittest.TestCase):
 
     def test_low_confidence_returns_none(self) -> None:
         client = MagicMock()
-        client.chat.completions.create.return_value = _mock_response(
+        client.chat.completions.return_value = _mock_response(
             '{"target_workflow": "loan", "confidence": 0.2}'
         )
         with patch.object(lu, "_get_client", return_value=client):
@@ -108,7 +108,7 @@ class DetectStepOrWorkflowJumpTests(unittest.TestCase):
 
     def test_same_workflow_target_returns_none(self) -> None:
         client = MagicMock()
-        client.chat.completions.create.return_value = _mock_response(
+        client.chat.completions.return_value = _mock_response(
             '{"target_workflow": "transfer", "confidence": 0.95}'
         )
         with patch.object(lu, "_get_client", return_value=client):
@@ -117,7 +117,7 @@ class DetectStepOrWorkflowJumpTests(unittest.TestCase):
 
     def test_client_exception_returns_none(self) -> None:
         client = MagicMock()
-        client.chat.completions.create.side_effect = RuntimeError("boom")
+        client.chat.completions.side_effect = RuntimeError("boom")
         with patch.object(lu, "_get_client", return_value=client):
             result = lu.detect_step_or_workflow_jump("switch to loan", "transfer", "SELECT_BENEFICIARY")
         self.assertIsNone(result)

@@ -240,7 +240,7 @@ class ErrorTemplateTests(unittest.TestCase):
             errors.render_unknown_error,
         ]
         forbidden = (
-            "traceback", "exception", "psycopg2", "redis.exceptions", "groq.error",
+            "traceback", "exception", "psycopg2", "redis.exceptions", "sarvamai.core",
             "stack trace", "nonetype", "keyerror", "valueerror", "api_key", "sk-",
         )
         for render in renderers:

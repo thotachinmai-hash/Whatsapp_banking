@@ -3,7 +3,7 @@ existing rule-based matching, not a replacement for it.
 
 Mirrors the fail-safe pattern already used by
 app/conversation/intent/classifier.py::default_llm_classify and
-app/services/language.py: a lazy Groq client singleton, a strict prompt
+app/services/language.py: the shared Sarvam client, a strict prompt
 asking for structured output only, temperature=0, and a try/except that
 returns None on any failure so a flaky/slow LLM call degrades to the
 caller's existing rule-based behavior rather than ever surfacing an error
@@ -27,20 +27,24 @@ from app.logger import get_logger
 load_dotenv()
 logger = get_logger(__name__)
 
-_client = None
-
-
 def _get_client():
-    global _client
-    if _client is None:
-        from app.services.groq_compat import Groq
+    from app.services.sarvam_client import get_sarvam_client
 
-        _client = Groq(api_key=os.getenv("SARVAM_API_KEY", ""))
-    return _client
+    return get_sarvam_client()
 
 
 def _model() -> str:
-    return os.getenv("SARVAM_MODEL", "llama-3.3-70b-versatile")
+    return os.getenv("SARVAM_MODEL", "sarvam-105b")
+
+
+# sarvam-105b is a reasoning model — it burns tokens on reasoning_content
+# before the actual answer, so a tight max_tokens (the old Groq-era values
+# here were 30/60/150) cuts the response off mid-reasoning with
+# content=None instead of an answer. This headroom, combined with
+# reasoning_effort="low", is what it actually takes in practice for these
+# short structured-output prompts to reliably finish.
+_MAX_TOKENS = 800
+_REASONING_EFFORT = "low"
 
 
 def is_llm_fallback_enabled() -> bool:
@@ -87,10 +91,11 @@ def interpret_choice_llm(
 
     start = time.time()
     try:
-        response = _get_client().chat.completions.create(
+        response = _get_client().chat.completions(
             model=_model(),
             temperature=0,
-            max_tokens=30,
+            max_tokens=_MAX_TOKENS,
+            reasoning_effort=_REASONING_EFFORT,
             messages=[
                 {
                     "role": "system",
@@ -150,10 +155,11 @@ def answer_side_question(
 
     start = time.time()
     try:
-        response = _get_client().chat.completions.create(
+        response = _get_client().chat.completions(
             model=_model(),
             temperature=0,
-            max_tokens=150,
+            max_tokens=_MAX_TOKENS,
+            reasoning_effort=_REASONING_EFFORT,
             messages=[
                 {
                     "role": "system",
@@ -212,10 +218,11 @@ def detect_step_or_workflow_jump(
 
     start = time.time()
     try:
-        response = _get_client().chat.completions.create(
+        response = _get_client().chat.completions(
             model=_model(),
             temperature=0,
-            max_tokens=60,
+            max_tokens=_MAX_TOKENS,
+            reasoning_effort=_REASONING_EFFORT,
             messages=[
                 {
                     "role": "system",

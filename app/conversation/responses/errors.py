@@ -1,7 +1,7 @@
 """User-facing error templates.
 
 These never accept or echo a raw exception, stack trace, database driver
-error, Redis error, or Groq/API error — every function here takes at most
+error, Redis error, or Sarvam/API error — every function here takes at most
 a short, already-safe hint string. If the caller only has a raw exception,
 it should log that (with the trace ID, as the app already does everywhere)
 and call one of these with no argument instead of formatting the

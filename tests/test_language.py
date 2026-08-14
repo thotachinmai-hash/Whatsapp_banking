@@ -30,17 +30,17 @@ class ShouldAttemptDetectionTests(unittest.TestCase):
 class DetectLanguageTests(unittest.TestCase):
     def test_returns_detected_supported_code(self) -> None:
         with patch("app.services.language._get_client") as mock_get_client:
-            mock_get_client.return_value.chat.completions.create.return_value = _mock_response("hi")
+            mock_get_client.return_value.chat.completions.return_value = _mock_response("hi")
             self.assertEqual(detect_language("मेरा बैलेंस क्या है"), "hi")
 
     def test_unsupported_code_defaults_to_english(self) -> None:
         with patch("app.services.language._get_client") as mock_get_client:
-            mock_get_client.return_value.chat.completions.create.return_value = _mock_response("zz")
+            mock_get_client.return_value.chat.completions.return_value = _mock_response("zz")
             self.assertEqual(detect_language("some unusual text élan"), "en")
 
     def test_api_failure_defaults_to_english(self) -> None:
         with patch("app.services.language._get_client") as mock_get_client:
-            mock_get_client.return_value.chat.completions.create.side_effect = RuntimeError("boom")
+            mock_get_client.return_value.chat.completions.side_effect = RuntimeError("boom")
             self.assertEqual(detect_language("cuál es mi saldo"), "en")
 
     def test_short_text_never_calls_the_client(self) -> None:
@@ -62,17 +62,17 @@ class TranslateTextTests(unittest.TestCase):
 
     def test_translates_when_target_supported(self) -> None:
         with patch("app.services.language._get_client") as mock_get_client:
-            mock_get_client.return_value.chat.completions.create.return_value = _mock_response("Su saldo es 100")
+            mock_get_client.return_value.chat.completions.return_value = _mock_response("Su saldo es 100")
             self.assertEqual(translate_text("Your balance is 100", "es"), "Su saldo es 100")
 
     def test_api_failure_returns_original_text(self) -> None:
         with patch("app.services.language._get_client") as mock_get_client:
-            mock_get_client.return_value.chat.completions.create.side_effect = RuntimeError("boom")
+            mock_get_client.return_value.chat.completions.side_effect = RuntimeError("boom")
             self.assertEqual(translate_text("Your balance is 100", "es"), "Your balance is 100")
 
     def test_empty_translated_response_falls_back_to_original(self) -> None:
         with patch("app.services.language._get_client") as mock_get_client:
-            mock_get_client.return_value.chat.completions.create.return_value = _mock_response("")
+            mock_get_client.return_value.chat.completions.return_value = _mock_response("")
             self.assertEqual(translate_text("Your balance is 100", "es"), "Your balance is 100")
 
 

@@ -52,7 +52,7 @@ def classify_intent(
 
     `llm_classify` is intentionally None by default: the rule layers below
     cover the full documented taxonomy, so shadow-mode deployments do not
-    need to spend Groq quota classifying every message. Pass
+    need to spend Sarvam quota classifying every message. Pass
     `default_llm_classify` (below) explicitly to enable the LLM fallback
     for messages none of the rules recognize.
     """
@@ -181,16 +181,10 @@ _CLASSIFIER_SYSTEM_PROMPT = (
     "- Only include entities explicitly present in the message. Never invent values."
 )
 
-_groq_client = None
+def _get_sarvam_client():
+    from app.services.sarvam_client import get_sarvam_client
 
-
-def _get_groq_client():
-    global _groq_client
-    if _groq_client is None:
-        from app.services.groq_compat import Groq
-
-        _groq_client = Groq(api_key=os.getenv("SARVAM_API_KEY", ""))
-    return _groq_client
+    return get_sarvam_client()
 
 
 def _parse_json_object(text: str) -> Optional[dict]:
@@ -212,19 +206,26 @@ def _parse_json_object(text: str) -> Optional[dict]:
 def default_llm_classify(
     text: str, context: Optional[ConversationContext], trace_id: str = ""
 ) -> Optional[IntentResult]:
-    """Strict, structured-output-only Groq classification call. No tools are
-    bound, so it cannot execute anything even if asked to. Returns None on
-    any failure so the caller falls back to "unknown" rather than raising."""
+    """Strict, structured-output-only Sarvam classification call. No tools
+    are bound, so it cannot execute anything even if asked to. Returns None
+    on any failure so the caller falls back to "unknown" rather than
+    raising."""
     workflow_context = "none"
     if context and context.current_workflow:
         workflow_context = f"{context.current_workflow} (step: {context.current_step})"
 
     try:
-        client = _get_groq_client()
-        model = os.getenv("SARVAM_MODEL", "llama-3.3-70b-versatile")
-        response = client.chat.completions.create(
+        client = _get_sarvam_client()
+        model = os.getenv("SARVAM_MODEL", "sarvam-105b")
+        # sarvam-105b is a reasoning model — it spends tokens on
+        # reasoning_content before the actual answer, so max_tokens needs
+        # real headroom or the response gets cut off mid-reasoning with
+        # content=None. reasoning_effort="low" keeps that overhead down.
+        response = client.chat.completions(
             model=model,
             temperature=0,
+            max_tokens=800,
+            reasoning_effort="low",
             messages=[
                 {"role": "system", "content": _CLASSIFIER_SYSTEM_PROMPT},
                 {

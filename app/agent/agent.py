@@ -4,7 +4,7 @@ import time
 import json
 from typing import Annotated, Any
 from dotenv import load_dotenv
-from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_core.utils.utils import convert_to_secret_str
 from langchain_core.tools import StructuredTool
@@ -47,12 +47,17 @@ class AgentState(TypedDict):
     trace_id: str
 
 
-def get_llm() -> ChatGroq:
-    model = os.getenv("SARVAM_MODEL", "llama-3.3-70b-versatile")
-    return ChatGroq(
+def get_llm() -> ChatOpenAI:
+    model = os.getenv("SARVAM_MODEL", "sarvam-105b")
+    api_key = os.getenv("SARVAM_API_KEY", "")
+    return ChatOpenAI(
         model=model,
-        api_key=convert_to_secret_str(os.getenv("SARVAM_API_KEY", "")),
-        temperature=0
+        api_key=convert_to_secret_str(api_key),
+        base_url="https://api.sarvam.ai/v1",
+        # Sarvam authenticates with this header instead of the standard
+        # `Authorization: Bearer` header the OpenAI SDK sends by default.
+        default_headers={"api-subscription-key": api_key},
+        temperature=0,
     )
 
 
@@ -268,7 +273,7 @@ Important: Keep responses short and suitable for WhatsApp messages.""")
 
         messages = [system_message] + state["messages"]
 
-        # Groq's Llama models occasionally emit a malformed pseudo-tool-call
+        # Sarvam's models occasionally emit a malformed pseudo-tool-call
         # (e.g. `<function=...>` text instead of a proper tool call), which
         # the API rejects with a 400 tool_use_failed error. That's a
         # generation glitch, not a real failure — a fresh attempt at the

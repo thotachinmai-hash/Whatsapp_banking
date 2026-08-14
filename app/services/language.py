@@ -1,10 +1,9 @@
 """Language detection and translation for multilingual replies.
 
-Scoped to the languages Meta officially lists as supported for Llama 3.3
-(the model this app already uses for every LLM-answered turn — see
-SARVAM_MODEL in .env) — reliability outside this set is not guaranteed by
-the underlying model, so detection is constrained to it rather than
-guessing at broader support this app can't actually back up.
+Scoped to a curated set of languages this app has validated against the
+SARVAM_MODEL configured in .env — reliability outside this set is not
+guaranteed by the underlying model, so detection is constrained to it
+rather than guessing at broader support this app can't actually back up.
 
 Deliberately rule-free — language identification from arbitrary free text
 isn't something a keyword list can do reliably, unlike the rest of this
@@ -19,21 +18,17 @@ import time
 from typing import Optional
 
 from dotenv import load_dotenv
-from app.services.groq_compat import Groq
+from sarvamai import SarvamAI
+from app.services.sarvam_client import get_sarvam_client
 
 from app.logger import get_logger
 
 load_dotenv()
 logger = get_logger(__name__)
 
-_client: Groq | None = None
 
-
-def _get_client() -> Groq:
-    global _client
-    if _client is None:
-        _client = Groq(api_key=os.getenv("SARVAM_API_KEY", ""))
-    return _client
+def _get_client() -> SarvamAI:
+    return get_sarvam_client()
 
 
 # ISO 639-1 code -> display name, used both to validate detect_language()'s
@@ -59,7 +54,7 @@ MIN_DETECTABLE_LENGTH = 4
 
 
 def _model() -> str:
-    return os.getenv("SARVAM_MODEL", "llama-3.3-70b-versatile")
+    return os.getenv("SARVAM_MODEL", "sarvam-105b")
 
 
 def should_attempt_detection(text: str) -> bool:
@@ -97,10 +92,16 @@ def detect_language(text: str, trace_id: str = "") -> str:
 
     start = time.time()
     try:
-        response = _get_client().chat.completions.create(
+        # sarvam-105b is a reasoning model — it spends tokens on
+        # reasoning_content before the actual answer, so max_tokens needs
+        # real headroom (the old Groq-era value of 5 here would cut the
+        # response off mid-reasoning with content=None). reasoning_effort
+        # ="low" keeps that overhead down.
+        response = _get_client().chat.completions(
             model=_model(),
             temperature=0,
-            max_tokens=5,
+            max_tokens=800,
+            reasoning_effort="low",
             messages=[
                 {
                     "role": "system",
@@ -173,9 +174,11 @@ def translate_text(text: str, target_language: str, trace_id: str = "") -> str:
     language_name = SUPPORTED_LANGUAGES[target_language]
     start = time.time()
     try:
-        response = _get_client().chat.completions.create(
+        response = _get_client().chat.completions(
             model=_model(),
             temperature=0,
+            max_tokens=2000,
+            reasoning_effort="low",
             messages=[
                 {
                     "role": "system",

@@ -20965,3 +20965,1328 @@ Please upload a clear
 2026-08-11 23:09:07 | ERROR | app.services.whatsapp | [trace-4] WhatsApp button send failed | status=500 | body=server error
 2026-08-11 23:09:07 | INFO | app.services.whatsapp | [trace-3] WhatsApp list message sent | phone=5760
 2026-08-11 23:09:07 | INFO | app.services.whatsapp | [trace-1] WhatsApp message sent | phone=5760
+2026-08-14 16:58:33 | ERROR | app.workflows.memory | Workflow retrieval failed | phone=1234567890 | error=Error 10061 connecting to localhost:6379. No connection could be made because the target machine actively refused it.
+2026-08-14 16:58:34 | INFO | app.agent.agent | [test] LLM call successful | duration=917.77ms
+2026-08-14 16:58:34 | ERROR | app.database | Query failed: connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "banking_user"
+
+2026-08-14 16:58:34 | ERROR | app.agent.tools | [test-trace] TOOL | get_loan_product_info | error=connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "banking_user"
+
+2026-08-14 16:58:35 | INFO | app.agent.agent | [test] LLM call successful | duration=1009.63ms
+2026-08-14 16:58:35 | ERROR | app.database | Query failed: connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "banking_user"
+
+2026-08-14 16:58:35 | ERROR | app.agent.tools | [test-trace] TOOL | get_loan_product_info | error=connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "banking_user"
+
+2026-08-14 16:58:37 | INFO | app.agent.agent | [test] LLM call successful | duration=1354.67ms
+2026-08-14 17:13:46 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=loan
+2026-08-14 17:13:46 | INFO | app.workflows.manager | [lt3] Active workflow found | type=loan | step=SELECT_LOAN_TYPE | phone=0099
+2026-08-14 17:13:46 | INFO | app.workflows.processors.loan | [lt3] Loan workflow step | phone=0099 | step=SELECT_LOAN_TYPE
+2026-08-14 17:13:46 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:13:46 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:13:46 | INFO | app.workflows.processors.loan | [lt3] Loan type selected | phone=0099 | loan_type=vehicle
+2026-08-14 17:13:46 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=loan
+2026-08-14 17:13:46 | INFO | app.workflows.manager | [lt2] Active workflow found | type=loan | step=CONFIRM_LOAN | phone=0099
+2026-08-14 17:13:46 | INFO | app.workflows.processors.loan | [lt2] Loan workflow step | phone=0099 | step=CONFIRM_LOAN
+2026-08-14 17:13:46 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-14 17:13:46 | INFO | app.workflows.processors.loan | [lt2] Loan application declined at confirmation | phone=0099
+2026-08-14 17:13:46 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=loan
+2026-08-14 17:13:46 | INFO | app.workflows.manager | [lt1] Active workflow found | type=loan | step=CONFIRM_LOAN | phone=0099
+2026-08-14 17:13:46 | INFO | app.workflows.processors.loan | [lt1] Loan workflow step | phone=0099 | step=CONFIRM_LOAN
+2026-08-14 17:13:46 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-14 17:13:46 | INFO | app.workflows.processors.loan | [lt1] Loan request created | phone=0099 | request_id=LOAN-84C58F05
+2026-08-14 17:13:46 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=kyc
+2026-08-14 17:13:46 | INFO | app.workflows.manager | [kt2] Active workflow found | type=kyc | step=CONFIRM_KYC | phone=0099
+2026-08-14 17:13:46 | INFO | app.workflows.processors.kyc | [kt2] KYC workflow step | phone=0099 | step=CONFIRM_KYC
+2026-08-14 17:13:46 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-14 17:13:46 | INFO | app.workflows.processors.kyc | [kt2] KYC update declined at confirmation | phone=0099
+2026-08-14 17:13:47 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=kyc
+2026-08-14 17:13:47 | INFO | app.workflows.manager | [kt1] Active workflow found | type=kyc | step=CONFIRM_KYC | phone=0099
+2026-08-14 17:13:47 | INFO | app.workflows.processors.kyc | [kt1] KYC workflow step | phone=0099 | step=CONFIRM_KYC
+2026-08-14 17:13:47 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-14 17:13:47 | INFO | app.workflows.processors.kyc | [kt1] KYC request created | phone=0099 | request_id=KYC-9E5FB09E
+2026-08-14 17:13:47 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
+2026-08-14 17:13:47 | INFO | app.workflows.manager | [ot3] Active workflow found | type=onboarding | step=SELECT_ACCOUNT_TYPE | phone=0099
+2026-08-14 17:13:47 | INFO | app.workflows.processors.onboarding | [ot3] Onboarding workflow step | phone=0099 | step=SELECT_ACCOUNT_TYPE
+2026-08-14 17:13:47 | INFO | app.workflows.processors.onboarding | [ot3] Account opened | phone=0099 | account_number=GB12FNCL00010009999999 | type=current
+2026-08-14 17:13:47 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-14 17:13:48 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
+2026-08-14 17:13:48 | INFO | app.workflows.manager | [ot2] Active workflow found | type=onboarding | step=CONFIRM_REGISTRATION | phone=0099
+2026-08-14 17:13:48 | INFO | app.workflows.processors.onboarding | [ot2] Onboarding workflow step | phone=0099 | step=CONFIRM_REGISTRATION
+2026-08-14 17:13:48 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-14 17:13:48 | INFO | app.workflows.processors.onboarding | [ot2] Registration declined at confirmation step | phone=0099
+2026-08-14 17:13:48 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
+2026-08-14 17:13:48 | INFO | app.workflows.manager | [ot1] Active workflow found | type=onboarding | step=CONFIRM_REGISTRATION | phone=0099
+2026-08-14 17:13:48 | INFO | app.workflows.processors.onboarding | [ot1] Onboarding workflow step | phone=0099 | step=CONFIRM_REGISTRATION
+2026-08-14 17:13:48 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:13:48 | INFO | app.workflows.processors.onboarding | [ot1] Customer record created | phone=0099 | customer_id=1
+2026-08-14 17:13:48 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-14 17:13:48 | INFO | app.workflows.manager | [tt4] Active workflow found | type=transfer | step=SELECT_AMOUNT | phone=0099
+2026-08-14 17:13:48 | INFO | app.workflows.processors.transfer | [tt4] Transfer workflow step | phone=0099 | step=SELECT_AMOUNT
+2026-08-14 17:13:48 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:13:48 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:13:48 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-14 17:13:48 | INFO | app.workflows.manager | [tt1] Active workflow found | type=transfer | step=SELECT_SOURCE_ACCOUNT | phone=0099
+2026-08-14 17:13:48 | INFO | app.workflows.processors.transfer | [tt1] Transfer workflow step | phone=0099 | step=SELECT_SOURCE_ACCOUNT
+2026-08-14 17:13:48 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:13:48 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:13:48 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-14 17:13:48 | INFO | app.workflows.manager | [tt3] Active workflow found | type=transfer | step=CONFIRM_TRANSFER | phone=0099
+2026-08-14 17:13:48 | INFO | app.workflows.processors.transfer | [tt3] Transfer workflow step | phone=0099 | step=CONFIRM_TRANSFER
+2026-08-14 17:13:48 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:13:48 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-14 17:13:48 | INFO | app.workflows.manager | [tt2] Active workflow found | type=transfer | step=CONFIRM_TRANSFER | phone=0099
+2026-08-14 17:13:48 | INFO | app.workflows.processors.transfer | [tt2] Transfer workflow step | phone=0099 | step=CONFIRM_TRANSFER
+2026-08-14 17:13:48 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-14 17:13:48 | INFO | app.workflows.processors.transfer | [tt2] Transfer initiated | phone=0099 | reference=TRF-8AC8024E | amount=£25.00
+2026-08-14 17:13:48 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
+2026-08-14 17:13:48 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:13:48 | INFO | app.workflows.manager | [cs3] Workflow stop requested, confirming | type=cheque | phone=0099 | trigger='Cancel'
+2026-08-14 17:13:48 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:13:48 | INFO | app.workflows.manager | [cs4] Workflow stop declined, resuming | type=cheque | phone=0099
+2026-08-14 17:13:48 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
+2026-08-14 17:13:48 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:13:48 | INFO | app.workflows.manager | [cs1] Workflow stop requested, confirming | type=cheque | phone=0099 | trigger='Cancel'
+2026-08-14 17:13:48 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-14 17:13:48 | INFO | app.workflows.manager | [cs2] Workflow stop confirmed | type=cheque | phone=0099 | closing=False | jump_to=none
+2026-08-14 17:13:48 | INFO | app.workflows.processors.cheque | [] Cheque validation | phone=0000 | missing_or_invalid=[]
+2026-08-14 17:13:48 | INFO | app.workflows.processors.cheque | [] Cheque request created | phone=0000 | request_id=CHQ-C6A0AE4C
+2026-08-14 17:13:48 | INFO | app.workflows.processors.cheque | [] Cheque validation | phone=0000 | missing_or_invalid=['payee']
+2026-08-14 17:13:48 | WARNING | app.conversation.context_store | [] Conversation context update skipped | no existing context | phone=447000000099
+2026-08-14 17:13:48 | ERROR | app.conversation.builder | [] Customer lookup failed while building conversation context | phone=447000000008 | error=connection reset
+2026-08-14 17:13:48 | INFO | app.conversation.manager | [t1] conversation.turn.started | phone=8034
+2026-08-14 17:13:48 | INFO | app.conversation.intent.classifier | [t1] Intent classified | phone=8034 | intent=banking_question | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:13:48 | INFO | app.conversation.manager | [t1] conversation.intent.classified | phone=8034 | intent=banking_question | confidence=0.70
+2026-08-14 17:13:48 | INFO | app.conversation.manager | [t1] conversation.route.decided | phone=8034 | intent=banking_question | confidence=0.70 | routing_decision=BANKING_LLM | workflow=none | step=none
+2026-08-14 17:13:48 | INFO | app.conversation.manager | [t1] conversation.response.generated | phone=8034 | source=llm | duration=8.20ms
+2026-08-14 17:13:48 | INFO | app.conversation.manager | [t1] conversation.turn.completed | phone=8034
+2026-08-14 17:13:48 | INFO | app.conversation.manager | [t2] conversation.turn.started | phone=8034
+2026-08-14 17:13:48 | INFO | app.conversation.intent.classifier | [t2] Intent classified | phone=8034 | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:48 | INFO | app.conversation.manager | [t2] conversation.intent.classified | phone=8034 | intent=out_of_scope | confidence=0.85
+2026-08-14 17:13:48 | INFO | app.conversation.manager | [t2] conversation.route.decided | phone=8034 | intent=out_of_scope | confidence=0.85 | routing_decision=OUT_OF_SCOPE | workflow=none | step=none
+2026-08-14 17:13:48 | INFO | app.conversation.manager | [t2] conversation.turn.completed | phone=8034
+2026-08-14 17:13:48 | INFO | app.conversation.manager | [t3] conversation.turn.started | phone=8034
+2026-08-14 17:13:48 | INFO | app.conversation.intent.classifier | [t3] Intent classified | phone=8034 | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:13:48 | INFO | app.conversation.manager | [t3] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.70
+2026-08-14 17:13:48 | INFO | app.conversation.manager | [t3] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.70 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:13:48 | INFO | app.conversation.manager | [t3] conversation.turn.completed | phone=8034
+2026-08-14 17:13:48 | INFO | app.conversation.manager | [t4] conversation.turn.started | phone=8034
+2026-08-14 17:13:50 | INFO | app.services.language | [t4] Language detected | code=en | duration=1482.34ms
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [t4] Intent classified | phone=8034 | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t4] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.90
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t4] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.90 | routing_decision=START_WORKFLOW | workflow=none | step=none
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t4] conversation.turn.completed | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t5] conversation.turn.started | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [t5] Intent classified | phone=8034 | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t5] conversation.intent.classified | phone=8034 | intent=loan_application_request | confidence=0.85
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t5] conversation.route.decided | phone=8034 | intent=loan_application_request | confidence=0.85 | routing_decision=START_WORKFLOW | workflow=none | step=none
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t5] conversation.turn.completed | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t6] conversation.turn.started | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [t6] Intent classified | phone=8034 | intent=cheque_deposit_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t6] conversation.intent.classified | phone=8034 | intent=cheque_deposit_request | confidence=0.90
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t6] conversation.route.decided | phone=8034 | intent=cheque_deposit_request | confidence=0.90 | routing_decision=START_WORKFLOW | workflow=none | step=none
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t6] conversation.turn.completed | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t7] conversation.turn.started | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [t7] Intent classified | phone=8034 | intent=kyc_update_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t7] conversation.intent.classified | phone=8034 | intent=kyc_update_request | confidence=0.85
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t7] conversation.route.decided | phone=8034 | intent=kyc_update_request | confidence=0.85 | routing_decision=START_WORKFLOW | workflow=none | step=none
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t7] conversation.turn.completed | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t8] conversation.turn.started | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [t8] Intent classified | phone=8034 | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t8] conversation.intent.classified | phone=8034 | intent=out_of_scope | confidence=0.85
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t8] conversation.workflow.handled | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t8] conversation.turn.completed | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t9] conversation.turn.started | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [t9] Intent classified | phone=8034 | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t9] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.70
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t9] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.70 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t9] conversation.turn.completed | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t10] conversation.turn.started | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [t10] Intent classified | phone=8034 | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t10] conversation.intent.classified | phone=8034 | intent=loan_application_request | confidence=0.85
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t10] conversation.route.decided | phone=8034 | intent=loan_application_request | confidence=0.85 | routing_decision=START_WORKFLOW | workflow=none | step=none
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t10] conversation.turn.completed | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t11] conversation.turn.started | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [t11] Intent classified | phone=8034 | intent=help | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t11] conversation.intent.classified | phone=8034 | intent=help | confidence=0.85
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t11] conversation.route.decided | phone=8034 | intent=help | confidence=0.85 | routing_decision=SAFE_FALLBACK | workflow=none | step=none
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t11] conversation.response.generated | phone=8034 | source=llm | duration=1.62ms
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t11] conversation.turn.completed | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12a] conversation.turn.started | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [t12a] Intent classified | phone=8034 | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12a] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.70
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12a] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.70 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12a] conversation.turn.completed | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12b] conversation.turn.started | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [t12b] Intent classified | phone=8034 | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12b] conversation.intent.classified | phone=8034 | intent=loan_application_request | confidence=0.85
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12b] conversation.route.decided | phone=8034 | intent=loan_application_request | confidence=0.85 | routing_decision=START_WORKFLOW | workflow=none | step=none
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12b] conversation.turn.completed | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-0] conversation.turn.started | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [t12c-0] Intent classified | phone=8034 | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-0] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.70
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-0] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.70 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-0] conversation.turn.completed | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-1] conversation.turn.started | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [t12c-1] Intent classified | phone=8034 | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-1] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.70
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-1] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.70 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-1] conversation.turn.completed | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-2] conversation.turn.started | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [t12c-2] Intent classified | phone=8034 | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-2] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.70
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-2] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.70 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-2] conversation.turn.completed | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-3] conversation.turn.started | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [t12c-3] Intent classified | phone=8034 | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-3] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.70
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-3] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.70 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-3] conversation.turn.completed | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-4] conversation.turn.started | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [t12c-4] Intent classified | phone=8034 | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-4] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.70
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-4] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.70 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-4] conversation.turn.completed | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-5] conversation.turn.started | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [t12c-5] Intent classified | phone=8034 | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-5] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.70
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-5] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.70 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-5] conversation.turn.completed | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-6] conversation.turn.started | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [t12c-6] Intent classified | phone=8034 | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-6] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.70
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-6] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.70 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-6] conversation.turn.completed | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-7] conversation.turn.started | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [t12c-7] Intent classified | phone=8034 | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-7] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.70
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-7] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.70 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t12c-7] conversation.turn.completed | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t13] conversation.turn.started | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [t13] Intent classified | phone=8034 | intent=banking_question | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t13] conversation.intent.classified | phone=8034 | intent=banking_question | confidence=0.70
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t13] conversation.route.decided | phone=8034 | intent=banking_question | confidence=0.70 | routing_decision=BANKING_LLM | workflow=none | step=none
+2026-08-14 17:13:50 | ERROR | app.conversation.manager | [t13] conversation.turn.failed | phone=8034 | error=psycopg2.errors.UniqueViolation: duplicate key at 0x7f | duration=1.38ms
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t13b] conversation.turn.started | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [t13b] Intent classified | phone=8034 | intent=banking_question | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t13b] conversation.intent.classified | phone=8034 | intent=banking_question | confidence=0.70
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [t13b] conversation.route.decided | phone=8034 | intent=banking_question | confidence=0.70 | routing_decision=BANKING_LLM | workflow=none | step=none
+2026-08-14 17:13:50 | ERROR | app.conversation.manager | [t13b] conversation.turn.failed | phone=8034 | error=boom | duration=1.80ms
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [trace-xyz-123] Intent classified | phone=8034 | intent=kyc_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [t15] Intent classified | phone=8034 | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [tb1] conversation.turn.started | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [tb1] Intent classified | phone=8034 | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [tb1] conversation.intent.classified | phone=8034 | intent=loan_application_request | confidence=0.85
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [tb1] conversation.workflow.handled | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [tb1] conversation.turn.completed | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [tb2] conversation.turn.started | phone=8034
+2026-08-14 17:13:50 | INFO | app.conversation.intent.classifier | [tb2] Intent classified | phone=8034 | intent=out_of_scope | confidence=0.95 | workflow=none | step=none | method=rule
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [tb2] conversation.intent.classified | phone=8034 | intent=out_of_scope | confidence=0.95
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [tb2] conversation.route.decided | phone=8034 | intent=out_of_scope | confidence=0.95 | routing_decision=OUT_OF_SCOPE | workflow=none | step=none
+2026-08-14 17:13:50 | INFO | app.conversation.manager | [tb2] conversation.turn.completed | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [tm2] conversation.turn.started | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [tm2] conversation.route.decided | phone=8034 | intent=unknown | confidence=0.00 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [tm2] conversation.turn.completed | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [tm1] conversation.turn.started | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [tm1] conversation.route.decided | phone=8034 | intent=unknown | confidence=0.00 | routing_decision=OUT_OF_SCOPE | workflow=none | step=none
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [tm1] conversation.turn.completed | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [tm3] conversation.turn.started | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [tm3] conversation.route.decided | phone=8034 | intent=unknown | confidence=0.00 | routing_decision=OUT_OF_SCOPE | workflow=none | step=none
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [tm3] conversation.response.generated | phone=8034 | source=llm | duration=1.54ms
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [tm3] conversation.turn.completed | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [tm4] conversation.turn.started | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [tm4] conversation.route.decided | phone=8034 | intent=unknown | confidence=0.00 | routing_decision=OUT_OF_SCOPE | workflow=none | step=none
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [tm4] conversation.turn.completed | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.95 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=balance_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transaction_request | confidence=0.88 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_status_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_status | confidence=0.88 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_status | confidence=0.88 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=out_of_scope | confidence=0.85 | workflow=transfer | step=CONFIRM_TRANSFER | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=out_of_scope | confidence=0.85 | workflow=loan | step=UPLOAD_LOAN_FORM | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_help | confidence=0.90 | workflow=onboarding | step=COLLECT_AADHAAR | method=context
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=loan_application_request | confidence=0.85 | workflow=cheque | step=UPLOAD_CHEQUE | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=out_of_scope | confidence=0.95 | workflow=transfer | step=CONFIRM_TRANSFER | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.agent.agent | [rt4] Agent started | phone=8034 | query=500
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [rt4] conversation.turn.started | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [rt4] Intent classified | phone=8034 | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [rt4] conversation.intent.classified | phone=8034 | intent=out_of_scope | confidence=0.85
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [rt4] conversation.workflow.handled | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [rt4] conversation.turn.completed | phone=8034
+2026-08-14 17:13:51 | INFO | app.agent.agent | [rt2] Agent started | phone=8034 | query=I earn 5000 monthly and want a personal loan
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [rt2] conversation.turn.started | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [rt2] Intent classified | phone=8034 | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [rt2] conversation.intent.classified | phone=8034 | intent=loan_eligibility_question | confidence=0.92
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [rt2] conversation.route.decided | phone=8034 | intent=loan_eligibility_question | confidence=0.92 | routing_decision=BANKING_LLM | workflow=none | step=none
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [rt2] conversation.guidance.rendered | phone=8034 | guidance_type=loan_eligibility_guidance | response_mode=offer_actions | actions=['SHOW_LOAN_REQUIREMENTS', 'SHOW_LOAN_DOCUMENTS', 'START_LOAN_APPLICATION']
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [rt2] conversation.turn.completed | phone=8034
+2026-08-14 17:13:51 | INFO | app.agent.agent | [rt1] Agent started | phone=8034 | query=Why is the sky blue?
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [rt1] conversation.turn.started | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [rt1] Intent classified | phone=8034 | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [rt1] conversation.intent.classified | phone=8034 | intent=out_of_scope | confidence=0.85
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [rt1] conversation.route.decided | phone=8034 | intent=out_of_scope | confidence=0.85 | routing_decision=OUT_OF_SCOPE | workflow=none | step=none
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [rt1] conversation.turn.completed | phone=8034
+2026-08-14 17:13:51 | INFO | app.agent.agent | [rt3] Agent started | phone=8034 | query=I want a personal loan
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [rt3] conversation.turn.started | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [rt3] Intent classified | phone=8034 | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [rt3] conversation.intent.classified | phone=8034 | intent=loan_application_request | confidence=0.85
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [rt3] conversation.route.decided | phone=8034 | intent=loan_application_request | confidence=0.85 | routing_decision=START_WORKFLOW | workflow=none | step=none
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [rt3] conversation.turn.completed | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=unknown | confidence=0.30 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=account_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transaction_insight_question | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=balance_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.88 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=account_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.88 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cancel | confidence=0.99 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=account_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=unknown | confidence=0.30 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transaction_insight_question | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t9] conversation.turn.started | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [t9] Intent classified | phone=8034 | intent=workflow_help | confidence=0.90 | workflow=cheque | step=UPLOAD_CHEQUE | method=context
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t9] conversation.intent.classified | phone=8034 | intent=workflow_help | confidence=0.90
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t9] conversation.route.decided | phone=8034 | intent=workflow_help | confidence=0.90 | routing_decision=WORKFLOW | workflow=cheque | step=UPLOAD_CHEQUE
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t9] conversation.response.generated | phone=8034 | source=llm | duration=1.72ms
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t9] conversation.turn.completed | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t10] conversation.turn.started | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [t10] Intent classified | phone=8034 | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t10] conversation.intent.classified | phone=8034 | intent=out_of_scope | confidence=0.85
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t10] conversation.guidance.action_selected | phone=8034 | action=START_LOAN_APPLICATION | workflow=loan
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t10] conversation.turn.completed | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t11] conversation.turn.started | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [t11] Intent classified | phone=8034 | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t11] conversation.intent.classified | phone=8034 | intent=out_of_scope | confidence=0.85
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t11] conversation.guidance.action_selected | phone=8034 | action=SHOW_LOAN_DOCUMENTS | workflow=none
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t11] conversation.turn.completed | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t12] conversation.turn.started | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [t12] Intent classified | phone=8034 | intent=cancel | confidence=0.99 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t12] conversation.intent.classified | phone=8034 | intent=cancel | confidence=0.99
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t12] conversation.turn.completed | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t13] conversation.turn.started | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [t13] Intent classified | phone=8034 | intent=back | confidence=0.98 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t13] conversation.intent.classified | phone=8034 | intent=back | confidence=0.98
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t13] conversation.turn.completed | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t14] conversation.turn.started | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [t14] Intent classified | phone=8034 | intent=out_of_scope | confidence=0.85 | workflow=transfer | step=SELECT_BENEFICIARY | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t14] conversation.intent.classified | phone=8034 | intent=out_of_scope | confidence=0.85
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t14] conversation.workflow.handled | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t14] conversation.turn.completed | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t15] conversation.turn.started | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [t15] Intent classified | phone=8034 | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t15] conversation.intent.classified | phone=8034 | intent=loan_eligibility_question | confidence=0.92
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t15] conversation.route.decided | phone=8034 | intent=loan_eligibility_question | confidence=0.92 | routing_decision=BANKING_LLM | workflow=none | step=none
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t15] conversation.guidance.rendered | phone=8034 | guidance_type=loan_eligibility_guidance | response_mode=offer_actions | actions=['SHOW_LOAN_REQUIREMENTS', 'SHOW_LOAN_DOCUMENTS', 'START_LOAN_APPLICATION']
+2026-08-14 17:13:51 | INFO | app.conversation.manager | [t15] conversation.turn.completed | phone=8034
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=account_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=unknown | confidence=0.30 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=account_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=unknown | confidence=0.30 | workflow=none | step=none | method=rule
+2026-08-14 17:13:51 | ERROR | app.services.idempotency | Idempotency claim failed (Redis error) | external_message_id=MSG-DOWN | error=connection refused
+2026-08-14 17:13:51 | ERROR | app.services.idempotency | Idempotency mark_completed failed | external_message_id=MSG-DOWN | error=connection refused
+2026-08-14 17:13:51 | ERROR | app.services.idempotency | Idempotency mark_failed failed | external_message_id=MSG-DOWN | error=connection refused
+2026-08-14 17:13:52 | INFO | app.main | [bb5770ed] webhook.received
+2026-08-14 17:13:52 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:13:52 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:13:52 | INFO | app.main | [90497334] webhook.received
+2026-08-14 17:13:52 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:13:52 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:13:53 | INFO | app.main | [88c16260] webhook.received
+2026-08-14 17:13:53 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-2', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:13:53 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:13:53 | INFO | app.main | [920187a7] webhook.received
+2026-08-14 17:13:53 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-2', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:13:53 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:13:53 | INFO | app.main | [b0751f3e] webhook.received
+2026-08-14 17:13:53 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IND-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:13:53 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:13:53 | INFO | app.main | [d86e1e04] webhook.received
+2026-08-14 17:13:53 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IND-MSG-2', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:13:53 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:13:53 | INFO | app.main | [b47e89eb] webhook.received
+2026-08-14 17:13:53 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'RETRY-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:13:53 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:13:53 | INFO | app.main | [b0c8d3f2] webhook.received
+2026-08-14 17:13:53 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'GROUP-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': True}}
+2026-08-14 17:13:53 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:13:53 | INFO | app.main | [f7abd66a] webhook.received
+2026-08-14 17:13:53 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IMG-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'image', 'isGroup': False}}
+2026-08-14 17:13:53 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:13:53 | INFO | app.main | [46f68969] webhook.received
+2026-08-14 17:13:53 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IMG-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'image', 'isGroup': False}}
+2026-08-14 17:13:53 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:13:53 | INFO | app.main | [85b5290d] webhook.received
+2026-08-14 17:13:53 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DOWN-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:13:53 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:13:53 | INFO | app.main | [40e86e34] webhook.received
+2026-08-14 17:13:53 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-1', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:13:53 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:13:53 | INFO | app.main | [c4da2e4b] webhook.received
+2026-08-14 17:13:53 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-1', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:13:53 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:13:53 | INFO | app.main | [1895e2e5] webhook.received
+2026-08-14 17:13:53 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-2', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:13:53 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:13:53 | INFO | app.main | [d16256c8] webhook.received
+2026-08-14 17:13:53 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-3', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:13:53 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:13:53 | INFO | app.main | [bee260ec] webhook.received
+2026-08-14 17:13:53 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'VOICE-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'audio', 'isGroup': False}}
+2026-08-14 17:13:53 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:13:53 | INFO | app.main | [81511aab] webhook.received
+2026-08-14 17:13:53 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'VOICE-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'audio', 'isGroup': False}}
+2026-08-14 17:13:53 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=greeting | confidence=0.97 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cancel | confidence=0.99 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=back | confidence=0.98 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=main_menu | confidence=0.95 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_help | confidence=0.90 | workflow=onboarding | step=COLLECT_AADHAAR | method=context
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_explanation | confidence=0.88 | workflow=onboarding | step=COLLECT_AADHAAR | method=context
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_clarification | confidence=0.85 | workflow=onboarding | step=COLLECT_AADHAAR | method=context
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=balance_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transaction_request | confidence=0.88 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_deposit_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_status_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.95 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.95 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_confirmation | confidence=0.95 | workflow=transfer | step=CONFIRM_TRANSFER | method=context
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_confirmation | confidence=0.95 | workflow=transfer | step=CONFIRM_TRANSFER | method=context
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_explanation | confidence=0.88 | workflow=loan | step=UPLOAD_LOAN_FORM | method=context
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_clarification | confidence=0.75 | workflow=transfer | step=SELECT_BENEFICIARY | method=context
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_status_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_status | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transaction_insight_question | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.88 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=greeting | confidence=0.97 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=balance_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=unknown | confidence=0.00 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=unknown | confidence=0.00 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=greeting | confidence=0.97 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cancel | confidence=0.99 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=unknown | confidence=0.00 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=greeting | confidence=0.97 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cancel | confidence=0.99 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=back | confidence=0.98 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=main_menu | confidence=0.95 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=balance_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.88 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_explanation | confidence=0.88 | workflow=cheque | step=UPLOAD_CHEQUE | method=context
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=help | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=help | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_help | confidence=0.90 | workflow=onboarding | step=COLLECT_AADHAAR | method=context
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=unknown | confidence=0.30 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=balance_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | ERROR | app.conversation.intent.classifier | [] LLM intent fallback failed | error=groq is down
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=unknown | confidence=0.30 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=greeting | confidence=0.97 | workflow=none | step=none | method=rule
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=not_a_real_intent | confidence=0.90 | workflow=none | step=none | method=llm
+2026-08-14 17:13:53 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=banking_question | confidence=0.70 | workflow=none | step=none | method=llm
+2026-08-14 17:13:53 | INFO | app.services.language | [] Language detection unsupported/unclear | raw=<MagicMock name='_get_client().chat.completions().choices.__getitem__().message.content.strip().lower()' id='2082731341008'> | defaulting to en
+2026-08-14 17:13:53 | INFO | app.services.language | [] Language detection unsupported/unclear | raw=<MagicMock name='_get_client().chat.completions().choices.__getitem__().message.content.strip().lower()' id='2082732085264'> | defaulting to en
+2026-08-14 17:13:53 | INFO | app.services.language | [] Language detection unsupported/unclear | raw=<MagicMock name='_get_client().chat.completions().choices.__getitem__().message.content.strip().lower()' id='2082732091984'> | defaulting to en
+2026-08-14 17:13:54 | INFO | app.services.language | [] Response translated | language=es | duration=3.05ms
+2026-08-14 17:13:54 | INFO | app.services.language | [] Response translated | language=es | duration=3.51ms
+2026-08-14 17:13:54 | INFO | app.services.language | [] Response translated | language=es | duration=1.78ms
+2026-08-14 17:13:54 | INFO | app.services.llm_understanding | [] LLM side-question answered | workflow=loan | duration=3.65ms
+2026-08-14 17:13:54 | INFO | app.services.llm_understanding | [] LLM side-question answered | workflow=loan | duration=2.45ms
+2026-08-14 17:13:54 | INFO | app.services.llm_understanding | [] LLM side-question answered | workflow=cheque | duration=3.41ms
+2026-08-14 17:13:54 | INFO | app.workflows.memory | Workflow created | phone=447700900200 | type=loan
+2026-08-14 17:13:54 | INFO | app.workflows.processors.loan | [t1] Loan workflow step | phone=0200 | step=SELECT_LOAN_TYPE
+2026-08-14 17:13:54 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
+2026-08-14 17:13:54 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
+2026-08-14 17:13:54 | INFO | app.workflows.processors.loan | [t1] Loan type selected | phone=0200 | loan_type=home
+2026-08-14 17:13:54 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
+2026-08-14 17:13:54 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
+2026-08-14 17:13:54 | INFO | app.workflows.processors.loan | [t1] Applied pending loan form after type selection | phone=0200 | fields=['applicant_name', 'monthly_income', 'employment_type']
+2026-08-14 17:13:54 | INFO | app.workflows.memory | Workflow created | phone=447700900201 | type=loan
+2026-08-14 17:13:54 | INFO | app.workflows.processors.loan | [t2] Loan workflow step | phone=0201 | step=SELECT_LOAN_TYPE
+2026-08-14 17:13:54 | INFO | app.workflows.memory | Workflow updated | phone=447700900201
+2026-08-14 17:13:54 | INFO | app.workflows.memory | Workflow updated | phone=447700900201
+2026-08-14 17:13:54 | INFO | app.workflows.processors.loan | [t2] Loan type selected | phone=0201 | loan_type=vehicle
+2026-08-14 17:13:54 | INFO | app.workflows.processors.onboarding | [] Onboarding workflow step | phone=0000 | step=COLLECT_AADHAAR
+2026-08-14 17:13:54 | INFO | app.workflows.processors.onboarding | [] Registration cancelled at Aadhaar step | phone=0000
+2026-08-14 17:13:54 | INFO | app.workflows.memory | Workflow created | phone=447700900120 | type=onboarding
+2026-08-14 17:13:54 | INFO | app.workflows.processors.onboarding | [t1] Onboarding workflow step | phone=0120 | step=COLLECT_AADHAAR
+2026-08-14 17:13:54 | INFO | app.workflows.memory | Workflow updated | phone=447700900120
+2026-08-14 17:13:54 | INFO | app.workflows.memory | Workflow updated | phone=447700900120
+2026-08-14 17:13:54 | INFO | app.workflows.processors.onboarding | [t1] Registration Aadhaar collected | phone=0120
+2026-08-14 17:13:54 | INFO | app.workflows.memory | Workflow created | phone=447700900120 | type=onboarding
+2026-08-14 17:13:54 | INFO | app.workflows.processors.onboarding | [t3] Onboarding workflow step | phone=0120 | step=COLLECT_AADHAAR
+2026-08-14 17:13:54 | INFO | app.workflows.processors.onboarding | [t3] Registration declined at Aadhaar prompt | phone=0120
+2026-08-14 17:13:54 | INFO | app.workflows.memory | Workflow created | phone=447700900120 | type=onboarding
+2026-08-14 17:13:54 | INFO | app.workflows.processors.onboarding | [t2] Onboarding workflow step | phone=0120 | step=COLLECT_AADHAAR
+2026-08-14 17:13:54 | INFO | app.rag.retriever | RAG index built | chunks=16 | files=4
+2026-08-14 17:13:54 | INFO | app.services.registration_gate | [t3] Registration gate | unregistered | phone=0113
+2026-08-14 17:13:54 | INFO | app.workflows.memory | Workflow created | phone=447700900113 | type=onboarding
+2026-08-14 17:13:54 | INFO | app.services.registration_gate | [t1] Registration gate | unregistered, question — deferring registration | phone=0111
+2026-08-14 17:13:54 | INFO | app.services.registration_gate | [t2] Registration gate | unregistered | phone=0112
+2026-08-14 17:13:54 | INFO | app.workflows.memory | Workflow created | phone=447700900112 | type=onboarding
+2026-08-14 17:13:54 | INFO | app.workflows.memory | Workflow created | phone=447700900115 | type=onboarding
+2026-08-14 17:13:54 | INFO | app.workflows.manager | [t5] Active workflow found | type=onboarding | step=COLLECT_AADHAAR | phone=0115
+2026-08-14 17:13:54 | INFO | app.workflows.memory | Workflow deleted | phone=447700900115
+2026-08-14 17:13:54 | INFO | app.workflows.memory | Workflow created | phone=447700900114 | type=onboarding
+2026-08-14 17:13:54 | INFO | app.workflows.manager | [t4] Active workflow found | type=onboarding | step=COLLECT_AADHAAR | phone=0114
+2026-08-14 17:13:54 | INFO | app.workflows.memory | Workflow deleted | phone=447700900114
+2026-08-14 17:13:54 | INFO | app.workflows.manager | [t4] Checking for deterministic workflow start | phone=0114 | query='I want to deposit a cheque'
+2026-08-14 17:13:54 | INFO | app.workflows.memory | Workflow created | phone=447700900114 | type=cheque
+2026-08-14 17:13:54 | INFO | app.workflows.manager | [t4] Resumed pending service after registration | phone=0114
+2026-08-14 17:13:54 | ERROR | app.conversation.renderer | [trace-9] response.render.send_failed | phone=0000 | kind=buttons | error=boom
+2026-08-14 17:13:54 | INFO | app.conversation.renderer | [trace-9] response.render.sent | phone=0000 | kind=buttons | success=True
+2026-08-14 17:13:54 | INFO | app.conversation.renderer | [trace-5] response.render.sent | phone=0000 | kind=buttons | success=True
+2026-08-14 17:13:54 | INFO | app.conversation.renderer | [trace-4] response.render.sent | phone=0000 | kind=text | success=False
+2026-08-14 17:13:54 | ERROR | app.conversation.renderer | [trace-3] response.render.send_failed | phone=0000 | kind=text | error=boom
+2026-08-14 17:13:54 | INFO | app.conversation.renderer | [trace-6] response.render.sent | phone=0000 | kind=list | success=True
+2026-08-14 17:13:55 | INFO | app.conversation.renderer | [trace-2] response.render.sent | phone=0000 | kind=template | template=render_greeting | success=True
+2026-08-14 17:13:55 | INFO | app.conversation.renderer | [trace-1] response.render.sent | phone=0000 | kind=text | success=True
+2026-08-14 17:13:55 | WARNING | app.conversation.renderer | [trace-7] response.render.interactive_limits_exceeded | phone=0000 | kind=buttons — falling back to text
+2026-08-14 17:13:55 | INFO | app.conversation.renderer | [trace-7] response.render.sent | phone=0000 | kind=buttons | success=True
+2026-08-14 17:13:55 | WARNING | app.conversation.renderer | [trace-8] response.render.interactive_limits_exceeded | phone=0000 | kind=list — falling back to text
+2026-08-14 17:13:55 | INFO | app.conversation.renderer | [trace-8] response.render.sent | phone=0000 | kind=list | success=True
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-14 17:13:55 | INFO | app.workflows.manager | Workflow-related question | workflow=transfer | phone=0099
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-14 17:13:55 | INFO | app.workflows.manager | Workflow-related question | workflow=transfer | phone=0099
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-14 17:13:55 | INFO | app.workflows.manager | [t6] Active workflow found | type=transfer | step=SELECT_BENEFICIARY | phone=0099
+2026-08-14 17:13:55 | INFO | app.workflows.processors.transfer | [t6] Transfer workflow step | phone=0099 | step=SELECT_BENEFICIARY
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-14 17:13:55 | INFO | app.workflows.manager | [t4] Workflow jump requested, confirming | from=cheque | to=loan | phone=0097
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-14 17:13:55 | INFO | app.workflows.manager | [t5] Workflow jump requested, confirming | from=cheque | to=loan | phone=0097
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow deleted | phone=447700900097
+2026-08-14 17:13:55 | INFO | app.workflows.manager | [t6] Workflow stop confirmed | type=cheque | phone=0097 | closing=False | jump_to=loan
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=loan
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-14 17:13:55 | INFO | app.workflows.manager | [t7] Workflow jump requested, confirming | from=cheque | to=loan | phone=0097
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-14 17:13:55 | INFO | app.workflows.manager | [t8] Workflow stop declined, resuming | type=cheque | phone=0097
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-14 17:13:55 | INFO | app.workflows.manager | Workflow-related question | workflow=cheque | phone=0097
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-14 17:13:55 | INFO | app.workflows.manager | Workflow-related question | workflow=cheque | phone=0097
+2026-08-14 17:13:55 | INFO | app.workflows.manager | [t1] Side question answered mid-workflow, resuming step | workflow=cheque | phone=0097
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-14 17:13:55 | INFO | app.workflows.manager | Workflow-related question | workflow=cheque | phone=0097
+2026-08-14 17:13:55 | INFO | app.workflows.manager | [t2] Side question answered mid-workflow, resuming step | workflow=cheque | phone=0097
+2026-08-14 17:13:55 | INFO | app.workflows.manager | [t1] Checking for deterministic workflow start | phone=0096 | query='I want a loan'
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow created | phone=447700900096 | type=loan
+2026-08-14 17:13:55 | INFO | app.workflows.manager | [t2] Checking for deterministic workflow start | phone=0096 | query='I want a loan'
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow created | phone=447700900096 | type=loan
+2026-08-14 17:13:55 | INFO | app.workflows.manager | [t3] Active workflow found | type=loan | step=SELECT_LOAN_TYPE | phone=0096
+2026-08-14 17:13:55 | INFO | app.workflows.processors.loan | [t3] Loan workflow step | phone=0096 | step=SELECT_LOAN_TYPE
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow updated | phone=447700900096
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow updated | phone=447700900096
+2026-08-14 17:13:55 | INFO | app.workflows.processors.loan | [t3] Loan type selected | phone=0096 | loan_type=home
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow created | phone=447700900096 | type=transfer
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow created | phone=447700900098 | type=loan
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow updated | phone=447700900098
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow created | phone=447700900098 | type=cheque
+2026-08-14 17:13:55 | INFO | app.workflows.memory | Workflow updated | phone=447700900098
+2026-08-14 17:13:55 | INFO | app.workflows.manager | [t2] Workflow stop requested, confirming | type=cheque | phone=0098 | trigger='Cancel'
+2026-08-14 17:13:56 | INFO | app.workflows.memory | Workflow created | phone=447700900098 | type=cheque
+2026-08-14 17:13:56 | INFO | app.workflows.memory | Workflow updated | phone=447700900098
+2026-08-14 17:13:56 | INFO | app.workflows.manager | [t1] Workflow stop requested, confirming | type=cheque | phone=0098 | trigger='Cancel'
+2026-08-14 17:13:56 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=back | confidence=0.98 | workflow=none | step=none | method=rule
+2026-08-14 17:13:56 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=balance_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:56 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cancel | confidence=0.99 | workflow=none | step=none | method=rule
+2026-08-14 17:13:56 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:56 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_deposit_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:56 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_status_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:56 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:56 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:56 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:56 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_update_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:13:56 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:56 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:56 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:13:56 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transaction_insight_question | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:56 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:13:56 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:56 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:13:56 | INFO | app.services.transcription | [t2] Transcription complete | duration=1.80ms | language=en-in | text=check my balance
+2026-08-14 17:13:56 | ERROR | app.services.transcription | [t4] Transcription failed | error=boom | duration=1.83ms
+2026-08-14 17:13:56 | INFO | app.services.transcription | [t1] Transcription complete | duration=1.45ms | language=hi-in | text=mera balance kya hai
+2026-08-14 17:13:56 | INFO | app.services.transcription | [t3] STT language tag ignored | reason=transcript_too_short | language=pt-in | text='Ok'
+2026-08-14 17:13:56 | INFO | app.services.transcription | [t3] Transcription complete | duration=2.97ms | language=pt-in | text=Ok
+2026-08-14 17:13:56 | ERROR | app.services.tts | [] TTS synthesis failed | error=boom | duration=10.60ms
+2026-08-14 17:13:56 | WARNING | app.services.tts | [] TTS skipped | SARVAM_API_KEY not configured
+2026-08-14 17:13:56 | ERROR | app.services.tts | [] TTS response had no audio data
+2026-08-14 17:13:56 | INFO | app.services.tts | [] TTS synthesis complete | bytes=16 | duration=7.32ms
+2026-08-14 17:13:56 | INFO | app.services.tts | [] TTS synthesis complete | bytes=4 | duration=10.08ms
+2026-08-14 17:13:56 | WARNING | app.services.tts | [] Falling back to WAV audio (not a voice-note bubble) — OGG conversion unavailable
+2026-08-14 17:13:56 | INFO | app.services.message_handler | [t2] Voice reply unavailable — falling back to text
+2026-08-14 17:13:56 | INFO | app.services.message_handler | [t3] Voice send failed — falling back to text
+2026-08-14 17:13:56 | INFO | app.services.whatsapp | [trace-2] WhatsApp button message sent | phone=5760
+2026-08-14 17:13:56 | ERROR | app.services.whatsapp | [trace-4] WhatsApp button send failed | status=500 | body=server error
+2026-08-14 17:13:56 | INFO | app.services.whatsapp | [trace-3] WhatsApp list message sent | phone=5760
+2026-08-14 17:13:56 | INFO | app.services.whatsapp | [trace-1] WhatsApp message sent | phone=5760
+2026-08-14 17:15:45 | INFO | app.services.language | [] Language detection unsupported/unclear | raw=<MagicMock name='_get_client().chat.completions().choices.__getitem__().message.content.strip().lower()' id='2023981763280'> | defaulting to en
+2026-08-14 17:15:45 | INFO | app.services.language | [] Language detection unsupported/unclear | raw=<MagicMock name='_get_client().chat.completions().choices.__getitem__().message.content.strip().lower()' id='2023981769664'> | defaulting to en
+2026-08-14 17:15:46 | INFO | app.services.language | [] Language detection unsupported/unclear | raw=<MagicMock name='_get_client().chat.completions().choices.__getitem__().message.content.strip().lower()' id='2023982400912'> | defaulting to en
+2026-08-14 17:15:46 | INFO | app.services.language | [] Response translated | language=es | duration=1.53ms
+2026-08-14 17:15:46 | INFO | app.services.language | [] Response translated | language=es | duration=3.71ms
+2026-08-14 17:15:46 | INFO | app.services.language | [] Response translated | language=es | duration=2.66ms
+2026-08-14 17:15:46 | INFO | app.services.llm_understanding | [] LLM side-question answered | workflow=loan | duration=2.93ms
+2026-08-14 17:15:46 | INFO | app.services.llm_understanding | [] LLM side-question answered | workflow=loan | duration=1.75ms
+2026-08-14 17:15:46 | INFO | app.services.llm_understanding | [] LLM side-question answered | workflow=cheque | duration=2.41ms
+2026-08-14 17:16:14 | ERROR | app.services.language | [] Language detection failed | error=boom
+2026-08-14 17:16:14 | INFO | app.services.language | [] Language detected | code=hi | duration=0.19ms
+2026-08-14 17:16:14 | INFO | app.services.language | [] Language detection unsupported/unclear | raw='zz' | defaulting to en
+2026-08-14 17:16:14 | ERROR | app.services.language | [] Translation failed | language=es | error=boom
+2026-08-14 17:16:14 | INFO | app.services.language | [] Response translated | language=es | duration=0.19ms
+2026-08-14 17:16:14 | ERROR | app.services.llm_understanding | [] LLM choice interpretation call failed | error=boom
+2026-08-14 17:16:14 | INFO | app.services.llm_understanding | [] LLM choice resolved | choice='2' | duration=0.28ms
+2026-08-14 17:16:14 | ERROR | app.services.llm_understanding | [] LLM side-question answer failed | error=boom
+2026-08-14 17:16:14 | INFO | app.services.llm_understanding | [] LLM side-question answered | workflow=cheque | duration=0.18ms
+2026-08-14 17:16:14 | ERROR | app.services.llm_understanding | [] LLM jump detection call failed | error=boom
+2026-08-14 17:16:14 | INFO | app.services.llm_understanding | [] LLM workflow jump detected | from=transfer | to=loan | confidence=0.90 | duration=0.27ms
+2026-08-14 17:16:14 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=greeting | confidence=0.97 | workflow=none | step=none | method=rule
+2026-08-14 17:16:14 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cancel | confidence=0.99 | workflow=none | step=none | method=rule
+2026-08-14 17:16:14 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=back | confidence=0.98 | workflow=none | step=none | method=rule
+2026-08-14 17:16:14 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=main_menu | confidence=0.95 | workflow=none | step=none | method=rule
+2026-08-14 17:16:14 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_help | confidence=0.90 | workflow=onboarding | step=COLLECT_AADHAAR | method=context
+2026-08-14 17:16:14 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_explanation | confidence=0.88 | workflow=onboarding | step=COLLECT_AADHAAR | method=context
+2026-08-14 17:16:14 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_clarification | confidence=0.85 | workflow=onboarding | step=COLLECT_AADHAAR | method=context
+2026-08-14 17:16:14 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:16:14 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=balance_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:16:14 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transaction_request | confidence=0.88 | workflow=none | step=none | method=rule
+2026-08-14 17:16:14 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_deposit_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:16:14 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_status_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:16:14 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:16:14 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:16:14 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:16:14 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.95 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.95 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_confirmation | confidence=0.95 | workflow=transfer | step=CONFIRM_TRANSFER | method=context
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_confirmation | confidence=0.95 | workflow=transfer | step=CONFIRM_TRANSFER | method=context
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_explanation | confidence=0.88 | workflow=loan | step=UPLOAD_LOAN_FORM | method=context
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_clarification | confidence=0.75 | workflow=transfer | step=SELECT_BENEFICIARY | method=context
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_status_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_status | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transaction_insight_question | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.88 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=greeting | confidence=0.97 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=balance_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=unknown | confidence=0.00 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=unknown | confidence=0.00 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=greeting | confidence=0.97 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cancel | confidence=0.99 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=unknown | confidence=0.00 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=greeting | confidence=0.97 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cancel | confidence=0.99 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=back | confidence=0.98 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=main_menu | confidence=0.95 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=balance_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.88 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_explanation | confidence=0.88 | workflow=cheque | step=UPLOAD_CHEQUE | method=context
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=help | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=help | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_help | confidence=0.90 | workflow=onboarding | step=COLLECT_AADHAAR | method=context
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=unknown | confidence=0.30 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=balance_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | ERROR | app.conversation.intent.classifier | [] LLM intent fallback failed | error=groq is down
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=unknown | confidence=0.30 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=greeting | confidence=0.97 | workflow=none | step=none | method=rule
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=not_a_real_intent | confidence=0.90 | workflow=none | step=none | method=llm
+2026-08-14 17:16:15 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=banking_question | confidence=0.70 | workflow=none | step=none | method=llm
+2026-08-14 17:16:33 | ERROR | app.services.tts | [] TTS synthesis failed | error=boom | duration=18.14ms
+2026-08-14 17:16:33 | WARNING | app.services.tts | [] TTS skipped | SARVAM_API_KEY not configured
+2026-08-14 17:16:33 | ERROR | app.services.tts | [] TTS response had no audio data
+2026-08-14 17:16:33 | INFO | app.services.tts | [] TTS synthesis complete | bytes=16 | duration=16.68ms
+2026-08-14 17:16:33 | INFO | app.services.tts | [] TTS synthesis complete | bytes=4 | duration=43.35ms
+2026-08-14 17:16:33 | WARNING | app.services.tts | [] Falling back to WAV audio (not a voice-note bubble) — OGG conversion unavailable
+2026-08-14 17:16:33 | INFO | app.services.transcription | [t2] Transcription complete | duration=3.66ms | language=en-in | text=check my balance
+2026-08-14 17:16:34 | ERROR | app.services.transcription | [t4] Transcription failed | error=boom | duration=17.17ms
+2026-08-14 17:16:34 | INFO | app.services.transcription | [t1] Transcription complete | duration=4.26ms | language=hi-in | text=mera balance kya hai
+2026-08-14 17:16:34 | INFO | app.services.transcription | [t3] STT language tag ignored | reason=transcript_too_short | language=pt-in | text='Ok'
+2026-08-14 17:16:34 | INFO | app.services.transcription | [t3] Transcription complete | duration=2.46ms | language=pt-in | text=Ok
+2026-08-14 17:16:34 | INFO | app.services.message_handler | [t2] Voice reply unavailable — falling back to text
+2026-08-14 17:16:34 | INFO | app.services.message_handler | [t3] Voice send failed — falling back to text
+2026-08-14 17:16:56 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=loan
+2026-08-14 17:16:56 | INFO | app.workflows.manager | [lt3] Active workflow found | type=loan | step=SELECT_LOAN_TYPE | phone=0099
+2026-08-14 17:16:56 | INFO | app.workflows.processors.loan | [lt3] Loan workflow step | phone=0099 | step=SELECT_LOAN_TYPE
+2026-08-14 17:16:56 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:16:56 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:16:56 | INFO | app.workflows.processors.loan | [lt3] Loan type selected | phone=0099 | loan_type=vehicle
+2026-08-14 17:16:56 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=loan
+2026-08-14 17:16:56 | INFO | app.workflows.manager | [lt2] Active workflow found | type=loan | step=CONFIRM_LOAN | phone=0099
+2026-08-14 17:16:56 | INFO | app.workflows.processors.loan | [lt2] Loan workflow step | phone=0099 | step=CONFIRM_LOAN
+2026-08-14 17:16:56 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-14 17:16:56 | INFO | app.workflows.processors.loan | [lt2] Loan application declined at confirmation | phone=0099
+2026-08-14 17:16:56 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=loan
+2026-08-14 17:16:56 | INFO | app.workflows.manager | [lt1] Active workflow found | type=loan | step=CONFIRM_LOAN | phone=0099
+2026-08-14 17:16:56 | INFO | app.workflows.processors.loan | [lt1] Loan workflow step | phone=0099 | step=CONFIRM_LOAN
+2026-08-14 17:16:56 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-14 17:16:56 | INFO | app.workflows.processors.loan | [lt1] Loan request created | phone=0099 | request_id=LOAN-4374BE18
+2026-08-14 17:16:56 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=kyc
+2026-08-14 17:16:56 | INFO | app.workflows.manager | [kt2] Active workflow found | type=kyc | step=CONFIRM_KYC | phone=0099
+2026-08-14 17:16:56 | INFO | app.workflows.processors.kyc | [kt2] KYC workflow step | phone=0099 | step=CONFIRM_KYC
+2026-08-14 17:16:56 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-14 17:16:56 | INFO | app.workflows.processors.kyc | [kt2] KYC update declined at confirmation | phone=0099
+2026-08-14 17:16:56 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=kyc
+2026-08-14 17:16:56 | INFO | app.workflows.manager | [kt1] Active workflow found | type=kyc | step=CONFIRM_KYC | phone=0099
+2026-08-14 17:16:56 | INFO | app.workflows.processors.kyc | [kt1] KYC workflow step | phone=0099 | step=CONFIRM_KYC
+2026-08-14 17:16:56 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-14 17:16:56 | INFO | app.workflows.processors.kyc | [kt1] KYC request created | phone=0099 | request_id=KYC-9BB48696
+2026-08-14 17:16:56 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
+2026-08-14 17:16:56 | INFO | app.workflows.manager | [ot3] Active workflow found | type=onboarding | step=SELECT_ACCOUNT_TYPE | phone=0099
+2026-08-14 17:16:56 | INFO | app.workflows.processors.onboarding | [ot3] Onboarding workflow step | phone=0099 | step=SELECT_ACCOUNT_TYPE
+2026-08-14 17:16:56 | INFO | app.workflows.processors.onboarding | [ot3] Account opened | phone=0099 | account_number=GB12FNCL00010009999999 | type=current
+2026-08-14 17:16:56 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-14 17:16:57 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
+2026-08-14 17:16:57 | INFO | app.workflows.manager | [ot2] Active workflow found | type=onboarding | step=CONFIRM_REGISTRATION | phone=0099
+2026-08-14 17:16:57 | INFO | app.workflows.processors.onboarding | [ot2] Onboarding workflow step | phone=0099 | step=CONFIRM_REGISTRATION
+2026-08-14 17:16:57 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-14 17:16:57 | INFO | app.workflows.processors.onboarding | [ot2] Registration declined at confirmation step | phone=0099
+2026-08-14 17:16:57 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
+2026-08-14 17:16:57 | INFO | app.workflows.manager | [ot1] Active workflow found | type=onboarding | step=CONFIRM_REGISTRATION | phone=0099
+2026-08-14 17:16:57 | INFO | app.workflows.processors.onboarding | [ot1] Onboarding workflow step | phone=0099 | step=CONFIRM_REGISTRATION
+2026-08-14 17:16:57 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:16:57 | INFO | app.workflows.processors.onboarding | [ot1] Customer record created | phone=0099 | customer_id=1
+2026-08-14 17:16:57 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-14 17:16:57 | INFO | app.workflows.manager | [tt4] Active workflow found | type=transfer | step=SELECT_AMOUNT | phone=0099
+2026-08-14 17:16:57 | INFO | app.workflows.processors.transfer | [tt4] Transfer workflow step | phone=0099 | step=SELECT_AMOUNT
+2026-08-14 17:16:57 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:16:57 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:16:57 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-14 17:16:57 | INFO | app.workflows.manager | [tt1] Active workflow found | type=transfer | step=SELECT_SOURCE_ACCOUNT | phone=0099
+2026-08-14 17:16:57 | INFO | app.workflows.processors.transfer | [tt1] Transfer workflow step | phone=0099 | step=SELECT_SOURCE_ACCOUNT
+2026-08-14 17:16:57 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:16:57 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:16:57 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-14 17:16:57 | INFO | app.workflows.manager | [tt3] Active workflow found | type=transfer | step=CONFIRM_TRANSFER | phone=0099
+2026-08-14 17:16:57 | INFO | app.workflows.processors.transfer | [tt3] Transfer workflow step | phone=0099 | step=CONFIRM_TRANSFER
+2026-08-14 17:16:57 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:16:57 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-14 17:16:57 | INFO | app.workflows.manager | [tt2] Active workflow found | type=transfer | step=CONFIRM_TRANSFER | phone=0099
+2026-08-14 17:16:57 | INFO | app.workflows.processors.transfer | [tt2] Transfer workflow step | phone=0099 | step=CONFIRM_TRANSFER
+2026-08-14 17:16:57 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-14 17:16:57 | INFO | app.workflows.processors.transfer | [tt2] Transfer initiated | phone=0099 | reference=TRF-AF5B6D77 | amount=£25.00
+2026-08-14 17:16:57 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
+2026-08-14 17:16:57 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:16:57 | INFO | app.workflows.manager | [cs3] Workflow stop requested, confirming | type=cheque | phone=0099 | trigger='Cancel'
+2026-08-14 17:16:57 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:16:57 | INFO | app.workflows.manager | [cs4] Workflow stop declined, resuming | type=cheque | phone=0099
+2026-08-14 17:16:57 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
+2026-08-14 17:16:57 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:16:57 | INFO | app.workflows.manager | [cs1] Workflow stop requested, confirming | type=cheque | phone=0099 | trigger='Cancel'
+2026-08-14 17:16:57 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-14 17:16:57 | INFO | app.workflows.manager | [cs2] Workflow stop confirmed | type=cheque | phone=0099 | closing=False | jump_to=none
+2026-08-14 17:16:57 | INFO | app.workflows.processors.cheque | [] Cheque validation | phone=0000 | missing_or_invalid=[]
+2026-08-14 17:16:57 | INFO | app.workflows.processors.cheque | [] Cheque request created | phone=0000 | request_id=CHQ-E2FCC5AF
+2026-08-14 17:16:57 | INFO | app.workflows.processors.cheque | [] Cheque validation | phone=0000 | missing_or_invalid=['payee']
+2026-08-14 17:16:57 | WARNING | app.conversation.context_store | [] Conversation context update skipped | no existing context | phone=447000000099
+2026-08-14 17:16:57 | ERROR | app.conversation.builder | [] Customer lookup failed while building conversation context | phone=447000000008 | error=connection reset
+2026-08-14 17:16:57 | INFO | app.conversation.manager | [t1] conversation.turn.started | phone=8034
+2026-08-14 17:16:57 | INFO | app.conversation.intent.classifier | [t1] Intent classified | phone=8034 | intent=banking_question | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:16:57 | INFO | app.conversation.manager | [t1] conversation.intent.classified | phone=8034 | intent=banking_question | confidence=0.70
+2026-08-14 17:16:57 | INFO | app.conversation.manager | [t1] conversation.route.decided | phone=8034 | intent=banking_question | confidence=0.70 | routing_decision=BANKING_LLM | workflow=none | step=none
+2026-08-14 17:16:57 | INFO | app.conversation.manager | [t1] conversation.response.generated | phone=8034 | source=llm | duration=3.83ms
+2026-08-14 17:16:57 | INFO | app.conversation.manager | [t1] conversation.turn.completed | phone=8034
+2026-08-14 17:16:57 | INFO | app.conversation.manager | [t2] conversation.turn.started | phone=8034
+2026-08-14 17:16:57 | INFO | app.conversation.intent.classifier | [t2] Intent classified | phone=8034 | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:16:57 | INFO | app.conversation.manager | [t2] conversation.intent.classified | phone=8034 | intent=out_of_scope | confidence=0.85
+2026-08-14 17:16:57 | INFO | app.conversation.manager | [t2] conversation.route.decided | phone=8034 | intent=out_of_scope | confidence=0.85 | routing_decision=OUT_OF_SCOPE | workflow=none | step=none
+2026-08-14 17:16:57 | INFO | app.conversation.manager | [t2] conversation.turn.completed | phone=8034
+2026-08-14 17:16:57 | INFO | app.conversation.manager | [t3] conversation.turn.started | phone=8034
+2026-08-14 17:16:57 | INFO | app.conversation.intent.classifier | [t3] Intent classified | phone=8034 | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:16:57 | INFO | app.conversation.manager | [t3] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.70
+2026-08-14 17:16:57 | INFO | app.conversation.manager | [t3] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.70 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:16:57 | INFO | app.conversation.manager | [t3] conversation.turn.completed | phone=8034
+2026-08-14 17:16:57 | INFO | app.conversation.manager | [t4] conversation.turn.started | phone=8034
+2026-08-14 17:17:05 | INFO | app.services.language | [t4] Language detected | code=en | duration=8041.24ms
+2026-08-14 17:17:05 | INFO | app.conversation.intent.classifier | [t4] Intent classified | phone=8034 | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t4] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.90
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t4] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.90 | routing_decision=START_WORKFLOW | workflow=none | step=none
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t4] conversation.turn.completed | phone=8034
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t5] conversation.turn.started | phone=8034
+2026-08-14 17:17:05 | INFO | app.conversation.intent.classifier | [t5] Intent classified | phone=8034 | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t5] conversation.intent.classified | phone=8034 | intent=loan_application_request | confidence=0.85
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t5] conversation.route.decided | phone=8034 | intent=loan_application_request | confidence=0.85 | routing_decision=START_WORKFLOW | workflow=none | step=none
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t5] conversation.turn.completed | phone=8034
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t6] conversation.turn.started | phone=8034
+2026-08-14 17:17:05 | INFO | app.conversation.intent.classifier | [t6] Intent classified | phone=8034 | intent=cheque_deposit_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t6] conversation.intent.classified | phone=8034 | intent=cheque_deposit_request | confidence=0.90
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t6] conversation.route.decided | phone=8034 | intent=cheque_deposit_request | confidence=0.90 | routing_decision=START_WORKFLOW | workflow=none | step=none
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t6] conversation.turn.completed | phone=8034
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t7] conversation.turn.started | phone=8034
+2026-08-14 17:17:05 | INFO | app.conversation.intent.classifier | [t7] Intent classified | phone=8034 | intent=kyc_update_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t7] conversation.intent.classified | phone=8034 | intent=kyc_update_request | confidence=0.85
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t7] conversation.route.decided | phone=8034 | intent=kyc_update_request | confidence=0.85 | routing_decision=START_WORKFLOW | workflow=none | step=none
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t7] conversation.turn.completed | phone=8034
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t8] conversation.turn.started | phone=8034
+2026-08-14 17:17:05 | INFO | app.conversation.intent.classifier | [t8] Intent classified | phone=8034 | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t8] conversation.intent.classified | phone=8034 | intent=out_of_scope | confidence=0.85
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t8] conversation.workflow.handled | phone=8034
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t8] conversation.turn.completed | phone=8034
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t9] conversation.turn.started | phone=8034
+2026-08-14 17:17:05 | INFO | app.conversation.intent.classifier | [t9] Intent classified | phone=8034 | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t9] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.70
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t9] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.70 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t9] conversation.turn.completed | phone=8034
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t10] conversation.turn.started | phone=8034
+2026-08-14 17:17:05 | INFO | app.conversation.intent.classifier | [t10] Intent classified | phone=8034 | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t10] conversation.intent.classified | phone=8034 | intent=loan_application_request | confidence=0.85
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t10] conversation.route.decided | phone=8034 | intent=loan_application_request | confidence=0.85 | routing_decision=START_WORKFLOW | workflow=none | step=none
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t10] conversation.turn.completed | phone=8034
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t11] conversation.turn.started | phone=8034
+2026-08-14 17:17:05 | INFO | app.conversation.intent.classifier | [t11] Intent classified | phone=8034 | intent=help | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t11] conversation.intent.classified | phone=8034 | intent=help | confidence=0.85
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t11] conversation.route.decided | phone=8034 | intent=help | confidence=0.85 | routing_decision=SAFE_FALLBACK | workflow=none | step=none
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t11] conversation.response.generated | phone=8034 | source=llm | duration=1.54ms
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t11] conversation.turn.completed | phone=8034
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t12a] conversation.turn.started | phone=8034
+2026-08-14 17:17:05 | INFO | app.conversation.intent.classifier | [t12a] Intent classified | phone=8034 | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t12a] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.70
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t12a] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.70 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t12a] conversation.turn.completed | phone=8034
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t12b] conversation.turn.started | phone=8034
+2026-08-14 17:17:05 | INFO | app.conversation.intent.classifier | [t12b] Intent classified | phone=8034 | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t12b] conversation.intent.classified | phone=8034 | intent=loan_application_request | confidence=0.85
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t12b] conversation.route.decided | phone=8034 | intent=loan_application_request | confidence=0.85 | routing_decision=START_WORKFLOW | workflow=none | step=none
+2026-08-14 17:17:05 | INFO | app.conversation.manager | [t12b] conversation.turn.completed | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-0] conversation.turn.started | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [t12c-0] Intent classified | phone=8034 | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-0] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.70
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-0] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.70 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-0] conversation.turn.completed | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-1] conversation.turn.started | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [t12c-1] Intent classified | phone=8034 | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-1] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.70
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-1] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.70 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-1] conversation.turn.completed | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-2] conversation.turn.started | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [t12c-2] Intent classified | phone=8034 | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-2] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.70
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-2] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.70 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-2] conversation.turn.completed | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-3] conversation.turn.started | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [t12c-3] Intent classified | phone=8034 | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-3] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.70
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-3] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.70 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-3] conversation.turn.completed | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-4] conversation.turn.started | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [t12c-4] Intent classified | phone=8034 | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-4] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.70
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-4] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.70 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-4] conversation.turn.completed | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-5] conversation.turn.started | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [t12c-5] Intent classified | phone=8034 | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-5] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.70
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-5] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.70 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-5] conversation.turn.completed | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-6] conversation.turn.started | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [t12c-6] Intent classified | phone=8034 | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-6] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.70
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-6] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.70 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-6] conversation.turn.completed | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-7] conversation.turn.started | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [t12c-7] Intent classified | phone=8034 | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-7] conversation.intent.classified | phone=8034 | intent=transfer_request | confidence=0.70
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-7] conversation.route.decided | phone=8034 | intent=transfer_request | confidence=0.70 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t12c-7] conversation.turn.completed | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t13] conversation.turn.started | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [t13] Intent classified | phone=8034 | intent=banking_question | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t13] conversation.intent.classified | phone=8034 | intent=banking_question | confidence=0.70
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t13] conversation.route.decided | phone=8034 | intent=banking_question | confidence=0.70 | routing_decision=BANKING_LLM | workflow=none | step=none
+2026-08-14 17:17:06 | ERROR | app.conversation.manager | [t13] conversation.turn.failed | phone=8034 | error=psycopg2.errors.UniqueViolation: duplicate key at 0x7f | duration=1.73ms
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t13b] conversation.turn.started | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [t13b] Intent classified | phone=8034 | intent=banking_question | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t13b] conversation.intent.classified | phone=8034 | intent=banking_question | confidence=0.70
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t13b] conversation.route.decided | phone=8034 | intent=banking_question | confidence=0.70 | routing_decision=BANKING_LLM | workflow=none | step=none
+2026-08-14 17:17:06 | ERROR | app.conversation.manager | [t13b] conversation.turn.failed | phone=8034 | error=boom | duration=1.60ms
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [trace-xyz-123] Intent classified | phone=8034 | intent=kyc_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [t15] Intent classified | phone=8034 | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [tb1] conversation.turn.started | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [tb1] Intent classified | phone=8034 | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [tb1] conversation.intent.classified | phone=8034 | intent=loan_application_request | confidence=0.85
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [tb1] conversation.workflow.handled | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [tb1] conversation.turn.completed | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [tb2] conversation.turn.started | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [tb2] Intent classified | phone=8034 | intent=out_of_scope | confidence=0.95 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [tb2] conversation.intent.classified | phone=8034 | intent=out_of_scope | confidence=0.95
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [tb2] conversation.route.decided | phone=8034 | intent=out_of_scope | confidence=0.95 | routing_decision=OUT_OF_SCOPE | workflow=none | step=none
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [tb2] conversation.turn.completed | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [tm2] conversation.turn.started | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [tm2] conversation.route.decided | phone=8034 | intent=unknown | confidence=0.00 | routing_decision=CLARIFICATION_REQUIRED | workflow=none | step=none
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [tm2] conversation.turn.completed | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [tm1] conversation.turn.started | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [tm1] conversation.route.decided | phone=8034 | intent=unknown | confidence=0.00 | routing_decision=OUT_OF_SCOPE | workflow=none | step=none
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [tm1] conversation.turn.completed | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [tm3] conversation.turn.started | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [tm3] conversation.route.decided | phone=8034 | intent=unknown | confidence=0.00 | routing_decision=OUT_OF_SCOPE | workflow=none | step=none
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [tm3] conversation.response.generated | phone=8034 | source=llm | duration=1.20ms
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [tm3] conversation.turn.completed | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [tm4] conversation.turn.started | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [tm4] conversation.route.decided | phone=8034 | intent=unknown | confidence=0.00 | routing_decision=OUT_OF_SCOPE | workflow=none | step=none
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [tm4] conversation.turn.completed | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.95 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=balance_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transaction_request | confidence=0.88 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_status_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_status | confidence=0.88 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_status | confidence=0.88 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=out_of_scope | confidence=0.85 | workflow=transfer | step=CONFIRM_TRANSFER | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=out_of_scope | confidence=0.85 | workflow=loan | step=UPLOAD_LOAN_FORM | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_help | confidence=0.90 | workflow=onboarding | step=COLLECT_AADHAAR | method=context
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.70 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=loan_application_request | confidence=0.85 | workflow=cheque | step=UPLOAD_CHEQUE | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=out_of_scope | confidence=0.95 | workflow=transfer | step=CONFIRM_TRANSFER | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.agent.agent | [rt4] Agent started | phone=8034 | query=500
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [rt4] conversation.turn.started | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [rt4] Intent classified | phone=8034 | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [rt4] conversation.intent.classified | phone=8034 | intent=out_of_scope | confidence=0.85
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [rt4] conversation.workflow.handled | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [rt4] conversation.turn.completed | phone=8034
+2026-08-14 17:17:06 | INFO | app.agent.agent | [rt2] Agent started | phone=8034 | query=I earn 5000 monthly and want a personal loan
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [rt2] conversation.turn.started | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [rt2] Intent classified | phone=8034 | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [rt2] conversation.intent.classified | phone=8034 | intent=loan_eligibility_question | confidence=0.92
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [rt2] conversation.route.decided | phone=8034 | intent=loan_eligibility_question | confidence=0.92 | routing_decision=BANKING_LLM | workflow=none | step=none
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [rt2] conversation.guidance.rendered | phone=8034 | guidance_type=loan_eligibility_guidance | response_mode=offer_actions | actions=['SHOW_LOAN_REQUIREMENTS', 'SHOW_LOAN_DOCUMENTS', 'START_LOAN_APPLICATION']
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [rt2] conversation.turn.completed | phone=8034
+2026-08-14 17:17:06 | INFO | app.agent.agent | [rt1] Agent started | phone=8034 | query=Why is the sky blue?
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [rt1] conversation.turn.started | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [rt1] Intent classified | phone=8034 | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [rt1] conversation.intent.classified | phone=8034 | intent=out_of_scope | confidence=0.85
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [rt1] conversation.route.decided | phone=8034 | intent=out_of_scope | confidence=0.85 | routing_decision=OUT_OF_SCOPE | workflow=none | step=none
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [rt1] conversation.turn.completed | phone=8034
+2026-08-14 17:17:06 | INFO | app.agent.agent | [rt3] Agent started | phone=8034 | query=I want a personal loan
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [rt3] conversation.turn.started | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [rt3] Intent classified | phone=8034 | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [rt3] conversation.intent.classified | phone=8034 | intent=loan_application_request | confidence=0.85
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [rt3] conversation.route.decided | phone=8034 | intent=loan_application_request | confidence=0.85 | routing_decision=START_WORKFLOW | workflow=none | step=none
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [rt3] conversation.turn.completed | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=unknown | confidence=0.30 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=account_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transaction_insight_question | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=balance_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.88 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=account_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.88 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cancel | confidence=0.99 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=account_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=unknown | confidence=0.30 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transaction_insight_question | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t9] conversation.turn.started | phone=8034
+2026-08-14 17:17:06 | INFO | app.conversation.intent.classifier | [t9] Intent classified | phone=8034 | intent=workflow_help | confidence=0.90 | workflow=cheque | step=UPLOAD_CHEQUE | method=context
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t9] conversation.intent.classified | phone=8034 | intent=workflow_help | confidence=0.90
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t9] conversation.route.decided | phone=8034 | intent=workflow_help | confidence=0.90 | routing_decision=WORKFLOW | workflow=cheque | step=UPLOAD_CHEQUE
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t9] conversation.response.generated | phone=8034 | source=llm | duration=1.51ms
+2026-08-14 17:17:06 | INFO | app.conversation.manager | [t9] conversation.turn.completed | phone=8034
+2026-08-14 17:17:07 | INFO | app.conversation.manager | [t10] conversation.turn.started | phone=8034
+2026-08-14 17:17:07 | INFO | app.conversation.intent.classifier | [t10] Intent classified | phone=8034 | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:07 | INFO | app.conversation.manager | [t10] conversation.intent.classified | phone=8034 | intent=out_of_scope | confidence=0.85
+2026-08-14 17:17:07 | INFO | app.conversation.manager | [t10] conversation.guidance.action_selected | phone=8034 | action=START_LOAN_APPLICATION | workflow=loan
+2026-08-14 17:17:07 | INFO | app.conversation.manager | [t10] conversation.turn.completed | phone=8034
+2026-08-14 17:17:07 | INFO | app.conversation.manager | [t11] conversation.turn.started | phone=8034
+2026-08-14 17:17:07 | INFO | app.conversation.intent.classifier | [t11] Intent classified | phone=8034 | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:07 | INFO | app.conversation.manager | [t11] conversation.intent.classified | phone=8034 | intent=out_of_scope | confidence=0.85
+2026-08-14 17:17:07 | INFO | app.conversation.manager | [t11] conversation.guidance.action_selected | phone=8034 | action=SHOW_LOAN_DOCUMENTS | workflow=none
+2026-08-14 17:17:07 | INFO | app.conversation.manager | [t11] conversation.turn.completed | phone=8034
+2026-08-14 17:17:07 | INFO | app.conversation.manager | [t12] conversation.turn.started | phone=8034
+2026-08-14 17:17:07 | INFO | app.conversation.intent.classifier | [t12] Intent classified | phone=8034 | intent=cancel | confidence=0.99 | workflow=none | step=none | method=rule
+2026-08-14 17:17:07 | INFO | app.conversation.manager | [t12] conversation.intent.classified | phone=8034 | intent=cancel | confidence=0.99
+2026-08-14 17:17:07 | INFO | app.conversation.manager | [t12] conversation.turn.completed | phone=8034
+2026-08-14 17:17:07 | INFO | app.conversation.manager | [t13] conversation.turn.started | phone=8034
+2026-08-14 17:17:07 | INFO | app.conversation.intent.classifier | [t13] Intent classified | phone=8034 | intent=back | confidence=0.98 | workflow=none | step=none | method=rule
+2026-08-14 17:17:07 | INFO | app.conversation.manager | [t13] conversation.intent.classified | phone=8034 | intent=back | confidence=0.98
+2026-08-14 17:17:07 | INFO | app.conversation.manager | [t13] conversation.turn.completed | phone=8034
+2026-08-14 17:17:07 | INFO | app.conversation.manager | [t14] conversation.turn.started | phone=8034
+2026-08-14 17:17:07 | INFO | app.conversation.intent.classifier | [t14] Intent classified | phone=8034 | intent=out_of_scope | confidence=0.85 | workflow=transfer | step=SELECT_BENEFICIARY | method=rule
+2026-08-14 17:17:07 | INFO | app.conversation.manager | [t14] conversation.intent.classified | phone=8034 | intent=out_of_scope | confidence=0.85
+2026-08-14 17:17:07 | INFO | app.conversation.manager | [t14] conversation.workflow.handled | phone=8034
+2026-08-14 17:17:07 | INFO | app.conversation.manager | [t14] conversation.turn.completed | phone=8034
+2026-08-14 17:17:07 | INFO | app.conversation.manager | [t15] conversation.turn.started | phone=8034
+2026-08-14 17:17:07 | INFO | app.conversation.intent.classifier | [t15] Intent classified | phone=8034 | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:07 | INFO | app.conversation.manager | [t15] conversation.intent.classified | phone=8034 | intent=loan_eligibility_question | confidence=0.92
+2026-08-14 17:17:07 | INFO | app.conversation.manager | [t15] conversation.route.decided | phone=8034 | intent=loan_eligibility_question | confidence=0.92 | routing_decision=BANKING_LLM | workflow=none | step=none
+2026-08-14 17:17:07 | INFO | app.conversation.manager | [t15] conversation.guidance.rendered | phone=8034 | guidance_type=loan_eligibility_guidance | response_mode=offer_actions | actions=['SHOW_LOAN_REQUIREMENTS', 'SHOW_LOAN_DOCUMENTS', 'START_LOAN_APPLICATION']
+2026-08-14 17:17:07 | INFO | app.conversation.manager | [t15] conversation.turn.completed | phone=8034
+2026-08-14 17:17:07 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:07 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:07 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:07 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:07 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:07 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=account_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:07 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=unknown | confidence=0.30 | workflow=none | step=none | method=rule
+2026-08-14 17:17:07 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:07 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:07 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:07 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:07 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:07 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=account_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:07 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=unknown | confidence=0.30 | workflow=none | step=none | method=rule
+2026-08-14 17:17:07 | ERROR | app.services.idempotency | Idempotency claim failed (Redis error) | external_message_id=MSG-DOWN | error=connection refused
+2026-08-14 17:17:07 | ERROR | app.services.idempotency | Idempotency mark_completed failed | external_message_id=MSG-DOWN | error=connection refused
+2026-08-14 17:17:07 | ERROR | app.services.idempotency | Idempotency mark_failed failed | external_message_id=MSG-DOWN | error=connection refused
+2026-08-14 17:17:08 | INFO | app.main | [1ed027f6] webhook.received
+2026-08-14 17:17:08 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:17:08 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:17:08 | INFO | app.main | [56b5c715] webhook.received
+2026-08-14 17:17:08 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:17:08 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:17:08 | INFO | app.main | [9c97efab] webhook.received
+2026-08-14 17:17:08 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-2', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:17:08 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:17:08 | INFO | app.main | [2ba9b965] webhook.received
+2026-08-14 17:17:08 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-2', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:17:08 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:17:08 | INFO | app.main | [60d533bb] webhook.received
+2026-08-14 17:17:08 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IND-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:17:08 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:17:08 | INFO | app.main | [a9472c8c] webhook.received
+2026-08-14 17:17:08 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IND-MSG-2', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:17:08 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:17:08 | INFO | app.main | [23557aec] webhook.received
+2026-08-14 17:17:08 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'RETRY-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:17:08 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:17:08 | INFO | app.main | [04ada3fc] webhook.received
+2026-08-14 17:17:08 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'GROUP-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': True}}
+2026-08-14 17:17:08 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:17:08 | INFO | app.main | [5800da1c] webhook.received
+2026-08-14 17:17:08 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IMG-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'image', 'isGroup': False}}
+2026-08-14 17:17:08 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:17:08 | INFO | app.main | [fb5ad24a] webhook.received
+2026-08-14 17:17:08 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IMG-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'image', 'isGroup': False}}
+2026-08-14 17:17:08 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:17:08 | INFO | app.main | [c4c4e522] webhook.received
+2026-08-14 17:17:08 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DOWN-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:17:08 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:17:08 | INFO | app.main | [76e1f8bc] webhook.received
+2026-08-14 17:17:08 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-1', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:17:08 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:17:08 | INFO | app.main | [b77e671b] webhook.received
+2026-08-14 17:17:08 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-1', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:17:08 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:17:08 | INFO | app.main | [afe565a1] webhook.received
+2026-08-14 17:17:08 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-2', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:17:08 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:17:08 | INFO | app.main | [2b9f0e5c] webhook.received
+2026-08-14 17:17:08 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-3', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-14 17:17:08 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:17:08 | INFO | app.main | [bf8e9720] webhook.received
+2026-08-14 17:17:08 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'VOICE-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'audio', 'isGroup': False}}
+2026-08-14 17:17:08 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:17:08 | INFO | app.main | [f91667b0] webhook.received
+2026-08-14 17:17:08 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'VOICE-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'audio', 'isGroup': False}}
+2026-08-14 17:17:08 | INFO | app.main | message ignored | missing entry
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=greeting | confidence=0.97 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cancel | confidence=0.99 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=back | confidence=0.98 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=main_menu | confidence=0.95 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_help | confidence=0.90 | workflow=onboarding | step=COLLECT_AADHAAR | method=context
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_explanation | confidence=0.88 | workflow=onboarding | step=COLLECT_AADHAAR | method=context
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_clarification | confidence=0.85 | workflow=onboarding | step=COLLECT_AADHAAR | method=context
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=balance_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transaction_request | confidence=0.88 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_deposit_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_status_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.95 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.95 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_confirmation | confidence=0.95 | workflow=transfer | step=CONFIRM_TRANSFER | method=context
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_confirmation | confidence=0.95 | workflow=transfer | step=CONFIRM_TRANSFER | method=context
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_explanation | confidence=0.88 | workflow=loan | step=UPLOAD_LOAN_FORM | method=context
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_clarification | confidence=0.75 | workflow=transfer | step=SELECT_BENEFICIARY | method=context
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_status_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_status | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transaction_insight_question | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.88 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=greeting | confidence=0.97 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=balance_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=unknown | confidence=0.00 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=unknown | confidence=0.00 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=greeting | confidence=0.97 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cancel | confidence=0.99 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=unknown | confidence=0.00 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=greeting | confidence=0.97 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cancel | confidence=0.99 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=back | confidence=0.98 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=main_menu | confidence=0.95 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=out_of_scope | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=balance_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.88 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_explanation | confidence=0.88 | workflow=cheque | step=UPLOAD_CHEQUE | method=context
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=help | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=help | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=0000 | intent=workflow_help | confidence=0.90 | workflow=onboarding | step=COLLECT_AADHAAR | method=context
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=unknown | confidence=0.30 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=balance_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | ERROR | app.conversation.intent.classifier | [] LLM intent fallback failed | error=groq is down
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=unknown | confidence=0.30 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=greeting | confidence=0.97 | workflow=none | step=none | method=rule
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=not_a_real_intent | confidence=0.90 | workflow=none | step=none | method=llm
+2026-08-14 17:17:08 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=banking_question | confidence=0.70 | workflow=none | step=none | method=llm
+2026-08-14 17:17:08 | ERROR | app.services.language | [] Language detection failed | error=boom
+2026-08-14 17:17:08 | INFO | app.services.language | [] Language detected | code=hi | duration=0.13ms
+2026-08-14 17:17:08 | INFO | app.services.language | [] Language detection unsupported/unclear | raw='zz' | defaulting to en
+2026-08-14 17:17:08 | ERROR | app.services.language | [] Translation failed | language=es | error=boom
+2026-08-14 17:17:08 | INFO | app.services.language | [] Response translated | language=es | duration=0.15ms
+2026-08-14 17:17:08 | ERROR | app.services.llm_understanding | [] LLM choice interpretation call failed | error=boom
+2026-08-14 17:17:08 | INFO | app.services.llm_understanding | [] LLM choice resolved | choice='2' | duration=0.27ms
+2026-08-14 17:17:08 | ERROR | app.services.llm_understanding | [] LLM side-question answer failed | error=boom
+2026-08-14 17:17:08 | INFO | app.services.llm_understanding | [] LLM side-question answered | workflow=cheque | duration=0.15ms
+2026-08-14 17:17:08 | ERROR | app.services.llm_understanding | [] LLM jump detection call failed | error=boom
+2026-08-14 17:17:08 | INFO | app.services.llm_understanding | [] LLM workflow jump detected | from=transfer | to=loan | confidence=0.90 | duration=0.13ms
+2026-08-14 17:17:08 | INFO | app.workflows.memory | Workflow created | phone=447700900200 | type=loan
+2026-08-14 17:17:08 | INFO | app.workflows.processors.loan | [t1] Loan workflow step | phone=0200 | step=SELECT_LOAN_TYPE
+2026-08-14 17:17:08 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
+2026-08-14 17:17:08 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
+2026-08-14 17:17:08 | INFO | app.workflows.processors.loan | [t1] Loan type selected | phone=0200 | loan_type=home
+2026-08-14 17:17:08 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
+2026-08-14 17:17:08 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
+2026-08-14 17:17:08 | INFO | app.workflows.processors.loan | [t1] Applied pending loan form after type selection | phone=0200 | fields=['applicant_name', 'monthly_income', 'employment_type']
+2026-08-14 17:17:08 | INFO | app.workflows.memory | Workflow created | phone=447700900201 | type=loan
+2026-08-14 17:17:08 | INFO | app.workflows.processors.loan | [t2] Loan workflow step | phone=0201 | step=SELECT_LOAN_TYPE
+2026-08-14 17:17:08 | INFO | app.workflows.memory | Workflow updated | phone=447700900201
+2026-08-14 17:17:08 | INFO | app.workflows.memory | Workflow updated | phone=447700900201
+2026-08-14 17:17:08 | INFO | app.workflows.processors.loan | [t2] Loan type selected | phone=0201 | loan_type=vehicle
+2026-08-14 17:17:08 | INFO | app.workflows.processors.onboarding | [] Onboarding workflow step | phone=0000 | step=COLLECT_AADHAAR
+2026-08-14 17:17:08 | INFO | app.workflows.processors.onboarding | [] Registration cancelled at Aadhaar step | phone=0000
+2026-08-14 17:17:08 | INFO | app.workflows.memory | Workflow created | phone=447700900120 | type=onboarding
+2026-08-14 17:17:08 | INFO | app.workflows.processors.onboarding | [t1] Onboarding workflow step | phone=0120 | step=COLLECT_AADHAAR
+2026-08-14 17:17:08 | INFO | app.workflows.memory | Workflow updated | phone=447700900120
+2026-08-14 17:17:08 | INFO | app.workflows.memory | Workflow updated | phone=447700900120
+2026-08-14 17:17:08 | INFO | app.workflows.processors.onboarding | [t1] Registration Aadhaar collected | phone=0120
+2026-08-14 17:17:08 | INFO | app.workflows.memory | Workflow created | phone=447700900120 | type=onboarding
+2026-08-14 17:17:08 | INFO | app.workflows.processors.onboarding | [t3] Onboarding workflow step | phone=0120 | step=COLLECT_AADHAAR
+2026-08-14 17:17:08 | INFO | app.workflows.processors.onboarding | [t3] Registration declined at Aadhaar prompt | phone=0120
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow created | phone=447700900120 | type=onboarding
+2026-08-14 17:17:09 | INFO | app.workflows.processors.onboarding | [t2] Onboarding workflow step | phone=0120 | step=COLLECT_AADHAAR
+2026-08-14 17:17:09 | INFO | app.rag.retriever | RAG index built | chunks=16 | files=4
+2026-08-14 17:17:09 | INFO | app.services.registration_gate | [t3] Registration gate | unregistered | phone=0113
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow created | phone=447700900113 | type=onboarding
+2026-08-14 17:17:09 | INFO | app.services.registration_gate | [t1] Registration gate | unregistered, question — deferring registration | phone=0111
+2026-08-14 17:17:09 | INFO | app.services.registration_gate | [t2] Registration gate | unregistered | phone=0112
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow created | phone=447700900112 | type=onboarding
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow created | phone=447700900115 | type=onboarding
+2026-08-14 17:17:09 | INFO | app.workflows.manager | [t5] Active workflow found | type=onboarding | step=COLLECT_AADHAAR | phone=0115
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow deleted | phone=447700900115
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow created | phone=447700900114 | type=onboarding
+2026-08-14 17:17:09 | INFO | app.workflows.manager | [t4] Active workflow found | type=onboarding | step=COLLECT_AADHAAR | phone=0114
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow deleted | phone=447700900114
+2026-08-14 17:17:09 | INFO | app.workflows.manager | [t4] Checking for deterministic workflow start | phone=0114 | query='I want to deposit a cheque'
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow created | phone=447700900114 | type=cheque
+2026-08-14 17:17:09 | INFO | app.workflows.manager | [t4] Resumed pending service after registration | phone=0114
+2026-08-14 17:17:09 | ERROR | app.conversation.renderer | [trace-9] response.render.send_failed | phone=0000 | kind=buttons | error=boom
+2026-08-14 17:17:09 | INFO | app.conversation.renderer | [trace-9] response.render.sent | phone=0000 | kind=buttons | success=True
+2026-08-14 17:17:09 | INFO | app.conversation.renderer | [trace-5] response.render.sent | phone=0000 | kind=buttons | success=True
+2026-08-14 17:17:09 | INFO | app.conversation.renderer | [trace-4] response.render.sent | phone=0000 | kind=text | success=False
+2026-08-14 17:17:09 | ERROR | app.conversation.renderer | [trace-3] response.render.send_failed | phone=0000 | kind=text | error=boom
+2026-08-14 17:17:09 | INFO | app.conversation.renderer | [trace-6] response.render.sent | phone=0000 | kind=list | success=True
+2026-08-14 17:17:09 | INFO | app.conversation.renderer | [trace-2] response.render.sent | phone=0000 | kind=template | template=render_greeting | success=True
+2026-08-14 17:17:09 | INFO | app.conversation.renderer | [trace-1] response.render.sent | phone=0000 | kind=text | success=True
+2026-08-14 17:17:09 | WARNING | app.conversation.renderer | [trace-7] response.render.interactive_limits_exceeded | phone=0000 | kind=buttons — falling back to text
+2026-08-14 17:17:09 | INFO | app.conversation.renderer | [trace-7] response.render.sent | phone=0000 | kind=buttons | success=True
+2026-08-14 17:17:09 | WARNING | app.conversation.renderer | [trace-8] response.render.interactive_limits_exceeded | phone=0000 | kind=list — falling back to text
+2026-08-14 17:17:09 | INFO | app.conversation.renderer | [trace-8] response.render.sent | phone=0000 | kind=list | success=True
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-14 17:17:09 | INFO | app.workflows.manager | Workflow-related question | workflow=transfer | phone=0099
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-14 17:17:09 | INFO | app.workflows.manager | Workflow-related question | workflow=transfer | phone=0099
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-14 17:17:09 | INFO | app.workflows.manager | [t6] Active workflow found | type=transfer | step=SELECT_BENEFICIARY | phone=0099
+2026-08-14 17:17:09 | INFO | app.workflows.processors.transfer | [t6] Transfer workflow step | phone=0099 | step=SELECT_BENEFICIARY
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-14 17:17:09 | INFO | app.workflows.manager | [t4] Workflow jump requested, confirming | from=cheque | to=loan | phone=0097
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-14 17:17:09 | INFO | app.workflows.manager | [t5] Workflow jump requested, confirming | from=cheque | to=loan | phone=0097
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow deleted | phone=447700900097
+2026-08-14 17:17:09 | INFO | app.workflows.manager | [t6] Workflow stop confirmed | type=cheque | phone=0097 | closing=False | jump_to=loan
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=loan
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-14 17:17:09 | INFO | app.workflows.manager | [t7] Workflow jump requested, confirming | from=cheque | to=loan | phone=0097
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-14 17:17:09 | INFO | app.workflows.manager | [t8] Workflow stop declined, resuming | type=cheque | phone=0097
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-14 17:17:09 | INFO | app.workflows.manager | Workflow-related question | workflow=cheque | phone=0097
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-14 17:17:09 | INFO | app.workflows.manager | Workflow-related question | workflow=cheque | phone=0097
+2026-08-14 17:17:09 | INFO | app.workflows.manager | [t1] Side question answered mid-workflow, resuming step | workflow=cheque | phone=0097
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-14 17:17:09 | INFO | app.workflows.manager | Workflow-related question | workflow=cheque | phone=0097
+2026-08-14 17:17:09 | INFO | app.workflows.manager | [t2] Side question answered mid-workflow, resuming step | workflow=cheque | phone=0097
+2026-08-14 17:17:09 | INFO | app.workflows.manager | [t1] Checking for deterministic workflow start | phone=0096 | query='I want a loan'
+2026-08-14 17:17:09 | INFO | app.workflows.memory | Workflow created | phone=447700900096 | type=loan
+2026-08-14 17:17:10 | INFO | app.workflows.manager | [t2] Checking for deterministic workflow start | phone=0096 | query='I want a loan'
+2026-08-14 17:17:10 | INFO | app.workflows.memory | Workflow created | phone=447700900096 | type=loan
+2026-08-14 17:17:10 | INFO | app.workflows.manager | [t3] Active workflow found | type=loan | step=SELECT_LOAN_TYPE | phone=0096
+2026-08-14 17:17:10 | INFO | app.workflows.processors.loan | [t3] Loan workflow step | phone=0096 | step=SELECT_LOAN_TYPE
+2026-08-14 17:17:10 | INFO | app.workflows.memory | Workflow updated | phone=447700900096
+2026-08-14 17:17:10 | INFO | app.workflows.memory | Workflow updated | phone=447700900096
+2026-08-14 17:17:10 | INFO | app.workflows.processors.loan | [t3] Loan type selected | phone=0096 | loan_type=home
+2026-08-14 17:17:10 | INFO | app.workflows.memory | Workflow created | phone=447700900096 | type=transfer
+2026-08-14 17:17:10 | INFO | app.workflows.memory | Workflow created | phone=447700900098 | type=loan
+2026-08-14 17:17:10 | INFO | app.workflows.memory | Workflow updated | phone=447700900098
+2026-08-14 17:17:10 | INFO | app.workflows.memory | Workflow created | phone=447700900098 | type=cheque
+2026-08-14 17:17:10 | INFO | app.workflows.memory | Workflow updated | phone=447700900098
+2026-08-14 17:17:10 | INFO | app.workflows.manager | [t2] Workflow stop requested, confirming | type=cheque | phone=0098 | trigger='Cancel'
+2026-08-14 17:17:10 | INFO | app.workflows.memory | Workflow created | phone=447700900098 | type=cheque
+2026-08-14 17:17:10 | INFO | app.workflows.memory | Workflow updated | phone=447700900098
+2026-08-14 17:17:10 | INFO | app.workflows.manager | [t1] Workflow stop requested, confirming | type=cheque | phone=0098 | trigger='Cancel'
+2026-08-14 17:17:10 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=back | confidence=0.98 | workflow=none | step=none | method=rule
+2026-08-14 17:17:10 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=balance_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:10 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cancel | confidence=0.99 | workflow=none | step=none | method=rule
+2026-08-14 17:17:10 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:10 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_deposit_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:10 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cheque_status_request | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:10 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_application_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:10 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:10 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:10 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=kyc_update_request | confidence=0.85 | workflow=none | step=none | method=rule
+2026-08-14 17:17:10 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:10 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:10 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=loan_eligibility_question | confidence=0.92 | workflow=none | step=none | method=rule
+2026-08-14 17:17:10 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transaction_insight_question | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:10 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_question | confidence=0.80 | workflow=none | step=none | method=rule
+2026-08-14 17:17:10 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:10 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
+2026-08-14 17:17:10 | INFO | app.services.transcription | [t2] Transcription complete | duration=2.21ms | language=en-in | text=check my balance
+2026-08-14 17:17:10 | ERROR | app.services.transcription | [t4] Transcription failed | error=boom | duration=1.87ms
+2026-08-14 17:17:10 | INFO | app.services.transcription | [t1] Transcription complete | duration=1.61ms | language=hi-in | text=mera balance kya hai
+2026-08-14 17:17:10 | INFO | app.services.transcription | [t3] STT language tag ignored | reason=transcript_too_short | language=pt-in | text='Ok'
+2026-08-14 17:17:10 | INFO | app.services.transcription | [t3] Transcription complete | duration=1.38ms | language=pt-in | text=Ok
+2026-08-14 17:17:10 | ERROR | app.services.tts | [] TTS synthesis failed | error=boom | duration=8.56ms
+2026-08-14 17:17:10 | WARNING | app.services.tts | [] TTS skipped | SARVAM_API_KEY not configured
+2026-08-14 17:17:10 | ERROR | app.services.tts | [] TTS response had no audio data
+2026-08-14 17:17:10 | INFO | app.services.tts | [] TTS synthesis complete | bytes=16 | duration=10.33ms
+2026-08-14 17:17:10 | INFO | app.services.tts | [] TTS synthesis complete | bytes=4 | duration=8.60ms
+2026-08-14 17:17:10 | WARNING | app.services.tts | [] Falling back to WAV audio (not a voice-note bubble) — OGG conversion unavailable
+2026-08-14 17:17:10 | INFO | app.services.message_handler | [t2] Voice reply unavailable — falling back to text
+2026-08-14 17:17:10 | INFO | app.services.message_handler | [t3] Voice send failed — falling back to text
+2026-08-14 17:17:10 | INFO | app.services.whatsapp | [trace-2] WhatsApp button message sent | phone=5760
+2026-08-14 17:17:11 | ERROR | app.services.whatsapp | [trace-4] WhatsApp button send failed | status=500 | body=server error
+2026-08-14 17:17:11 | INFO | app.services.whatsapp | [trace-3] WhatsApp list message sent | phone=5760
+2026-08-14 17:17:11 | INFO | app.services.whatsapp | [trace-1] WhatsApp message sent | phone=5760
