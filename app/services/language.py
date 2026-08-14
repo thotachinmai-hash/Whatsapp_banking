@@ -19,7 +19,7 @@ import time
 from typing import Optional
 
 from dotenv import load_dotenv
-from groq import Groq
+from app.services.groq_compat import Groq
 
 from app.logger import get_logger
 

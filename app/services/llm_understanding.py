@@ -33,7 +33,7 @@ _client = None
 def _get_client():
     global _client
     if _client is None:
-        from groq import Groq
+        from app.services.groq_compat import Groq
 
         _client = Groq(api_key=os.getenv("SARVAM_API_KEY", ""))
     return _client

@@ -187,7 +187,7 @@ _groq_client = None
 def _get_groq_client():
     global _groq_client
     if _groq_client is None:
-        from groq import Groq
+        from app.services.groq_compat import Groq
 
         _groq_client = Groq(api_key=os.getenv("SARVAM_API_KEY", ""))
     return _groq_client

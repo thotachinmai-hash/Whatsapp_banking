@@ -7,7 +7,7 @@ import time
 
 import httpx
 from dotenv import load_dotenv
-from groq import Groq
+from app.services.groq_compat import Groq
 from docx import Document
 
 from app.logger import get_logger
