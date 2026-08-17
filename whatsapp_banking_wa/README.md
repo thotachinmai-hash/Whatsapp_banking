@@ -268,24 +268,6 @@ curl -X POST http://localhost:8001/api/test/message \
 
 ---
 
-## Test Accounts
-
-| Account Number | Holder | Balance | Phone Number | Registered? |
-|---|---|---|---|---|
-| GB12HSBC00010001234567 | John Smith | £2,543.67 | 447812345678 | ✅ Yes |
-| GB12HSBC00010007654321 | Sarah Johnson | £15,750.00 | 447987654321 | ✅ Yes |
-| GB12HSBC00010009876543 | Michael Brown | £892.34 | 447123456789 | ❌ No — use this number to test onboarding |
-
-Sample cheque requests seeded for testing `check_cheque_status` (all belong to John Smith / Sarah Johnson's numbers above):
-
-| Request ID | Status |
-|---|---|
-| CHQ-A1B2C3D4 | COMPLETED |
-| CHQ-E5F6G7H8 | PENDING |
-| CHQ-J9K1L2M3 | REJECTED |
-
----
-
 ## Example Queries
 
 Send these as WhatsApp messages or test via Swagger:
