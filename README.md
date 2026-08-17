@@ -294,7 +294,7 @@ How much did I spend on groceries this month?
 I want to deposit a cheque
 Check status of CHQ-A1B2C3D4
 I want to apply for a loan
-Transfer £50 to Priya Sharma
+Transfer ₹50 to Priya Sharma
 ```
 
 To test **registration/onboarding**, message from `447123456789` (unregistered) and follow the prompts (Aadhaar/PAN are uploaded as document images, not typed):

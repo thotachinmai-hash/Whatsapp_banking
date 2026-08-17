@@ -15,6 +15,7 @@ from app.workflows.memory import clear_workflow_data, complete_workflow, set_wor
 from app.workflows.nlu import interpret_confirmation, interpret_menu_choice
 from app.services.llm_understanding import interpret_choice_llm, is_llm_fallback_enabled
 from app.conversation.renderer import InteractiveButton, InteractiveListRow, InteractiveListSection, StructuredResponse
+from app.conversation.responses.common import format_currency
 from app.conversation.responses import loan as templates
 from app.conversation.responses.common import with_nav_buttons
 
@@ -45,7 +46,7 @@ FIELD_LABELS = {
     "purpose": "Loan purpose",
 }
 FIELD_PROMPTS = {
-    "account_number": "What is the account number this loan should be linked to?",
+    "account_number": "Which account should this loan be linked to?",
     "applicant_name": "What is the applicant's full name?",
     "monthly_income": "What is your monthly income?",
     "employment_type": "What is your employment type? (e.g. Salaried, Self-employed, Business)",
@@ -73,6 +74,20 @@ ACKNOWLEDGMENTS = {
 
 def _key(value: str) -> str:
     return re.sub(r"[^a-z0-9]", "", value.lower())
+
+
+def _resolve_account_selection(phone_number: str, text: str) -> str | None:
+    """Map a tapped account-menu row id, or a typed full account number,
+    back to a real account on the customer's profile — same numbered-menu
+    resolution as the transfer workflow's source-account step (see
+    processors/transfer.py::_source_account)."""
+    accounts = get_accounts_by_phone(phone_number)
+    choice = text.strip()
+    if choice.isdigit() and 1 <= int(choice) <= len(accounts):
+        return accounts[int(choice) - 1]["account_number"]
+    candidate = re.sub(r"\s", "", choice).upper()
+    match = next((a for a in accounts if a["account_number"] == candidate), None)
+    return match["account_number"] if match else None
 
 
 def _llm_fallback(options: list[str], context: str):
@@ -225,10 +240,7 @@ class LoanWorkflowHandler:
             )
             return self._ask_next_or_confirm(phone_number, data, trace_id)
 
-        return {
-            "handled": True,
-            "response": templates.render_loan_type_selected(loan_type),
-        }
+        return self._account_prompt(phone_number, intro=templates.render_loan_type_selected(loan_type))
 
     def _collect_field(self, workflow: dict[str, Any], phone_number: str, query: str, parsed_document: dict | None, trace_id: str = "") -> dict[str, Any]:
         data = dict(workflow.get("data", {}))
@@ -252,9 +264,13 @@ class LoanWorkflowHandler:
 
         text = query.strip()
         if not text:
+            if current_field == "account_number":
+                return self._account_prompt(phone_number)
             return {"handled": True, "response": templates.render_loan_field_prompt(current_field)}
 
         if _is_acknowledgment(text):
+            if current_field == "account_number":
+                return self._account_prompt(phone_number, intro="No problem!")
             return {"handled": True, "response": "No problem! " + templates.render_loan_field_prompt(current_field)}
 
         # Still accept "Field: value" for anyone who prefers to paste ahead,
@@ -275,7 +291,9 @@ class LoanWorkflowHandler:
 
         value, error = self._validate_field(current_field, text, phone_number)
         if error:
-            return {"handled": True, "response": with_nav_buttons(templates.render_loan_field_invalid(current_field, error))}
+            if current_field == "account_number":
+                return self._account_prompt(phone_number, error=error)
+            return {"handled": True, "response": templates.render_loan_field_invalid(current_field, error)}
 
         data[current_field] = value
         update_workflow_data(phone_number, data)
@@ -284,6 +302,9 @@ class LoanWorkflowHandler:
 
     def _ask_next_or_confirm(self, phone_number: str, data: dict, trace_id: str = "", just_completed_field: str | None = None) -> dict[str, Any]:
         next_field = _next_missing_field(data)
+        if next_field == "account_number":
+            ack = templates.FIELD_ACKS.get(just_completed_field, "") if just_completed_field else ""
+            return self._account_prompt(phone_number, intro=ack or None)
         if next_field:
             return {"handled": True, "response": templates.render_loan_field_prompt(next_field, just_completed_field)}
         set_workflow_step(phone_number, STEP_CONFIRM_LOAN)
@@ -291,16 +312,44 @@ class LoanWorkflowHandler:
         return {"handled": True, "response": self._confirmation(data)}
 
     @staticmethod
+    def _account_prompt(phone_number: str, error: str | None = None, intro: str | None = None) -> dict[str, Any]:
+        """Tap-to-reply account picker — a WhatsApp interactive list (Meta
+        CTA), one row per account showing its type and a masked account
+        number ("xxxx 2026"). A tapped row id or a typed full account
+        number both resolve via _resolve_account_selection in
+        _validate_field, so either input still works."""
+        accounts = get_accounts_by_phone(phone_number)
+        if not accounts:
+            return {
+                "handled": True,
+                "response": "You don't have any accounts on file to link this loan to — please contact support.",
+            }
+        rows = [
+            InteractiveListRow(
+                id=str(index),
+                title=f"{str(a['account_type']).title()} · xxxx {a['account_number'][-4:]}"[:24],
+                description=f"Balance {format_currency(a['balance'], a.get('currency', 'INR'))}",
+            )
+            for index, a in enumerate(accounts, 1)
+        ]
+        body = f"{intro}\n\n" if intro else ""
+        if error:
+            body += f"{error}\n\n"
+        body += FIELD_PROMPTS["account_number"]
+        return {"handled": True, "response": StructuredResponse.list_of(
+            body, "Choose account", [InteractiveListSection(title="Your accounts", rows=rows)]
+        )}
+
+    @staticmethod
     def _validate_field(field: str, text: str, phone_number: str) -> tuple[str, str | None]:
         """Returns (normalized_value, error_message_or_None)."""
         if field == "account_number":
-            candidate = _normalize_value(field, text)
-            accounts = get_accounts_by_phone(phone_number)
-            match = next((a for a in accounts if a["account_number"] == candidate), None)
-            if not match:
+            resolved = _resolve_account_selection(phone_number, text)
+            if not resolved:
+                accounts = get_accounts_by_phone(phone_number)
                 available = ", ".join(a["account_number"] for a in accounts) or "none on file"
                 return "", f"I couldn't find that account on your profile (your accounts: {available})."
-            return candidate, None
+            return resolved, None
         if field == "applicant_name":
             if len(text) < 2 or not re.match(r"^[A-Za-z .'-]+$", text):
                 return "", "That doesn't look like a valid name."

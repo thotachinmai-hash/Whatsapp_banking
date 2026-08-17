@@ -108,7 +108,9 @@ class LoanConfirmButtonTests(ButtonWiringTestCase):
 
         workflow = create_workflow_model(WORKFLOW_LOAN, STEP_SELECT_LOAN_TYPE)
         create_workflow(self.phone, workflow)
-        result = await self.manager.handle(self.phone, "3", trace_id="lt3")  # row id "3" = Vehicle Loan
+        fake_accounts = [{"account_number": "GB12FNCL00010001234567", "account_type": "current", "balance": "500.00", "currency": "INR"}]
+        with patch("app.workflows.processors.loan.get_accounts_by_phone", return_value=fake_accounts):
+            result = await self.manager.handle(self.phone, "3", trace_id="lt3")  # row id "3" = Vehicle Loan
         self.assertTrue(result["handled"])
         stored = get_workflow(self.phone)
         self.assertEqual(stored["step"], STEP_UPLOAD_LOAN_FORM)

@@ -66,7 +66,7 @@ def format_status(status: Any) -> str:
 
 def format_transaction(transaction: dict) -> str:
     """One line for a single transaction — used by status.py's transaction list."""
-    amount = format_currency(transaction.get("amount"), transaction.get("currency", "GBP"))
+    amount = format_currency(transaction.get("amount"), transaction.get("currency", "INR"))
     sign = "+" if transaction.get("type") == "credit" else "-"
     date = format_date(transaction.get("date"))
     description = transaction.get("description") or transaction.get("category") or "Transaction"

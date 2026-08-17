@@ -459,8 +459,10 @@ class InteractiveListConversionTests(unittest.IsolatedAsyncioTestCase):
     async def test_tapped_loan_type_row_id_advances_the_workflow(self):
         from app.workflows.constants import STEP_UPLOAD_LOAN_FORM
 
+        fake_accounts = [{"account_number": "GB12FNCL00010001234567", "account_type": "current", "balance": "500.00", "currency": "INR"}]
         self.manager.start_requested(self.phone, "I want a loan", trace_id="t2")
-        result = await self.manager.handle(self.phone, "2", trace_id="t3")
+        with patch("app.workflows.processors.loan.get_accounts_by_phone", return_value=fake_accounts):
+            result = await self.manager.handle(self.phone, "2", trace_id="t3")
         self.assertTrue(result["handled"])
         from app.workflows.memory import get_workflow
         workflow = get_workflow(self.phone)

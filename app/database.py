@@ -1,6 +1,7 @@
 import os
 import secrets
 import json
+from decimal import Decimal
 import psycopg2
 import psycopg2.errors
 import psycopg2.extras
@@ -176,29 +177,107 @@ def create_customer(
 ACCOUNT_TYPES = ("savings", "current", "salary")
 
 
+def build_default_account_transaction_history() -> list[dict]:
+    """Return the default 15-transaction history for a newly created account.
+
+    The ledger starts from zero and ends at the account's default balance of
+    20000.00, with the final balance_after matching the seeded account balance.
+    """
+    default_balance = Decimal("20000.00")
+    entries = [
+        ("credit", "salary", Decimal("2500.00"), "Salary credit", "INIT-001"),
+        ("debit", "rent", Decimal("1200.00"), "Rent payment", "INIT-002"),
+        ("debit", "groceries", Decimal("300.00"), "Groceries", "INIT-003"),
+        ("credit", "bonus", Decimal("1500.00"), "Bonus payout", "INIT-004"),
+        ("debit", "bills", Decimal("700.00"), "Utility bill", "INIT-005"),
+        ("debit", "transport", Decimal("450.00"), "Transport", "INIT-006"),
+        ("credit", "salary", Decimal("2200.00"), "Salary credit", "INIT-007"),
+        ("debit", "shopping", Decimal("600.00"), "Shopping", "INIT-008"),
+        ("debit", "entertainment", Decimal("350.00"), "Streaming services", "INIT-009"),
+        ("credit", "transfer", Decimal("1200.00"), "Internal transfer", "INIT-010"),
+        ("debit", "groceries", Decimal("200.00"), "Groceries", "INIT-011"),
+        ("credit", "bonus", Decimal("4500.00"), "Performance bonus", "INIT-012"),
+        ("debit", "rent", Decimal("1100.00"), "Rent payment", "INIT-013"),
+        ("credit", "transfer", Decimal("9000.00"), "Account top-up", "INIT-014"),
+        ("credit", "other", Decimal("4000.00"), "Account opening balance", "INIT-015"),
+    ]
+
+    running_balance = Decimal("0.00")
+    history = []
+    for transaction_type, category, amount, description, reference in entries:
+        if transaction_type == "credit":
+            running_balance += amount
+        else:
+            running_balance -= amount
+        history.append({
+            "transaction_type": transaction_type,
+            "category": category,
+            "amount": amount,
+            "description": description,
+            "reference": reference,
+            "balance_after": running_balance.quantize(Decimal("0.01")),
+        })
+
+    if history[-1]["balance_after"] != default_balance:
+        raise ValueError(f"Default transaction history must end at {default_balance}, got {history[-1]['balance_after']}")
+
+    return history
+
+
 def create_zero_balance_account(
     phone_number: str,
     account_holder: str,
     account_type: str,
 ) -> dict | None:
-    """Create an active zero-balance account with a collision-safe number."""
+    """Create an active account with the default bank opening balance."""
     normalized_type = account_type.strip().lower()
     if normalized_type not in ACCOUNT_TYPES:
         raise ValueError(f"Unsupported account type: {account_type}")
 
     for _ in range(3):
         account_number = f"INFI{secrets.token_hex(8).upper()}"
+        conn = None
         try:
-            return execute_write_returning(
+            conn = get_db_connection()
+            cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cursor.execute(
                 """INSERT INTO accounts
                    (account_number, account_holder, phone_number, account_type,
                     balance, currency, status)
-                   VALUES (%s, %s, %s, %s, 0.00, 'GBP', 'active')
+                   VALUES (%s, %s, %s, %s, %s, 'INR', 'active')
                    RETURNING *""",
-                (account_number, account_holder, phone_number, normalized_type),
+                (account_number, account_holder, phone_number, normalized_type, Decimal("20000.00")),
             )
+            account = dict(cursor.fetchone())
+            for item in build_default_account_transaction_history():
+                cursor.execute(
+                    """INSERT INTO transactions
+                       (account_id, transaction_type, category, amount, description,
+                        reference, balance_after, created_at)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())""",
+                    (
+                        account["id"],
+                        item["transaction_type"],
+                        item["category"],
+                        item["amount"],
+                        item["description"],
+                        item["reference"],
+                        item["balance_after"],
+                    ),
+                )
+            conn.commit()
+            return account
         except psycopg2.errors.UniqueViolation:
             logger.warning("Account number collision; retrying")
+            if conn:
+                conn.rollback()
+        except Exception:
+            if conn:
+                conn.rollback()
+            raise
+        finally:
+            if conn:
+                conn.close()
 
     raise RuntimeError("Unable to generate a unique account number")
 
