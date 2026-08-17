@@ -13,7 +13,7 @@ from typing import Optional
 from app.conversation.responses.common import format_currency, format_date, format_status
 
 
-def render_balance(account_number: str, balance: float, currency: str = "GBP", account_type: Optional[str] = None) -> str:
+def render_balance(account_number: str, balance: float, currency: str = "INR", account_type: Optional[str] = None) -> str:
     type_note = f" ({account_type.title()})" if account_type else ""
     return f"Your current balance{type_note} is {format_currency(balance, currency)}."
 
@@ -28,7 +28,7 @@ def render_account_summary(accounts: list[dict]) -> str:
     return "\n".join(lines) + "\n\n"
 
 
-def render_transaction_list(transactions: list[dict], currency: str = "GBP") -> str:
+def render_transaction_list(transactions: list[dict], currency: str = "INR") -> str:
     if not transactions:
         return "You have no transactions to show for that period."
     lines = [f"Here are your last {len(transactions)} transactions:"]
@@ -41,14 +41,14 @@ def render_transaction_list(transactions: list[dict], currency: str = "GBP") -> 
     return "\n".join(lines)
 
 
-def render_transaction_detail(transaction: dict, currency: str = "GBP") -> str:
+def render_transaction_detail(transaction: dict, currency: str = "INR") -> str:
     amount = format_currency(transaction.get("amount"), transaction.get("currency", currency))
     date = format_date(transaction.get("date"))
     description = transaction.get("description") or transaction.get("category") or "Transaction"
     return f"{date}\n{description}\nAmount: {amount}"
 
 
-def render_spending_summary(summary: list[dict], total: Optional[float] = None, currency: str = "GBP") -> str:
+def render_spending_summary(summary: list[dict], total: Optional[float] = None, currency: str = "INR") -> str:
     if not summary:
         return "I couldn't find any spending for that period."
     lines = ["Here's your spending breakdown:"]
@@ -60,7 +60,7 @@ def render_spending_summary(summary: list[dict], total: Optional[float] = None, 
 
 
 def render_transfer_status(transfer: dict) -> str:
-    amount = format_currency(transfer.get("amount"), transfer.get("currency", "GBP"))
+    amount = format_currency(transfer.get("amount"), transfer.get("currency", "INR"))
     return (
         f"Transfer {transfer.get('reference', '')}\n"
         f"Status: {format_status(transfer.get('status'))}\n"

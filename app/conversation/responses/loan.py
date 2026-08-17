@@ -17,7 +17,7 @@ FIELD_LABELS = {
     "purpose": "Loan purpose",
 }
 FIELD_PROMPTS = {
-    "account_number": "What is the account number this loan should be linked to?",
+    "account_number": "Which account should this loan be linked to?",
     "applicant_name": "What is the applicant's full name?",
     "monthly_income": "What is your monthly income?",
     "employment_type": "What is your employment type? (e.g. Salaried, Self-employed, Business)",
@@ -62,10 +62,7 @@ def render_loan_type_prompt() -> str:
 
 def render_loan_type_selected(loan_type: str) -> str:
     label = LOAN_LABELS.get(loan_type, loan_type)
-    return (
-        f"✅ {label} it is! I'll just ask a few quick questions to get your "
-        f"application together.\n\n{FIELD_PROMPTS['account_number']}"
-    )
+    return f"✅ {label} it is! I'll just ask a few quick questions to get your application together."
 
 
 def render_loan_field_prompt(field: str, just_completed_field: Optional[str] = None) -> str:

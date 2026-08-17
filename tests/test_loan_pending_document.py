@@ -6,9 +6,14 @@ convention (see tests/test_response_ux.py)."""
 import unittest
 from unittest.mock import patch
 
+from app.conversation.renderer import as_structured_response
 from app.workflows.constants import STEP_SELECT_LOAN_TYPE, STEP_UPLOAD_LOAN_FORM
 from app.workflows.memory import create_workflow, create_workflow_model, get_workflow
 from app.workflows.processors.loan import LoanWorkflowHandler
+
+FAKE_ACCOUNTS = [
+    {"account_number": "GB12FNCL00010001234567", "account_type": "current", "balance": "2543.67", "currency": "INR"},
+]
 
 
 class FakeRedis:
@@ -46,12 +51,13 @@ class LoanPendingDocumentTests(unittest.IsolatedAsyncioTestCase):
         )
         create_workflow("447700900200", workflow)
 
-        result = await self.handler.handle(
-            workflow=get_workflow("447700900200"),
-            phone_number="447700900200",
-            query="home loan",
-            trace_id="t1",
-        )
+        with patch("app.workflows.processors.loan.get_accounts_by_phone", return_value=FAKE_ACCOUNTS):
+            result = await self.handler.handle(
+                workflow=get_workflow("447700900200"),
+                phone_number="447700900200",
+                query="home loan",
+                trace_id="t1",
+            )
 
         self.assertTrue(result["handled"])
         stored = get_workflow("447700900200")
@@ -61,18 +67,20 @@ class LoanPendingDocumentTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("pending_document_content", stored["data"])
         # Already have applicant_name/monthly_income/employment_type — the
         # next thing asked for should be a still-missing field, not those.
-        self.assertNotIn("applicant name", result["response"].lower())
+        response_text = as_structured_response(result["response"]).text
+        self.assertNotIn("applicant name", response_text.lower())
 
     async def test_no_pending_content_behaves_as_before(self):
         workflow = create_workflow_model("loan", STEP_SELECT_LOAN_TYPE)
         create_workflow("447700900201", workflow)
 
-        result = await self.handler.handle(
-            workflow=get_workflow("447700900201"),
-            phone_number="447700900201",
-            query="vehicle",
-            trace_id="t2",
-        )
+        with patch("app.workflows.processors.loan.get_accounts_by_phone", return_value=FAKE_ACCOUNTS):
+            result = await self.handler.handle(
+                workflow=get_workflow("447700900201"),
+                phone_number="447700900201",
+                query="vehicle",
+                trace_id="t2",
+            )
 
         self.assertTrue(result["handled"])
         stored = get_workflow("447700900201")

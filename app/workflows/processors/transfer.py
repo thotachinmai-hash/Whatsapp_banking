@@ -35,7 +35,7 @@ _NAME_TRAILERS = re.compile(
 _BENEFICIARY_INTENT_RE = re.compile(
     r"(?:transfer|send|pay)\b.*?\bto\s+([A-Za-z][A-Za-z .'\-]{1,50})", re.I
 )
-_AMOUNT_INTENT_RE = re.compile(r"(?:£|GBP|Rs\.?|INR)?\s*([0-9]+(?:[.,][0-9]{1,2})?)\s*(k)?", re.I)
+_AMOUNT_INTENT_RE = re.compile(r"(?:₹|£|GBP|Rs\.?|INR)?\s*([0-9]+(?:[.,][0-9]{1,2})?)\s*(k)?", re.I)
 
 
 def _looks_like_account_number(candidate: str) -> bool:
@@ -112,7 +112,7 @@ def start_transfer_from_text(
             raw_amount = amount_match.group(1).replace(",", "")
             amount_value = float(raw_amount) * (1000 if amount_match.group(2) else 1)
             if 0 < amount_value <= 100000:
-                amount = f"£{amount_value:,.2f}"
+                amount = f"₹{amount_value:,.2f}"
         except ValueError:
             amount = None
 
@@ -264,7 +264,7 @@ class TransferWorkflowProcessor:
                 amount = self._parse_amount(text)
                 updates = {"beneficiary_name": name}
                 if amount:
-                    updates["amount"] = f"£{amount:,.2f}"
+                    updates["amount"] = f"₹{amount:,.2f}"
                 update_workflow_data(phone_number, updates)
                 set_workflow_step(phone_number, STEP_COLLECT_BENEFICIARY_ACCOUNT)
                 return self._ask(
@@ -281,7 +281,7 @@ class TransferWorkflowProcessor:
                 "beneficiary_account": selected["account_number"],
             })
             if amount:
-                update_workflow_data(phone_number, {"amount": f"£{amount:,.2f}"})
+                update_workflow_data(phone_number, {"amount": f"₹{amount:,.2f}"})
                 set_workflow_step(phone_number, STEP_SELECT_SOURCE_ACCOUNT)
                 return self._source_prompt(phone_number)
             set_workflow_step(phone_number, STEP_SELECT_AMOUNT)
@@ -314,7 +314,7 @@ class TransferWorkflowProcessor:
             value = self._parse_amount(text)
         if value is None:
             return self._amount_prompt(templates.render_invalid_amount())
-        update_workflow_data(phone_number, {"amount": f"£{value:,.2f}"})
+        update_workflow_data(phone_number, {"amount": f"₹{value:,.2f}"})
         set_workflow_step(phone_number, STEP_SELECT_SOURCE_ACCOUNT)
         return self._source_prompt(phone_number)
 
@@ -359,7 +359,7 @@ class TransferWorkflowProcessor:
                 phone_number,
                 templates.render_insufficient_balance(
                     account_label=account["account_number"],
-                    available_label=f"£{balance:,.2f}",
+                    available_label=f"₹{balance:,.2f}",
                     amount_label=data.get("amount"),
                 ),
             )
@@ -409,7 +409,7 @@ class TransferWorkflowProcessor:
 
     @staticmethod
     def _parse_amount(text: str) -> Decimal | None:
-        match = re.search(r"(?:£|GBP|Rs\.?|INR)?\s*([0-9]+(?:[.,][0-9]{1,2})?)", text, re.I)
+        match = re.search(r"(?:₹|£|GBP|Rs\.?|INR)?\s*([0-9]+(?:[.,][0-9]{1,2})?)", text, re.I)
         if not match:
             return None
         try:
@@ -450,7 +450,7 @@ class TransferWorkflowProcessor:
 
     @staticmethod
     def _amount_prompt(error: str | None = None) -> dict:
-        quick_amounts = [("1", "£25"), ("2", "£50"), ("3", "£100"), ("4", "£250"), ("5", "A different amount")]
+        quick_amounts = [("1", "₹25"), ("2", "₹50"), ("3", "₹100"), ("4", "₹250"), ("5", "A different amount")]
         rows = [InteractiveListRow(id=digit, title=label) for digit, label in quick_amounts]
         intro = f"{error}\n\n" if error else ""
         intro += "\U0001F4B0 How much would you like to send?"
@@ -466,7 +466,7 @@ class TransferWorkflowProcessor:
         rows = [
             InteractiveListRow(
                 id=str(index), title=f"{str(a['account_type']).title()} · {a['account_number']}"[:24],
-                description=f"Balance {format_currency(a['balance'], a.get('currency', 'GBP'))}",
+                description=f"Balance {format_currency(a['balance'], a.get('currency', 'INR'))}",
             )
             for index, a in enumerate(accounts, 1)
         ]

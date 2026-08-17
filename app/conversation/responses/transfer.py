@@ -59,7 +59,7 @@ def render_transfer_amount_prompt(error: Optional[str] = None) -> str:
     prefix = f"{error}\n\n" if error else ""
     return (
         prefix + "\U0001F4B0 How much would you like to send?\n\n"
-        "1. £25\n2. £50\n3. £100\n4. £250\n5. A different amount\n\n"
+        "1. ₹25\n2. ₹50\n3. ₹100\n4. ₹250\n5. A different amount\n\n"
         "Pick a number or just type the amount."
     )
 
@@ -67,7 +67,7 @@ def render_transfer_amount_prompt(error: Optional[str] = None) -> str:
 def render_source_account_prompt(accounts: list[dict], error: Optional[str] = None) -> str:
     lines = [
         f"{index}. {a['account_number']} · {str(a['account_type']).title()} · "
-        f"balance {format_currency(a['balance'], a.get('currency', 'GBP'))}"
+        f"balance {format_currency(a['balance'], a.get('currency', 'INR'))}"
         for index, a in enumerate(accounts, 1)
     ]
     prefix = f"{error}\n\n" if error else ""
@@ -133,7 +133,7 @@ def render_insufficient_balance(account_label: Optional[str] = None, available_l
             "*Back* to change the amount?"
         )
     if account_label:
-        return f"⚠️ {account_label} has a £0.00 balance, so I can't transfer from it. Could you pick a different account?"
+        return f"⚠️ {account_label} has a ₹0.00 balance, so I can't transfer from it. Could you pick a different account?"
     return (
         "⚠️ None of your accounts have enough balance for a transfer right now. "
         "Once you're topped up, just ask again and I'll get it sent."

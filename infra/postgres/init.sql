@@ -6,8 +6,8 @@ CREATE TABLE IF NOT EXISTS accounts (
     account_holder VARCHAR(255) NOT NULL,
     phone_number VARCHAR(20),
     account_type VARCHAR(50) DEFAULT 'current',
-    balance DECIMAL(15, 2) DEFAULT 0.00,
-    currency VARCHAR(3) DEFAULT 'GBP',
+    balance DECIMAL(15, 2) DEFAULT 20000.00,
+    currency VARCHAR(3) DEFAULT 'INR',
     status VARCHAR(20) DEFAULT 'active',
     created_at TIMESTAMP DEFAULT NOW()
 );
@@ -132,22 +132,22 @@ CREATE TABLE IF NOT EXISTS loan_products (
     min_tenure_months INTEGER NOT NULL,
     max_tenure_months INTEGER NOT NULL,
     processing_fee_percent DECIMAL(4, 2) NOT NULL,
-    currency VARCHAR(3) DEFAULT 'GBP',
+    currency VARCHAR(3) DEFAULT 'INR',
     notes TEXT,
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
 INSERT INTO loan_products (loan_type, display_name, interest_rate_min, interest_rate_max, min_amount, max_amount, min_tenure_months, max_tenure_months, processing_fee_percent, currency, notes) VALUES
-('personal',  'Personal Loan',  10.50, 15.00,   1000.00,   25000.00,  6,  60, 1.50, 'GBP', 'Unsecured. Final rate depends on credit profile and income.'),
-('home',      'Home Loan',       6.75,  9.25,  25000.00, 500000.00, 60, 360, 0.50, 'GBP', 'Secured against the property. Final rate depends on loan-to-value and credit profile.'),
-('vehicle',   'Vehicle Loan',    8.50, 12.00,   2000.00,   50000.00, 12,  84, 1.00, 'GBP', 'Secured against the vehicle. Final rate depends on vehicle age and credit profile.'),
-('education', 'Education Loan',  7.00, 11.00,   1000.00,  100000.00, 12, 180, 0.75, 'GBP', 'Repayment can often be deferred until after course completion — ask about moratorium terms.');
+('personal',  'Personal Loan',  10.50, 15.00,   1000.00,   25000.00,  6,  60, 1.50, 'INR', 'Unsecured. Final rate depends on credit profile and income.'),
+('home',      'Home Loan',       6.75,  9.25,  25000.00, 500000.00, 60, 360, 0.50, 'INR', 'Secured against the property. Final rate depends on loan-to-value and credit profile.'),
+('vehicle',   'Vehicle Loan',    8.50, 12.00,   2000.00,   50000.00, 12,  84, 1.00, 'INR', 'Secured against the vehicle. Final rate depends on vehicle age and credit profile.'),
+('education', 'Education Loan',  7.00, 11.00,   1000.00,  100000.00, 12, 180, 0.75, 'INR', 'Repayment can often be deferred until after course completion — ask about moratorium terms.');
 
 -- Seed data — 3 test accounts
 INSERT INTO accounts (account_number, account_holder, phone_number, account_type, balance, currency) VALUES
-('GB12FNCL00010001234567', 'John Smith', '447818658034', 'current', 2543.67, 'GBP'),
-('GB12FNCL00010007654321', 'Sarah Johnson', '919080745760', 'savings', 15750.00, 'GBP'),
-('GB12FNCL00010009876543', 'Michael Brown', '447123456789', 'current', 892.34, 'GBP');
+('GB12FNCL00010001234567', 'John Smith', '447818658034', 'current', 2543.67, 'INR'),
+('GB12FNCL00010007654321', 'Sarah Johnson', '919080745760', 'savings', 15750.00, 'INR'),
+('GB12FNCL00010009876543', 'Michael Brown', '447123456789', 'current', 892.34, 'INR');
 
 -- Registered customers — John Smith and Sarah Johnson are registered so the
 -- greeting/menu flow has real matches. Michael Brown is deliberately left

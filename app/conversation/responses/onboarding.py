@@ -124,7 +124,7 @@ def render_account_type_prompt() -> str:
     )
 
 
-def render_account_created(account_number: str, account_type: str, currency_code: str = "GBP") -> str:
+def render_account_created(account_number: str, account_type: str, currency_code: str = "INR") -> str:
     return (
         "Account opened successfully!\n\n"
         f"Account Number: {account_number}\n"
