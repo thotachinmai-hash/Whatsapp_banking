@@ -109,7 +109,7 @@ def render_transfer_success(
         f"\U0001F464 To: {beneficiary_name} ({beneficiary_account_masked})\n"
         f"\U0001F4B0 Amount: {amount_label}\n"
         f"\U0001F3E6 From: {source_account_label}\n"
-        "\U0001F4CC Status: INITIATED\n\n"
+        "\U0001F4CC Status: COMPLETED\n\n"
         "Your bank will process this shortly and I'll reflect the status here once it "
         f'settles. Feel free to check in anytime, e.g. "check status of {reference}" or '
         '"what was my last transfer".'
