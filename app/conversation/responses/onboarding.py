@@ -129,9 +129,9 @@ def render_account_created(account_number: str, account_type: str, currency_code
         "Account opened successfully!\n\n"
         f"Account Number: {account_number}\n"
         f"Account Type: {account_type.title()} Account\n"
-        f"Balance: {currency_code} 0.00\n\n"
+        f"Balance: {currency_code} 20000.00\n\n"
         "Your Relationship Manager will contact you via email. "
-        "For any queries, contact finacle@infi.com."
+        "For any queries, contact finacle@infy.com."
     )
 
 
