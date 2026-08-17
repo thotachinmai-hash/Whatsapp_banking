@@ -357,6 +357,28 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("interest rate", response)
         self.assertIn("upload a clear image of the cheque", response)
 
+    async def test_real_data_question_mid_workflow_bypasses_answer_side_question(self):
+        # "Get my balance" mid-transfer used to reach answer_side_question
+        # (no tools, general-knowledge only, told to decline anything
+        # needing real data) — but the model didn't reliably decline, so
+        # it hallucinated a wrong non-answer ("check the mobile app")
+        # instead of the real balance already shown earlier in the same
+        # conversation. A personal-data question like this must never
+        # reach answer_side_question at all — it should fall straight
+        # through to reprocess_query, which the real LLM+tools agent
+        # (with the actual balance tool bound) answers correctly.
+        from app.workflows.constants import STEP_SELECT_AMOUNT, WORKFLOW_TRANSFER
+
+        workflow = create_workflow_model(WORKFLOW_TRANSFER, STEP_SELECT_AMOUNT)
+        create_workflow(self.phone, workflow)
+
+        with patch("app.workflows.manager.answer_side_question") as mock_answer:
+            result = await self.manager.handle(self.phone, "Get my balance", trace_id="t12")
+
+        mock_answer.assert_not_called()
+        self.assertFalse(result["handled"])
+        self.assertEqual(result.get("reprocess_query"), "Get my balance")
+
     async def test_side_question_resume_does_not_change_workflow_state(self):
         from app.workflows.memory import get_workflow
 

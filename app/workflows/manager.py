@@ -212,7 +212,20 @@ class WorkflowManager:
                 logger.info(
                     f"Workflow-related question | workflow={workflow_type} | phone={phone_number[-4:]}"
                 )
-                if is_llm_fallback_enabled():
+                # answer_side_question has NO tools bound — it's a fast,
+                # general-knowledge-only shortcut, and is explicitly told
+                # to decline (reply NONE) anything needing real customer
+                # data so THAT falls through to reprocess_query below and
+                # gets answered by the real LLM+tools agent instead. In
+                # practice the model doesn't reliably comply — "get my
+                # balance" mid-transfer got a hallucinated "check the
+                # mobile app" non-answer instead of declining, even though
+                # the real number was already shown earlier in the same
+                # conversation. Rather than trust that self-judgment every
+                # time, skip it outright for anything that looks like a
+                # personal-data lookup — go straight to the real agent,
+                # which actually has the tools to answer correctly.
+                if is_llm_fallback_enabled() and not _looks_like_data_request(query):
                     answer = answer_side_question(query, workflow_type, workflow.get("step"), trace_id)
                     if answer:
                         hint = render_workflow_step_hint(workflow_type, workflow.get("step"))
@@ -652,6 +665,29 @@ def _is_closing_word(query: str) -> bool:
         "that will be all", "thatll be all", "im good", "i am good",
         "no thank you", "no more",
     }
+
+
+_DATA_REQUEST_RE = re.compile(
+    r"\b(my|the)\s+(balance|account|accounts|transaction|transactions|statement|"
+    r"beneficiar\w*|payee\w*|cheque\w*|check\w*|loan\w*|kyc|transfer\w*|spend\w*|"
+    r"expense\w*)\b|"
+    r"\b(check|show|list|get|see|view)\s+(my|the)\b",
+    re.I,
+)
+
+
+def _looks_like_data_request(text: str) -> bool:
+    """A message that reads like a request for the customer's OWN real
+    data (balance, transactions, beneficiaries, statuses, ...) — must
+    never be handed to answer_side_question (no tools, general knowledge
+    only) even when LLM fallback is enabled; see its call site above for
+    why. Deliberately broad/cheap (a plain keyword regex, not an LLM
+    call) — a false positive here just means this particular question
+    goes through the slightly slower but reliable real-agent path
+    instead of the fast general-knowledge one; a false negative would
+    mean a real-data question risks getting a hallucinated non-answer,
+    which is the actual bug this exists to prevent."""
+    return bool(_DATA_REQUEST_RE.search(text.lower()))
 
 
 _POSSIBLE_DECLINE_RE = re.compile(
