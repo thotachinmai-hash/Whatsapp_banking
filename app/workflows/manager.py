@@ -400,7 +400,7 @@ class WorkflowManager:
             if action == "cheque":
                 workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
                 create_workflow(phone_number, workflow)
-                return {"handled": True, "response": with_nav_buttons(render_cheque_deposit_started())}
+                return {"handled": True, "response": render_cheque_deposit_started()}
             if action == "loan":
                 workflow = create_workflow_model(WORKFLOW_LOAN, STEP_SELECT_LOAN_TYPE)
                 create_workflow(phone_number, workflow)
@@ -410,7 +410,7 @@ class WorkflowManager:
             if action == "kyc":
                 workflow = create_workflow_model(WORKFLOW_KYC, STEP_UPLOAD_KYC_FORM)
                 create_workflow(phone_number, workflow)
-                return {"handled": True, "response": with_nav_buttons(render_kyc_update_started())}
+                return {"handled": True, "response": render_kyc_update_started()}
             if action == "create_account":
                 return start_add_account_workflow(phone_number, trace_id)
             return {"handled": False, "response": None, "reprocess_query": f"check my {action}"}
@@ -425,9 +425,7 @@ class WorkflowManager:
             create_workflow(phone_number, workflow)
             return {
                 "handled": True,
-                "response": with_nav_buttons(
-                    "🧾 *Cheque deposit started*\n\nPlease upload a clear cheque image to continue.\n\nReply *Cancel* to stop."
-                ),
+                "response": "🧾 *Cheque deposit started*\n\nPlease upload a clear cheque image to continue.\n\nReply *Cancel* to stop.",
             }
         if any(word in normalized for word in ("loan", "borrow", "finance")) and not is_lookup:
             workflow = create_workflow_model(WORKFLOW_LOAN, STEP_SELECT_LOAN_TYPE)
@@ -446,7 +444,7 @@ class WorkflowManager:
             create_workflow(phone_number, workflow)
             return {
                 "handled": True,
-                "response": with_nav_buttons(
+                "response": (
                     "📄 *KYC update started*\n\nPlease upload a clear photo of one of: Aadhaar card, "
                     "PAN card, Passport, Voter ID, or Driving Licence.\n\nReply *Cancel* to stop."
                 ),
