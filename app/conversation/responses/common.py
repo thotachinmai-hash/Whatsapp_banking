@@ -12,7 +12,7 @@ import re
 from decimal import Decimal, InvalidOperation
 from typing import Any, Optional
 
-from app.conversation.renderer import InteractiveListRow, InteractiveListSection, StructuredResponse
+from app.conversation.renderer import InteractiveButton, InteractiveListRow, InteractiveListSection, StructuredResponse
 
 _CURRENCY_SYMBOLS = {"GBP": "£", "INR": "₹", "USD": "$", "EUR": "€"}
 
@@ -220,6 +220,37 @@ _DEFAULT_CLARIFICATION = (
 
 def render_clarification(intent: Optional[str] = None) -> str:
     return _CLARIFICATION_PROMPTS.get(intent, _DEFAULT_CLARIFICATION)
+
+
+# Tap-to-reply escape hatches for any mid-workflow message a customer
+# could otherwise get stuck on — a step-boundary explanation, a
+# validation failure, an unreadable upload, an unrecognized reply. Each
+# id round-trips through WhatsApp as the literal reply text ("back",
+# "cancel", "menu"), so tapping one is handled by the SAME code already
+# used for a typed "Back"/"Cancel"/"menu" — see
+# app/workflows/manager.py's _is_back_command/_is_cancel_command (both
+# already handle "no earlier step"/"nothing to cancel" gracefully) and
+# _is_greeting_word (which "menu" is a member of, and which cancels the
+# active workflow before showing the main menu). No new routing logic
+# needed on top of what already exists for the typed versions.
+_NAV_BUTTONS = [
+    InteractiveButton(id="back", title="Back"),
+    InteractiveButton(id="cancel", title="Cancel"),
+    InteractiveButton(id="menu", title="Main Menu"),
+]
+
+
+def with_nav_buttons(text: str) -> StructuredResponse:
+    """Attach Back/Cancel/Main Menu buttons to a mid-workflow message —
+    use this for every "try again" / "here's the current step" reply a
+    workflow processor sends, so a confused customer always has a tap
+    target instead of needing to know the exact word to type. Never use
+    this for a workflow's OWN forward-moving prompts that already carry
+    their own tap options (a Yes/No confirmation, a numbered/list pick) —
+    WhatsApp interactive messages support only one shape at a time, and
+    those already give the customer a way to proceed or back out via
+    their own choices."""
+    return StructuredResponse.buttons_of(text, _NAV_BUTTONS)
 
 
 def render_workflow_boundary(label: str) -> str:

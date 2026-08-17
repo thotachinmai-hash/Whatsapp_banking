@@ -84,6 +84,16 @@ class StructuredResponse(BaseModel):
     history), so it must stand alone as a sensible reply even when
     `buttons`/`list_sections` can't be sent for some reason. `kind` says
     which interactive shape (if any) to attach on top of that body text.
+
+    `language` is the ISO 639-1 code (app.services.language.
+    SUPPORTED_LANGUAGES) `text` was actually translated into — set by
+    ConversationManager._finish from the conversation's sticky
+    context.detected_language, the same value translate_text() used. A
+    voice-in customer's per-turn STT language hint can be None/stale (a
+    short "yes" carries no signal), so app/services/message_handler.py's
+    send_voice_reply() reads THIS field to pick the TTS voice, not the
+    raw STT hint, so the spoken reply always matches the language the
+    text was actually translated into.
     """
 
     kind: ResponseKind = ResponseKind.TEXT
@@ -92,6 +102,7 @@ class StructuredResponse(BaseModel):
     buttons: list[InteractiveButton] = []
     list_button_label: Optional[str] = None
     list_sections: list[InteractiveListSection] = []
+    language: Optional[str] = None
 
     @classmethod
     def template(cls, text: str, template_name: str) -> "StructuredResponse":

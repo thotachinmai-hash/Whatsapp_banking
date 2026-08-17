@@ -121,8 +121,9 @@ class ChequeTemplateTests(unittest.TestCase):
 
 class KYCTemplateTests(unittest.TestCase):
     def test_13_kyc_confirmation(self):
-        summary = kyc.render_kyc_summary("John Smith", "1990-01-01", "1 Test Street")
+        summary = kyc.render_kyc_summary("aadhaar", "John Smith", "1990-01-01", "1 Test Street")
         self.assertIn("John Smith", summary)
+        self.assertIn("Aadhaar card", summary)
         self.assertNotIn("123456789012", summary)
         confirmation = kyc.render_kyc_confirmation()
         self.assertIn("YES", confirmation)
@@ -201,14 +202,15 @@ class SensitiveDataProtectionTests(unittest.TestCase):
         self.assertIn("Aadhaar", text)
         self.assertIn("Provided", text)
 
-    def test_19_kyc_summary_never_includes_aadhaar_or_pan(self):
-        text = kyc.render_kyc_summary("John Smith", "1990-01-01", "1 Test Street")
-        self.assertNotIn("aadhaar:", text.lower().replace("aadhaar: provided", ""))
+    def test_19_kyc_summary_never_includes_the_id_number(self):
+        text = kyc.render_kyc_summary("aadhaar", "John Smith", "1990-01-01", "1 Test Street")
+        self.assertNotIn("123456789012", text)
+        self.assertIn("id number: provided", text.lower())
 
     def test_19_no_template_function_accepts_aadhaar_or_pan_parameters(self):
         import inspect
 
-        forbidden_params = {"aadhaar_number", "pan_number", "otp", "pin", "cvv", "password"}
+        forbidden_params = {"aadhaar_number", "pan_number", "id_number", "otp", "pin", "cvv", "password"}
         for module in (onboarding, kyc, common, transfer, loan, cheque, status, errors):
             for name, func in inspect.getmembers(module, inspect.isfunction):
                 params = set(inspect.signature(func).parameters)

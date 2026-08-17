@@ -64,16 +64,25 @@ def build_document_prompt(active_workflow: dict | None, filename: str) -> str:
          "bank_name": "", "branch": "", "payee": "", "amount_in_figures": "",
          "amount_in_words": "", "numbers": "", "signatory_title": "",
          "date_written": "", "drawer_name": "",
-         "aadhaar_number": "", "pan_number": "", "full_name": "",
+         "id_type": "aadhaar" | "pan" | "passport" | "voter_id" | "driving_license" | "other",
+         "id_number": "", "full_name": "",
          "date_of_birth": "", "address": "", "guardian_name": "",
          "applicant_name": "", "monthly_income": "", "employment_type": "",
          "requested_amount": "", "tenure_months": "", "purpose": ""}
 
         document_type rules:
         - "cheque" if it is a bank cheque (payee, amount, cheque number visible)
-        - "kyc" if it is an identity/address document (Aadhaar, PAN, passport, voter ID, driving licence)
+        - "kyc" if it is a government-issued identity document — an Aadhaar
+          card, PAN card, passport, voter ID (EPIC), or driving licence
         - "loan_form" if it is a loan application form
         - "other" if it does not clearly match any of the above
+
+        If document_type is "kyc", also set id_type to which of those five
+        it is, and id_number to that document's own ID number (the Aadhaar
+        number, PAN, passport number, EPIC/voter ID number, or driving
+        licence number — whichever applies), preserving it exactly as
+        printed. If it's an identity-looking document but not one of those
+        five (e.g. a ration card, a bank statement), set id_type to "other".
 
         Only fill in fields that are actually visible on THIS document —
         leave every other field as an empty string. Preserve values
@@ -120,10 +129,28 @@ def build_document_prompt(active_workflow: dict | None, filename: str) -> str:
             """
     elif active_workflow and active_workflow.get("type") == WORKFLOW_KYC:
         document_prompt = """
-            Read this KYC document and return ONLY valid JSON.
-            Extract full_name, date_of_birth, address, aadhaar_number,
-            and pan_number. Preserve values exactly. Use empty strings for
-            missing or unreadable fields.
+            Identify which government-issued ID this is, then extract its
+            details. Return ONLY valid JSON in this exact shape:
+            {"id_type": "aadhaar" | "pan" | "passport" | "voter_id" |
+                         "driving_license" | "other",
+             "id_number": "", "full_name": "", "date_of_birth": "",
+             "address": ""}
+
+            id_type must be exactly one of those five values. Only use
+            "aadhaar", "pan", "passport", "voter_id", or "driving_license"
+            when the image is genuinely that document (an Aadhaar card, PAN
+            card, passport, voter ID/EPIC card, or driving licence) —
+            anything else (a ration card, utility bill, bank statement,
+            student ID, or a blurry/unreadable image) must be "other".
+
+            id_number is that document's own ID number — the Aadhaar
+            number, PAN, passport number, EPIC/voter ID number, or driving
+            licence number, whichever applies — preserved exactly as
+            printed (keep the original spacing/formatting).
+
+            Use an empty string for any field that isn't visible or can't
+            be read. Do not guess, summarize, or include any text outside
+            the JSON object.
             """
 
     return document_prompt
@@ -205,12 +232,20 @@ async def send_voice_reply(response, chat_id: str, trace_id: str = "", language:
     voice-in customer can still just say "yes"/"1" back, so the tappable
     options aren't needed on this path.
 
-    `language` is the ISO 639-1 code Whisper/Sarvam STT detected for the
-    customer's original voice message (see transcribe_audio), used to pick
-    a matching TTS voice language rather than always defaulting to English.
+    `language` is a fallback ISO 639-1 code (e.g. Sarvam STT's per-turn
+    detection — see transcribe_audio) used only when `response` carries no
+    resolved language of its own. Prefer letting `response` carry it: a
+    StructuredResponse's `.language` (set by ConversationManager._finish)
+    is the language `.text` was ACTUALLY translated into, which can differ
+    from this turn's raw STT hint (e.g. a short "yes" voice reply has no
+    detectable language of its own, but the conversation's established
+    language still applies) — using the wrong one plays back audio that
+    doesn't match the language of the text it's reading.
     """
-    response_text = as_structured_response(response).text
-    synthesized = await synthesize_voice_note(response_text, trace_id=trace_id, language=language)
+    structured = as_structured_response(response)
+    response_text = structured.text
+    resolved_language = structured.language or language
+    synthesized = await synthesize_voice_note(response_text, trace_id=trace_id, language=resolved_language)
     if synthesized is None:
         logger.info(f"[{trace_id}] Voice reply unavailable — falling back to text")
         return await render_and_send(response_text, chat_id, trace_id)
@@ -312,7 +347,10 @@ async def handle_incoming_message(payload: dict) -> dict:
                 audio_data = None
 
             if not audio_data:
-                await render_and_send(
+                # A voice-in customer gets a voice reply here too — the
+                # language isn't known yet (nothing was transcribed), so
+                # this speaks in the default (English).
+                await send_voice_reply(
                     error_templates.render_voice_unavailable_error(),
                     from_person,
                     trace_id
@@ -326,7 +364,7 @@ async def handle_incoming_message(payload: dict) -> dict:
 
             if not query:
                 log_transcription(False, transcribe_duration, trace_id)
-                await render_and_send(
+                await send_voice_reply(
                     error_templates.render_transcription_error(),
                     from_person,
                     trace_id

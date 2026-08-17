@@ -12,43 +12,26 @@ from app.workflows.nlu import interpret_confirmation
 from app.services.llm_understanding import interpret_choice_llm, is_llm_fallback_enabled
 from app.conversation.renderer import InteractiveButton, StructuredResponse
 from app.conversation.responses import kyc as templates
+from app.conversation.responses.common import with_nav_buttons
 
 logger = get_logger(__name__)
 
-REQUIRED_FIELDS = ("full_name", "date_of_birth", "address", "aadhaar_number", "pan_number")
-LABELS = {"full_name": "Full name", "date_of_birth": "Date of birth", "address": "Address", "aadhaar_number": "Aadhaar number", "pan_number": "PAN number"}
-ALIASES = {
-    "name": "full_name", "fullname": "full_name", "dateofbirth": "date_of_birth", "dob": "date_of_birth",
-    "address": "address", "aadhaar": "aadhaar_number", "aadhaarnumber": "aadhaar_number",
-    "aadhar": "aadhaar_number", "pan": "pan_number", "pannumber": "pan_number",
+# Only these five government-issued IDs are accepted — each maps to the
+# regex its own id_number must match once separators (spaces/dashes) are
+# stripped. Aadhaar/PAN/voter-ID/passport formats are fixed nationwide;
+# driving licence format (state code + RTO code + year + serial) is the
+# common 15-character scheme used by most states.
+ID_VALIDATORS: dict[str, re.Pattern] = {
+    "aadhaar": re.compile(r"^[2-9]\d{11}$"),
+    "pan": re.compile(r"^[A-Z]{5}\d{4}[A-Z]$"),
+    "passport": re.compile(r"^[A-Z]\d{7}$"),
+    "voter_id": re.compile(r"^[A-Z]{3}\d{7}$"),
+    "driving_license": re.compile(r"^[A-Z]{2}\d{13}$"),
 }
 
 
-def _key(value: str) -> str:
-    return re.sub(r"[^a-z0-9]", "", value.lower())
-
-
-def _extract(content: Any, result: dict | None = None) -> dict:
-    result = result or {}
-    if isinstance(content, dict):
-        for raw_key, value in content.items():
-            target = ALIASES.get(_key(str(raw_key)))
-            if target and not isinstance(value, (dict, list)) and str(value).strip():
-                result[target] = str(value).strip()
-            _extract(value, result)
-    elif isinstance(content, list):
-        for value in content:
-            _extract(value, result)
-    return result
-
-
-def _invalid(data: dict) -> list[str]:
-    invalid = []
-    if data.get("aadhaar_number") and not re.fullmatch(r"\d[\d -]{10,14}\d", data["aadhaar_number"]):
-        invalid.append("aadhaar_number")
-    if data.get("pan_number") and not re.fullmatch(r"[A-Z]{5}[0-9]{4}[A-Z]", data["pan_number"].replace(" ", "").upper()):
-        invalid.append("pan_number")
-    return invalid
+def _normalize_id_number(value: str) -> str:
+    return re.sub(r"[\s-]", "", str(value or "")).upper()
 
 
 def _yes_no_prompt(body: str) -> StructuredResponse:
@@ -59,19 +42,16 @@ def _yes_no_prompt(body: str) -> StructuredResponse:
     )
 
 
-def _is_acknowledgment(query: str) -> bool:
-    """A plain acknowledgment isn't a failed data-entry attempt — don't
-    respond as if they tried and garbled their KYC details."""
-    text = re.sub(r"[^a-z ]", "", query.strip().lower())
-    return text in {
-        "ok", "okay", "kk", "alright", "all right", "sure", "fine",
-        "got it", "gotit", "understood", "noted", "roger", "cool",
-        "right", "yes", "yeah", "yep", "thanks", "thank you",
-        "no problem", "sounds good", "will do",
-    }
-
-
 class KYCWorkflowHandler:
+    """Collects KYC details from a photo of one government-issued ID —
+    Aadhaar, PAN, Passport, Voter ID, or Driving Licence — extracts the
+    name/date of birth/ID number/address, confirms with the customer, then
+    submits. Deliberately document-only: unlike the old version, it never
+    accepts typed "Field: value" corrections, since there's no reliable
+    way to validate a typed ID number against the actual document without
+    OCR — a customer who mistypes a digit would otherwise get KYC data on
+    file that was never actually verified against their real ID."""
+
     async def handle(self, workflow: dict[str, Any], phone_number: str, query: str, parsed_document: dict | None = None, trace_id: str = "") -> dict[str, Any]:
         logger.info(f"[{trace_id}] KYC workflow step | phone={phone_number[-4:]} | step={workflow['step']}")
         if workflow["step"] == STEP_UPLOAD_KYC_FORM:
@@ -81,38 +61,45 @@ class KYCWorkflowHandler:
         return {"handled": True, "response": "The KYC update is in an invalid state. Please start again."}
 
     def _collect(self, workflow: dict, phone_number: str, query: str, parsed_document: dict | None, trace_id: str = "") -> dict[str, Any]:
-        data = dict(workflow.get("data", {}))
-        extracted = {}
-        if parsed_document is not None:
-            if not parsed_document.get("success"):
-                return {"handled": True, "response": templates.render_kyc_invalid()}
-            extracted = _extract(parsed_document.get("content", {}))
-        elif ":" in query:
-            for line in query.splitlines():
-                if ":" in line:
-                    raw, value = line.split(":", 1)
-                    target = ALIASES.get(_key(raw.strip()))
-                    if target and value.strip():
-                        extracted[target] = value.strip()
-        elif query.strip():
-            missing_now = [field for field in REQUIRED_FIELDS if not str(data.get(field, "")).strip()]
-            labels_now = ", ".join(LABELS[field] for field in missing_now) or "the remaining details"
-            if _is_acknowledgment(query):
-                return {"handled": True, "response": f"No problem! Whenever you're ready, please upload the KYC document or share {labels_now} as `Field: value`."}
-            return {"handled": True, "response": f"I couldn't read that as KYC information. Please upload the KYC document or provide {labels_now} as `Field: value`."}
-        data.update(extracted)
-        missing = [field for field in REQUIRED_FIELDS if not str(data.get(field, "")).strip()]
-        problems = list(dict.fromkeys(missing + _invalid(data)))
-        if problems:
-            update_workflow_data(phone_number, data)
-            logger.info(f"[{trace_id}] KYC form missing/invalid fields | phone={phone_number[-4:]} | fields={problems}")
-            return {"handled": True, "response": templates.render_kyc_missing_fields(problems)}
-        data["aadhaar_number"] = re.sub(r"[ -]", "", data["aadhaar_number"])
-        data["pan_number"] = data["pan_number"].replace(" ", "").upper()
+        if parsed_document is None:
+            # No document attached — a typed reply here can't be validated
+            # against a real ID, so it's never accepted as KYC data (see
+            # class docstring). Just re-show what's needed.
+            return {"handled": True, "response": with_nav_buttons(templates.render_kyc_upload_prompt())}
+
+        if not parsed_document.get("success"):
+            return {"handled": True, "response": with_nav_buttons(templates.render_kyc_invalid())}
+
+        content = parsed_document.get("content", {}) or {}
+        id_type = str(content.get("id_type", "")).strip().lower()
+
+        if id_type not in ID_VALIDATORS:
+            logger.info(f"[{trace_id}] KYC document rejected | phone={phone_number[-4:]} | id_type={id_type!r}")
+            return {"handled": True, "response": with_nav_buttons(templates.render_kyc_unsupported_document())}
+
+        full_name = str(content.get("full_name", "")).strip()
+        date_of_birth = str(content.get("date_of_birth", "")).strip()
+        address = str(content.get("address", "")).strip()
+        id_number = _normalize_id_number(content.get("id_number", ""))
+
+        if not full_name or not date_of_birth or not ID_VALIDATORS[id_type].fullmatch(id_number):
+            logger.info(
+                f"[{trace_id}] KYC document unreadable/invalid | phone={phone_number[-4:]} | id_type={id_type} | "
+                f"has_name={bool(full_name)} | has_dob={bool(date_of_birth)} | id_number_valid={bool(ID_VALIDATORS[id_type].fullmatch(id_number))}"
+            )
+            return {"handled": True, "response": with_nav_buttons(templates.render_kyc_could_not_read(id_type))}
+
+        data = {
+            "id_type": id_type,
+            "id_number": id_number,
+            "full_name": full_name,
+            "date_of_birth": date_of_birth,
+            "address": address,
+        }
         update_workflow_data(phone_number, data)
         set_workflow_step(phone_number, STEP_CONFIRM_KYC)
-        logger.info(f"[{trace_id}] KYC form complete, awaiting confirmation | phone={phone_number[-4:]}")
-        summary = templates.render_kyc_summary(data["full_name"], data["date_of_birth"], data["address"])
+        logger.info(f"[{trace_id}] KYC document verified, awaiting confirmation | phone={phone_number[-4:]} | id_type={id_type}")
+        summary = templates.render_kyc_summary(id_type, full_name, date_of_birth, address)
         return {"handled": True, "response": _yes_no_prompt(summary)}
 
     def _confirm(self, workflow: dict, phone_number: str, query: str, trace_id: str = "") -> dict[str, Any]:
@@ -138,7 +125,7 @@ class KYCWorkflowHandler:
                 logger.warning(f"[{trace_id}] KYC request ID collision; retrying")
         if not request_id:
             logger.error(f"[{trace_id}] KYC request creation failed | phone={phone_number[-4:]}")
-            return {"handled": True, "response": templates.render_kyc_failed()}
+            return {"handled": True, "response": with_nav_buttons(templates.render_kyc_failed())}
         complete_workflow(phone_number)
         logger.info(f"[{trace_id}] KYC request created | phone={phone_number[-4:]} | request_id={request_id}")
         return {"handled": True, "response": templates.render_kyc_success(request_id)}

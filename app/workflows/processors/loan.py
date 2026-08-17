@@ -17,6 +17,7 @@ from app.services.llm_understanding import interpret_choice_llm, is_llm_fallback
 from app.conversation.renderer import InteractiveButton, InteractiveListRow, InteractiveListSection, StructuredResponse
 from app.conversation.responses.common import format_currency
 from app.conversation.responses import loan as templates
+from app.conversation.responses.common import with_nav_buttons
 
 logger = get_logger(__name__)
 
@@ -246,7 +247,7 @@ class LoanWorkflowHandler:
 
         if parsed_document is not None:
             if not parsed_document.get("success"):
-                return {"handled": True, "response": templates.render_loan_document_unreadable()}
+                return {"handled": True, "response": with_nav_buttons(templates.render_loan_document_unreadable())}
             extracted = _extract(parsed_document.get("content", {}))
             data.update(extracted)
             update_workflow_data(phone_number, data)
@@ -259,7 +260,7 @@ class LoanWorkflowHandler:
             return {"handled": True, "response": self._confirmation(data)}
 
         if self._is_question(query):
-            return {"handled": True, "response": self._answer_question(data, query, current_field)}
+            return {"handled": True, "response": with_nav_buttons(self._answer_question(data, query, current_field))}
 
         text = query.strip()
         if not text:
@@ -430,7 +431,7 @@ class LoanWorkflowHandler:
                 logger.warning(f"[{trace_id}] Loan request ID collision; retrying")
         if not request_id:
             logger.error(f"[{trace_id}] Loan request creation failed | phone={phone_number[-4:]}")
-            return {"handled": True, "response": templates.render_loan_failed()}
+            return {"handled": True, "response": with_nav_buttons(templates.render_loan_failed())}
         complete_workflow(phone_number)
         logger.info(f"[{trace_id}] Loan request created | phone={phone_number[-4:]} | request_id={request_id}")
         return {

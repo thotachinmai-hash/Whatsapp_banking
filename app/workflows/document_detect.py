@@ -14,7 +14,7 @@ from typing import Any, Optional
 # as _missing_fields()/_extract() elsewhere in the workflow processors:
 # never trust the model's own label alone when the raw fields disagree.
 _CHEQUE_FIELDS = ("payee", "amount_in_figures", "numbers", "bank_name", "drawer_name")
-_KYC_FIELDS = ("aadhaar_number", "pan_number", "guardian_name")
+_KYC_FIELDS = ("id_number", "id_type", "guardian_name")
 _LOAN_FIELDS = ("applicant_name", "monthly_income", "requested_amount", "tenure_months", "employment_type")
 
 _VALID_TYPES = {"cheque", "kyc", "loan_form"}

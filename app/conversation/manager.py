@@ -560,6 +560,11 @@ class ConversationManager:
         if context is not None and context.detected_language != DEFAULT_LANGUAGE:
             structured.text = translate_text(structured.text, context.detected_language, trace_id=trace_id)
 
+        # Record the language `text` actually ends up in (English included)
+        # so a voice reply can be spoken in the same language it was
+        # translated into — see StructuredResponse.language's docstring.
+        structured.language = context.detected_language if context is not None else None
+
         # Session history (app/memory.py) is a separate, unchanged
         # mechanism from ConversationContext — see docs/current_architecture.md,
         # "Conversation Context — Phase 1". Never logs the raw message —

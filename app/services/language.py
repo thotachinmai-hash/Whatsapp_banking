@@ -1,9 +1,12 @@
 """Language detection and translation for multilingual replies.
 
-Scoped to a curated set of languages this app has validated against the
-SARVAM_MODEL configured in .env — reliability outside this set is not
-guaranteed by the underlying model, so detection is constrained to it
-rather than guessing at broader support this app can't actually back up.
+Scoped to English plus the Indian languages Sarvam's speech stack actually
+covers — app/services/transcription.py (STT, saaras:v3) and
+app/services/tts.py (TTS, bulbul:v3) — rather than an arbitrary broader
+list, so a customer who writes/speaks in a "supported" language gets both
+a translated text reply AND a voice reply that's actually spoken in that
+language. See app/services/tts.py's _LANGUAGE_TO_TTS_CODE for the BCP-47
+mapping bulbul:v3 needs.
 
 Deliberately rule-free — language identification from arbitrary free text
 isn't something a keyword list can do reliably, unlike the rest of this
@@ -33,15 +36,20 @@ def _get_client() -> SarvamAI:
 
 # ISO 639-1 code -> display name, used both to validate detect_language()'s
 # output and to name the target language in the translate_text() prompt.
+# Exactly the languages Sarvam TTS (bulbul:v3) can speak, so every
+# supported language works for both text and voice replies.
 SUPPORTED_LANGUAGES = {
     "en": "English",
-    "de": "German",
-    "fr": "French",
-    "it": "Italian",
-    "pt": "Portuguese",
     "hi": "Hindi",
-    "es": "Spanish",
-    "th": "Thai",
+    "bn": "Bengali",
+    "gu": "Gujarati",
+    "kn": "Kannada",
+    "ml": "Malayalam",
+    "mr": "Marathi",
+    "or": "Odia",
+    "pa": "Punjabi",
+    "ta": "Tamil",
+    "te": "Telugu",
 }
 
 DEFAULT_LANGUAGE = "en"
@@ -64,10 +72,10 @@ def should_attempt_detection(text: str) -> bool:
     all-English case.
 
     Pure-ASCII text is treated as English without calling the model: every
-    non-English language in SUPPORTED_LANGUAGES is written with at least
-    one character outside plain ASCII (Devanagari for Hindi, Thai script,
-    or an accented Latin letter for French/German/Italian/Portuguese/
-    Spanish), so this is a free, safe filter for the common case.
+    non-English language in SUPPORTED_LANGUAGES is written in its own
+    non-Latin script (Devanagari for Hindi/Marathi, Bengali, Gujarati,
+    Kannada, Malayalam, Odia, Gurmukhi for Punjabi, Tamil, Telugu), so this
+    is a free, safe filter for the common case.
 
     Known limitation: romanized/transliterated non-English text typed in
     plain ASCII (e.g. Hindi written as "mera balance kya hai" rather than
@@ -107,9 +115,9 @@ def detect_language(text: str, trace_id: str = "") -> str:
                     "role": "system",
                     "content": (
                         "Identify the language of the user's message. Reply with "
-                        "ONLY its ISO 639-1 two-letter code (e.g. en, hi, es, fr, "
-                        "de, it, pt, th) and nothing else. If you are not sure, "
-                        "reply 'en'."
+                        "ONLY its ISO 639-1 two-letter code (en, hi, bn, gu, kn, "
+                        "ml, mr, or, pa, ta, te) and nothing else. If you are not "
+                        "sure, reply 'en'."
                     ),
                 },
                 {"role": "user", "content": text[:300]},
@@ -128,14 +136,18 @@ def detect_language(text: str, trace_id: str = "") -> str:
         return DEFAULT_LANGUAGE
 
 
-# Display name -> ISO code, including a couple of common alternate names,
-# used only to detect an EXPLICIT meta-request to change language ("reply
-# in Spanish", "switch to Hindi") — as opposed to a message merely WRITTEN
-# in that language, which should never be classified as a change request
-# by this (already-ASCII, by construction — see should_attempt_detection)
-# path.
+# Display name -> ISO code, including a couple of common alternate/native
+# spellings, used only to detect an EXPLICIT meta-request to change
+# language ("reply in Tamil", "switch to Hindi") — as opposed to a message
+# merely WRITTEN in that language, which should never be classified as a
+# change request by this (already-ASCII, by construction — see
+# should_attempt_detection) path.
 _LANGUAGE_NAME_TO_CODE = {name.lower(): code for code, name in SUPPORTED_LANGUAGES.items()}
-_LANGUAGE_NAME_TO_CODE.update({"english": "en", "deutsch": "de", "espanol": "es", "español": "es"})
+_LANGUAGE_NAME_TO_CODE.update({
+    "english": "en",
+    "oriya": "or",
+    "gujrati": "gu",
+})
 
 _LANGUAGE_CHANGE_RE = re.compile(
     r"\b(?:reply|respond|speak|talk|switch|change)\b"
@@ -146,7 +158,7 @@ _LANGUAGE_CHANGE_RE = re.compile(
 
 def detect_explicit_language_change(message: str) -> Optional[str]:
     """Return an ISO 639-1 code only when `message` is a META-request about
-    which language to use ("reply in Spanish", "switch to Hindi", "speak
+    which language to use ("reply in Tamil", "switch to Hindi", "speak
     English please") — never when it's simply written in another language
     (that's should_attempt_detection/detect_language's job, and only fires
     on non-ASCII text). Regex-based rather than an LLM call: this pattern

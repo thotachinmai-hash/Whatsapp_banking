@@ -25,14 +25,24 @@ DEFAULT_VOICE = "shubh"
 DEFAULT_LANGUAGE_CODE = "en-IN"
 
 # ISO 639-1 (app.services.language.SUPPORTED_LANGUAGES) -> Sarvam TTS's
-# BCP-47 language_code. Sarvam's TTS (bulbul) only covers English + Indian
-# languages, unlike the broader set app.services.language translates text
-# into — codes with no TTS equivalent fall back to DEFAULT_LANGUAGE_CODE
-# (the reply is still spoken, just not in that language) rather than
-# failing synthesis outright.
+# BCP-47 language_code — covers every language bulbul:v3 can speak, which
+# is exactly what SUPPORTED_LANGUAGES is scoped to (see language.py's
+# module docstring). Odia is the one code that doesn't match its own ISO
+# 639-1 code ("or") — Sarvam's tag for it is "od-IN". Any language code
+# with no entry here (shouldn't happen if it came from SUPPORTED_LANGUAGES)
+# falls back to DEFAULT_LANGUAGE_CODE rather than failing synthesis.
 _LANGUAGE_TO_TTS_CODE = {
     "en": "en-IN",
     "hi": "hi-IN",
+    "bn": "bn-IN",
+    "gu": "gu-IN",
+    "kn": "kn-IN",
+    "ml": "ml-IN",
+    "mr": "mr-IN",
+    "or": "od-IN",
+    "pa": "pa-IN",
+    "ta": "ta-IN",
+    "te": "te-IN",
 }
 
 # Simple in-memory circuit breaker for Sarvam TTS quota/rate-limit
@@ -56,10 +66,10 @@ async def synthesize_speech(
     TTS failure must never block the customer from getting a reply; the
     caller falls back to sending text instead.
 
-    `language` is an optional ISO 639-1 code (e.g. from
-    app.services.language / voice transcription) used to pick the closest
-    Sarvam TTS voice language; defaults to English when not given or not
-    covered by Sarvam TTS.
+    `language` is an optional ISO 639-1 code from
+    app.services.language.SUPPORTED_LANGUAGES (or voice transcription's
+    own detection) used to pick the matching Sarvam TTS voice language;
+    defaults to English when not given.
     """
     if not os.getenv("SARVAM_API_KEY"):
         logger.warning(f"[{trace_id}] TTS skipped | SARVAM_API_KEY not configured")
