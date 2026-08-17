@@ -10,6 +10,7 @@ from app.logger import get_logger
 from app.workflows.constants import STEP_UPLOAD_CHEQUE, STEP_CORRECT_CHEQUE
 from app.workflows.memory import complete_workflow, set_workflow_step, update_workflow_data
 from app.conversation.responses import cheque as templates
+from app.conversation.responses.common import with_nav_buttons
 
 logger = get_logger(__name__)
 
@@ -204,20 +205,20 @@ class ChequeWorkflowProcessor:
         if parsed_document is None:
             return {
                 "handled": True,
-                "response": templates.render_cheque_upload_prompt()
+                "response": with_nav_buttons(templates.render_cheque_upload_prompt())
             }
 
         mime_type = parsed_document.get("mime_type")
         if mime_type and not mime_type.startswith("image/"):
             return {
                 "handled": True,
-                "response": templates.render_cheque_not_an_image(),
+                "response": with_nav_buttons(templates.render_cheque_not_an_image()),
             }
 
         if not parsed_document.get("success"):
             return {
                 "handled": True,
-                "response": templates.render_cheque_invalid(parsed_document.get("error", "Unknown error"))
+                "response": with_nav_buttons(templates.render_cheque_invalid(parsed_document.get("error", "Unknown error")))
             }
 
         content = _normalize_content(parsed_document.get("content", {}))
@@ -245,13 +246,13 @@ class ChequeWorkflowProcessor:
             if mime_type and not mime_type.startswith("image/"):
                 return {
                     "handled": True,
-                "response": templates.render_cheque_not_an_image(),
+                "response": with_nav_buttons(templates.render_cheque_not_an_image()),
                 }
 
             if not parsed_document.get("success"):
                 return {
                     "handled": True,
-                    "response": templates.render_cheque_invalid(parsed_document.get("error", "Unknown error"))
+                    "response": with_nav_buttons(templates.render_cheque_invalid(parsed_document.get("error", "Unknown error")))
                 }
 
             new_content = _normalize_content(parsed_document.get("content", {}))
@@ -267,7 +268,7 @@ class ChequeWorkflowProcessor:
             if self._is_explanation_question(query):
                 return {
                     "handled": True,
-                    "response": templates.render_cheque_explanation(workflow.get("data", {}).get("validation_error")),
+                    "response": with_nav_buttons(templates.render_cheque_explanation(workflow.get("data", {}).get("validation_error"))),
                 }
 
             updated_any = False
@@ -293,19 +294,19 @@ class ChequeWorkflowProcessor:
                     pending_message = workflow.get("data", {}).get("validation_error")
                     return {
                         "handled": True,
-                        "response": templates.render_cheque_pending_reminder(pending_message)
+                        "response": with_nav_buttons(templates.render_cheque_pending_reminder(pending_message))
                     }
 
                 return {
                     "handled": True,
-                    "response": templates.render_cheque_correction_prompt()
+                    "response": with_nav_buttons(templates.render_cheque_correction_prompt())
                 }
 
             return self._validate_or_finalize(phone_number, content, trace_id)
 
         return {
             "handled": True,
-            "response": templates.render_cheque_reupload_prompt()
+            "response": with_nav_buttons(templates.render_cheque_reupload_prompt())
         }
 
     @staticmethod
@@ -370,7 +371,7 @@ class ChequeWorkflowProcessor:
 
             return {
                 "handled": True,
-                "response": message
+                "response": with_nav_buttons(message)
             }
 
         return self._finalize_cheque_request(phone_number, content, trace_id)
@@ -418,7 +419,7 @@ class ChequeWorkflowProcessor:
                 logger.error(f"[{trace_id}] Cheque request persistence failed | phone={phone_number[-4:]} | error={error}")
                 return {
                     "handled": True,
-                    "response": templates.render_cheque_failed(),
+                    "response": with_nav_buttons(templates.render_cheque_failed()),
                 }
 
         if not request_id:

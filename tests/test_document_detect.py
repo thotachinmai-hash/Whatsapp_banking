@@ -18,7 +18,7 @@ class DocumentDetectTests(unittest.TestCase):
         self.assertEqual(detect_workflow_type(content), "cheque")
 
     def test_falls_back_to_field_presence_for_kyc(self) -> None:
-        content = {"aadhaar_number": "123456789012", "pan_number": "ABCDE1234F"}
+        content = {"id_type": "aadhaar", "id_number": "234567890123"}
         self.assertEqual(detect_workflow_type(content), "kyc")
 
     def test_falls_back_to_field_presence_for_loan_form(self) -> None:

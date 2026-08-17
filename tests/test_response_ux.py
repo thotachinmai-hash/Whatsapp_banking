@@ -166,7 +166,7 @@ class ResponseRendererTests(unittest.IsolatedAsyncioTestCase):
         fields = set(StructuredResponse.model_fields.keys())
         self.assertEqual(
             fields,
-            {"kind", "text", "template_name", "buttons", "list_button_label", "list_sections"},
+            {"kind", "text", "template_name", "buttons", "list_button_label", "list_sections", "language"},
         )
 
 
@@ -228,7 +228,7 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         result = await self.manager.handle(self.phone, "Why is the sky blue?", trace_id="t1")
 
         self.assertTrue(result["handled"])
-        response = result["response"].lower()
+        response = as_structured_response(result["response"]).text.lower()
         self.assertNotIn("rayleigh", response)  # never answers the science question
         self.assertIn("aadhaar", response)
         self.assertIn("cancel", response)
@@ -240,11 +240,15 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         result = await self.manager.handle(self.phone, "What should I do?", trace_id="t2")
 
         self.assertTrue(result["handled"])
-        response = result["response"].lower()
+        structured = as_structured_response(result["response"])
+        response = structured.text.lower()
         self.assertIn("upload a clear image of the cheque", response)
         # Must not restart the workflow or dump the main menu.
         self.assertNotIn("what would you like to do?", response)
-        self.assertNotIn("1. \U0001f4b8", result["response"])
+        self.assertNotIn("1. \U0001f4b8", structured.text)
+        # Back/Cancel/Main Menu are tappable now, not just typed words.
+        button_ids = {b.id for b in structured.buttons}
+        self.assertEqual(button_ids, {"back", "cancel", "menu"})
 
     async def test_workflow_is_not_restarted_by_out_of_context_question(self):
         from app.workflows.memory import get_workflow

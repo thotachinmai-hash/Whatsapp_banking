@@ -62,23 +62,23 @@ class TranslateTextTests(unittest.TestCase):
 
     def test_translates_when_target_supported(self) -> None:
         with patch("app.services.language._get_client") as mock_get_client:
-            mock_get_client.return_value.chat.completions.return_value = _mock_response("Su saldo es 100")
-            self.assertEqual(translate_text("Your balance is 100", "es"), "Su saldo es 100")
+            mock_get_client.return_value.chat.completions.return_value = _mock_response("உங்கள் இருப்பு 100")
+            self.assertEqual(translate_text("Your balance is 100", "ta"), "உங்கள் இருப்பு 100")
 
     def test_api_failure_returns_original_text(self) -> None:
         with patch("app.services.language._get_client") as mock_get_client:
             mock_get_client.return_value.chat.completions.side_effect = RuntimeError("boom")
-            self.assertEqual(translate_text("Your balance is 100", "es"), "Your balance is 100")
+            self.assertEqual(translate_text("Your balance is 100", "ta"), "Your balance is 100")
 
     def test_empty_translated_response_falls_back_to_original(self) -> None:
         with patch("app.services.language._get_client") as mock_get_client:
             mock_get_client.return_value.chat.completions.return_value = _mock_response("")
-            self.assertEqual(translate_text("Your balance is 100", "es"), "Your balance is 100")
+            self.assertEqual(translate_text("Your balance is 100", "ta"), "Your balance is 100")
 
 
 class DetectExplicitLanguageChangeTests(unittest.TestCase):
     def test_recognizes_common_phrasings(self) -> None:
-        self.assertEqual(detect_explicit_language_change("reply in Spanish please"), "es")
+        self.assertEqual(detect_explicit_language_change("reply in Tamil please"), "ta")
         self.assertEqual(detect_explicit_language_change("please switch to Hindi"), "hi")
         self.assertEqual(detect_explicit_language_change("speak English"), "en")
 

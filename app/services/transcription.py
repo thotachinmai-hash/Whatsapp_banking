@@ -67,9 +67,12 @@ async def transcribe_audio(audio_data: bytes, trace_id: str) -> tuple[str | None
         # "hi-IN", "en-IN") — take the leading subtag as the ISO 639-1 code
         # app.services.language.SUPPORTED_LANGUAGES uses everywhere else,
         # so a voice message and a typed message in the same language are
-        # treated identically downstream.
+        # treated identically downstream. Odia is the one language where
+        # Sarvam's tag ("od") doesn't match its real ISO 639-1 code ("or").
         raw_language = (transcription.language_code or "").strip().lower()
         language_code = raw_language.split("-")[0] or None
+        if language_code == "od":
+            language_code = "or"
         # Sarvam's own language guess is unreliable on a handful of words
         # ("Ok.", "Yes") — too little audio to carry real linguistic signal,
         # the same reason app/services/language.py won't run text-based

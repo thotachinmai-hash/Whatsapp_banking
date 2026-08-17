@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 SENSITIVE_WORKFLOW_KEYS = {
     "aadhaar_number",
     "pan_number",
+    "id_number",
     "otp",
     "password",
     "api_key",

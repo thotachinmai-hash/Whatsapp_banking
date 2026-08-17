@@ -270,15 +270,6 @@ curl -X POST http://localhost:8001/api/test/message \
 | http://127.0.0.1:4040 | ngrok inspector |
 
 ---
-
-## Test Accounts
-
-| Account Number | Holder | Balance | Phone Number | Registered? |
-|---|---|---|---|---|
-| GB12FNCL00010001234567 | John Smith | £2,543.67 | 447818658034 | ✅ Yes |
-| GB12FNCL00010007654321 | Sarah Johnson | £15,750.00 | 919080745760 | ✅ Yes |
-| GB12FNCL00010009876543 | Michael Brown | £892.34 | 447123456789 | ❌ No — use this number to test onboarding |
-
 `customers.phone_number` must match `accounts.phone_number` for the same person — the registration gate and "which account is linked to this number" lookups both key off it, so a mismatch makes a real customer look unregistered.
 
 Sample cheque requests seeded for testing cheque status lookup (belong to John Smith / Sarah Johnson's numbers above):

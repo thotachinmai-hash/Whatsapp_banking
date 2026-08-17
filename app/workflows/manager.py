@@ -19,7 +19,7 @@ from app.workflows.memory import complete_workflow
 from app.workflows.memory import set_workflow_step
 from app.services.registration_gate import GREETING_KEYWORDS
 from app.conversation.responses.transfer import render_insufficient_balance
-from app.conversation.responses.common import render_goodbye, render_main_menu_list, render_workflow_boundary_with_step, render_workflow_step_hint
+from app.conversation.responses.common import render_goodbye, render_main_menu_list, render_workflow_boundary_with_step, render_workflow_step_hint, with_nav_buttons
 from app.conversation.responses.cheque import render_cheque_deposit_started
 from app.conversation.responses.kyc import render_kyc_update_started
 from app.conversation.intent.rules import BANKING_DOMAIN_KEYWORDS
@@ -361,7 +361,7 @@ class WorkflowManager:
             if action == "cheque":
                 workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
                 create_workflow(phone_number, workflow)
-                return {"handled": True, "response": render_cheque_deposit_started()}
+                return {"handled": True, "response": with_nav_buttons(render_cheque_deposit_started())}
             if action == "loan":
                 workflow = create_workflow_model(WORKFLOW_LOAN, STEP_SELECT_LOAN_TYPE)
                 create_workflow(phone_number, workflow)
@@ -371,7 +371,7 @@ class WorkflowManager:
             if action == "kyc":
                 workflow = create_workflow_model(WORKFLOW_KYC, STEP_UPLOAD_KYC_FORM)
                 create_workflow(phone_number, workflow)
-                return {"handled": True, "response": render_kyc_update_started()}
+                return {"handled": True, "response": with_nav_buttons(render_kyc_update_started())}
             return {"handled": False, "response": None, "reprocess_query": f"check my {action}"}
         lookup_words = (
             "status", "list", "show", "my ", "all ", "details", "information",
@@ -384,7 +384,9 @@ class WorkflowManager:
             create_workflow(phone_number, workflow)
             return {
                 "handled": True,
-                "response": "🧾 *Cheque deposit started*\n\nPlease upload a clear cheque image to continue.\n\nReply *Cancel* to stop.",
+                "response": with_nav_buttons(
+                    "🧾 *Cheque deposit started*\n\nPlease upload a clear cheque image to continue.\n\nReply *Cancel* to stop."
+                ),
             }
         if any(word in normalized for word in ("loan", "borrow", "finance")) and not is_lookup:
             workflow = create_workflow_model(WORKFLOW_LOAN, STEP_SELECT_LOAN_TYPE)
@@ -403,9 +405,9 @@ class WorkflowManager:
             create_workflow(phone_number, workflow)
             return {
                 "handled": True,
-                "response": (
-                    "📄 *KYC update started*\n\nPlease upload a clear KYC form or document.\n\n"
-                    "Required details: full name, date of birth, address, Aadhaar number, and PAN number.\n\nReply *Cancel* to stop."
+                "response": with_nav_buttons(
+                    "📄 *KYC update started*\n\nPlease upload a clear photo of one of: Aadhaar card, "
+                    "PAN card, Passport, Voter ID, or Driving Licence.\n\nReply *Cancel* to stop."
                 ),
             }
         if any(word in normalized for word in ("transfer", "send money", "pay someone", "make a payment")) and not is_lookup:
@@ -554,11 +556,16 @@ def _is_allowed_for_workflow(workflow_type: str, query: str) -> bool:
     return any(term in text for term in BANKING_DOMAIN_KEYWORDS)
 
 
-def _workflow_boundary_message(workflow_type: str, step: str | None = None) -> str:
+def _workflow_boundary_message(workflow_type: str, step: str | None = None) -> StructuredResponse:
     """Task 10, Parts 9/10: explain the CURRENT step instead of the rigid
     "I can answer questions only about this request here." — the workflow
-    is never restarted and the customer is never sent to the main menu."""
-    return render_workflow_boundary_with_step(workflow_type, step)
+    is never restarted and the customer is never sent to the main menu.
+
+    A customer who lands here again and again (an off-topic or ambiguous
+    reply, repeatedly) previously had no way out except knowing the exact
+    word to type — now Back/Cancel/Main Menu are tappable buttons on this
+    same message, not just text in the hint. See with_nav_buttons()."""
+    return with_nav_buttons(render_workflow_boundary_with_step(workflow_type, step))
 
 
 def _is_greeting_word(query: str) -> bool:

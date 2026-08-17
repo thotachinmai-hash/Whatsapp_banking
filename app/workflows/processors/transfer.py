@@ -19,7 +19,7 @@ from app.workflows.memory import complete_workflow, create_workflow, create_work
 from app.workflows.nlu import interpret_confirmation, interpret_menu_choice
 from app.services.llm_understanding import interpret_choice_llm, is_llm_fallback_enabled
 from app.conversation.renderer import InteractiveButton, InteractiveListRow, InteractiveListSection, StructuredResponse
-from app.conversation.responses.common import format_currency, mask_account_number as _mask_account
+from app.conversation.responses.common import format_currency, mask_account_number as _mask_account, with_nav_buttons
 from app.conversation.responses import transfer as templates
 
 logger = get_logger(__name__)
@@ -420,7 +420,7 @@ class TransferWorkflowProcessor:
 
     @staticmethod
     def _ask(question: str, footer: str) -> dict:
-        return {"handled": True, "response": f"{question}\n\n{footer}"}
+        return {"handled": True, "response": with_nav_buttons(f"{question}\n\n{footer}")}
 
     @staticmethod
     def _beneficiary_prompt(phone_number: str, error: str | None = None) -> dict:
