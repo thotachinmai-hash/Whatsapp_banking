@@ -72,7 +72,7 @@ def render_source_account_prompt(accounts: list[dict], error: Optional[str] = No
     ]
     prefix = f"{error}\n\n" if error else ""
     return (
-        prefix + "\U0001F3E6 Which account should this come from?\n\n"
+        prefix + "\U0001F3E6 Choose an account to initiate the transfer from\n\n"
         + "\n".join(lines)
         + "\n\nJust reply with a number."
     )

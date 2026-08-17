@@ -482,7 +482,7 @@ class TransferWorkflowProcessor:
             for index, a in enumerate(accounts, 1)
         ]
         intro = f"{error}\n\n" if error else ""
-        intro += "\U0001F3E6 Which account should this come from?"
+        intro += "\U0001F3E6 Choose an account to initiate the transfer from"
         return {"handled": True, "response": StructuredResponse.list_of(
             intro, "Choose account", [InteractiveListSection(title="Your accounts", rows=rows)]
         )}

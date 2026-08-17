@@ -470,6 +470,53 @@ def ensure_transfers_table() -> None:
     )
 
 
+def _apply_account_transaction(
+    cursor,
+    account_number: str,
+    transaction_type: str,
+    amount: Decimal,
+    category: str,
+    description: str,
+    reference: str,
+) -> dict:
+    """Debit or credit an account and persist the ledger entry."""
+    if transaction_type not in {"credit", "debit"}:
+        raise ValueError(f"Unsupported transaction type: {transaction_type}")
+
+    amount = Decimal(str(amount))
+    cursor.execute(
+        "SELECT id, balance FROM accounts WHERE account_number = %s AND status = 'active' FOR UPDATE",
+        (account_number,),
+    )
+    account = cursor.fetchone()
+    if not account:
+        raise ValueError(f"Account {account_number} not found or inactive")
+
+    current_balance = Decimal(str(account["balance"]))
+    delta = amount if transaction_type == "credit" else -amount
+    new_balance = current_balance + delta
+
+    cursor.execute(
+        "UPDATE accounts SET balance = %s WHERE id = %s",
+        (new_balance.quantize(Decimal("0.01")), account["id"]),
+    )
+    cursor.execute(
+        """INSERT INTO transactions
+           (account_id, transaction_type, category, amount, description, reference, balance_after, created_at)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())""",
+        (
+            account["id"],
+            transaction_type,
+            category,
+            amount,
+            description,
+            reference,
+            new_balance.quantize(Decimal("0.01")),
+        ),
+    )
+    return {"account_number": account_number, "account_id": account["id"], "balance_after": new_balance.quantize(Decimal("0.01"))}
+
+
 def create_transfer(
     reference: str,
     phone_number: str,
@@ -477,16 +524,70 @@ def create_transfer(
     beneficiary_name: str,
     beneficiary_account: str,
     amount,
-    status: str = "INITIATED",
+    status: str = "COMPLETED",
 ) -> dict | None:
     ensure_transfers_table()
-    return execute_write_returning(
-        """INSERT INTO transfers
-           (reference, phone_number, source_account, beneficiary_name, beneficiary_account, amount, status)
-           VALUES (%s, %s, %s, %s, %s, %s, %s)
-           RETURNING *""",
-        (reference, phone_number, source_account, beneficiary_name, beneficiary_account, amount, status),
-    )
+    amount_decimal = Decimal(str(amount))
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute(
+            """INSERT INTO transfers
+               (reference, phone_number, source_account, beneficiary_name, beneficiary_account, amount, status)
+               VALUES (%s, %s, %s, %s, %s, %s, %s)
+               RETURNING *""",
+            (reference, phone_number, source_account, beneficiary_name, beneficiary_account, amount_decimal, status),
+        )
+        transfer = dict(cursor.fetchone())
+
+        _apply_account_transaction(
+            cursor,
+            account_number=source_account,
+            transaction_type="debit",
+            amount=amount_decimal,
+            category="transfer",
+            description=f"Transfer to {beneficiary_name}",
+            reference=reference,
+        )
+
+        if beneficiary_account and beneficiary_account != source_account:
+            cursor.execute(
+                "SELECT id, balance FROM accounts WHERE account_number = %s AND status = 'active' FOR UPDATE",
+                (beneficiary_account,),
+            )
+            beneficiary = cursor.fetchone()
+            if beneficiary:
+                beneficiary_balance = Decimal(str(beneficiary["balance"]))
+                new_beneficiary_balance = beneficiary_balance + amount_decimal
+                cursor.execute(
+                    "UPDATE accounts SET balance = %s WHERE id = %s",
+                    (new_beneficiary_balance.quantize(Decimal("0.01")), beneficiary["id"]),
+                )
+                cursor.execute(
+                    """INSERT INTO transactions
+                       (account_id, transaction_type, category, amount, description, reference, balance_after, created_at)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())""",
+                    (
+                        beneficiary["id"],
+                        "credit",
+                        "transfer",
+                        amount_decimal,
+                        f"Transfer from {beneficiary_name}",
+                        reference,
+                        new_beneficiary_balance.quantize(Decimal("0.01")),
+                    ),
+                )
+
+        conn.commit()
+        return transfer
+    except Exception:
+        if conn:
+            conn.rollback()
+        raise
+    finally:
+        if conn:
+            conn.close()
 
 
 def get_transfer_by_reference(reference: str) -> dict | None:

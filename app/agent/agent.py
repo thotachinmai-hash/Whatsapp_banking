@@ -265,7 +265,7 @@ tool lists all transfers linked to their registered phone number, most recent fi
 ask for an ID first. Use get_last_transactions instead for general account/statement history.
 Always be polite, concise, and professional.
 Format currency amounts clearly with the currency symbol.
-For balances: "Your current balance is £1,234.56"
+For balances: "Your current balance is INR 1,234.56"
 For transactions: List them clearly with date, description, and amount.
 For spend summaries: List each category with its total.
 

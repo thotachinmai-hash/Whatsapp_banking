@@ -34,16 +34,17 @@ class TransferTemplateTests(unittest.TestCase):
         text = transfer.render_transfer_summary(
             beneficiary_name="Priya",
             beneficiary_account_masked="•••• 1234",
-            amount_label="£500.00",
+            amount_label="₹500.00",
             source_account_label="GB12FNCL00010001234567",
         )
         self.assertIn("Priya", text)
-        self.assertIn("£500.00", text)
-        self.assertIn("Please check these details", text)
+        self.assertIn("₹500.00", text)
+        self.assertIn("Almost there", text)
 
     def test_06_transfer_confirmation(self):
         text = transfer.render_transfer_confirmation()
-        self.assertIn("Confirm transfer", text)
+        self.assertIn("Yes, send it", text)
+        self.assertIn("Edit amount", text)
         self.assertIn("Reply 1 or 2", text)
 
     def test_07_transfer_success(self):
@@ -60,12 +61,12 @@ class TransferTemplateTests(unittest.TestCase):
 
     def test_08_insufficient_balance(self):
         text_generic = transfer.render_insufficient_balance()
-        self.assertIn("sufficient balance", text_generic.lower())
+        self.assertIn("enough balance", text_generic.lower())
         text_specific = transfer.render_insufficient_balance(
-            account_label="GB12FNCL00010001234567", available_label="£10.00", amount_label="£500.00"
+            account_label="GB12FNCL00010001234567", available_label="₹10.00", amount_label="₹500.00"
         )
-        self.assertIn("£10.00", text_specific)
-        self.assertIn("£500.00", text_specific)
+        self.assertIn("₹10.00", text_specific)
+        self.assertIn("₹500.00", text_specific)
         self.assertNotIn("psycopg2", text_specific)
         self.assertNotIn("Error", text_specific)
 
@@ -92,7 +93,7 @@ class LoanTemplateTests(unittest.TestCase):
         self.assertIn("NO", text)
 
     def test_11_loan_eligibility_guidance_never_claims_approval(self):
-        text = loan.render_loan_eligibility_guidance(loan_type="personal", monthly_income_label="£5,000")
+        text = loan.render_loan_eligibility_guidance(loan_type="personal", monthly_income_label="₹5,000")
         lowered = text.lower()
         self.assertNotIn("congratulations", lowered)
         self.assertNotIn("you are eligible", lowered)
@@ -100,7 +101,6 @@ class LoanTemplateTests(unittest.TestCase):
         self.assertIn("eligibility", lowered)
         self.assertIn("credit", lowered)
         self.assertIn("requirements", lowered)
-        # Offers a next step rather than deciding one for the customer.
         self.assertIn("?", text)
 
 
@@ -162,18 +162,18 @@ class StatusTemplateTests(unittest.TestCase):
             {"type": "credit", "amount": 2500, "description": "Salary Payment", "date": "2026-07-11", "currency": "GBP"},
         ])
         self.assertIn("Tesco Superstore", text)
-        self.assertIn("-£45.99", text)
-        self.assertIn("+£2,500.00", text)
+        self.assertIn("-₹45.99", text)
+        self.assertIn("+₹2,500.00", text)
         self.assertNotIn("45.99000", text)
 
 
 class FormattingHelperTests(unittest.TestCase):
     def test_17_currency_formatting(self):
-        self.assertEqual(common.format_currency(500, "GBP"), "£500.00")
-        self.assertEqual(common.format_currency(1250, "GBP"), "£1,250.00")
-        self.assertEqual(common.format_currency(50000, "GBP"), "£50,000.00")
-        self.assertEqual(common.format_currency(500.0, "GBP"), "£500.00")
-        self.assertNotIn("500.0", common.format_currency(500, "GBP").replace("£500.00", ""))
+        self.assertEqual(common.format_currency(500, "GBP"), "₹500.00")
+        self.assertEqual(common.format_currency(1250, "GBP"), "₹1,250.00")
+        self.assertEqual(common.format_currency(50000, "GBP"), "₹50,000.00")
+        self.assertEqual(common.format_currency(500.0, "GBP"), "₹500.00")
+        self.assertNotIn("£", common.format_currency(500, "GBP"))
         self.assertEqual(common.format_currency(5000, "INR"), "₹5,000.00")
 
     def test_18_account_masking(self):

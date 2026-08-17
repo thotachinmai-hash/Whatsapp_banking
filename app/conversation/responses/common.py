@@ -14,14 +14,14 @@ from typing import Any, Optional
 
 from app.conversation.renderer import InteractiveButton, InteractiveListRow, InteractiveListSection, StructuredResponse
 
-_CURRENCY_SYMBOLS = {"GBP": "£", "INR": "₹", "USD": "$", "EUR": "€"}
+_CURRENCY_SYMBOLS = {"GBP": "₹", "INR": "₹", "USD": "₹", "EUR": "₹"}
 
 
 # ─── formatting helpers ─────────────────────────────────────────────────
 
-def format_currency(amount: Any, currency: str = "GBP") -> str:
-    """£500, £1,250, £50,000 — never a raw Python repr like 500.0."""
-    symbol = _CURRENCY_SYMBOLS.get(str(currency or "GBP").upper(), "")
+def format_currency(amount: Any, currency: str = "INR") -> str:
+    """All customer-facing monetary values are displayed in INR."""
+    symbol = _CURRENCY_SYMBOLS.get(str(currency or "INR").upper(), "₹")
     try:
         value = Decimal(str(amount))
     except (InvalidOperation, ValueError, TypeError):
