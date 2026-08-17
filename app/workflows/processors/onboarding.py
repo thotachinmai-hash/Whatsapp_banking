@@ -688,9 +688,20 @@ class OnboardingWorkflowHandler:
                     return found
         elif content is not None:
             text = str(content)
-            if "aadhaar" in " ".join(preferred_keys) or "aadhar" in " ".join(preferred_keys):
+            keys_joined = " ".join(preferred_keys)
+            if "aadhaar" in keys_joined or "aadhar" in keys_joined:
                 match = re.search(r"(?<!\d)(?:\d[ -]?){12}(?!\d)", text)
                 return re.sub(r"[ -]", "", match.group(0)) if match else ""
-            match = re.search(r"\b[A-Z]{5}[0-9]{4}[A-Z]\b", text.upper())
-            return match.group(0) if match else ""
+            # This PAN-shape deep-search fallback must only fire when the
+            # caller is actually looking for a PAN number (mirroring the
+            # aadhaar guard above) — without this check, it used to match
+            # unconditionally for ANY field lookup (full_name, date_of_birth,
+            # address, guardian_name too), so a PAN document whose OCR
+            # content had only a bare "pan_number" key (no separate name/
+            # DOB/address fields — a realistic OCR outcome) had its own PAN
+            # number string wrongly extracted AS the person's name/DOB/
+            # address, producing a false "details don't match" rejection.
+            if "pan" in keys_joined:
+                match = re.search(r"\b[A-Z]{5}[0-9]{4}[A-Z]\b", text.upper())
+                return match.group(0) if match else ""
         return ""

@@ -24,7 +24,12 @@ from app.conversation.responses.common import render_goodbye, render_main_menu_l
 from app.conversation.responses.cheque import render_cheque_deposit_started
 from app.conversation.responses.kyc import render_kyc_update_started
 from app.conversation.intent.rules import BANKING_DOMAIN_KEYWORDS
-from app.services.llm_understanding import answer_side_question, detect_step_or_workflow_jump, is_llm_fallback_enabled
+from app.services.llm_understanding import (
+    answer_side_question,
+    detect_soft_decline,
+    detect_step_or_workflow_jump,
+    is_llm_fallback_enabled,
+)
 from app.conversation.renderer import InteractiveButton, StructuredResponse
 from app.conversation.workflow_adapter import start_workflow_directly
 
@@ -116,7 +121,21 @@ class WorkflowManager:
         # Ask once, then act on whatever they reply via the branch above —
         # onboarding is the one exception (nothing of value is lost by
         # restarting it, and there's no menu to "continue" back into yet).
-        if _is_cancel_command(query) or _is_closing_word(query):
+        #
+        # The rigid regex above only catches an explicit cancel/stop/end
+        # word — a natural phrasing like "I don't want to go with the
+        # transfer right now" has none of those and was falling through
+        # completely unrecognized, leaving the workflow silently active
+        # with zero acknowledgment. The LLM fallback below catches that,
+        # gated by a cheap keyword pre-filter so it's never on the hot
+        # path for an ordinary field answer (an amount, an account
+        # number) — see _looks_like_possible_decline.
+        is_soft_decline = (
+            is_llm_fallback_enabled()
+            and _looks_like_possible_decline(query)
+            and detect_soft_decline(query, workflow_type, trace_id)
+        )
+        if _is_cancel_command(query) or _is_closing_word(query) or is_soft_decline:
             if workflow_type == WORKFLOW_ONBOARDING:
                 complete_workflow(phone_number)
                 logger.info(
@@ -633,6 +652,26 @@ def _is_closing_word(query: str) -> bool:
         "that will be all", "thatll be all", "im good", "i am good",
         "no thank you", "no more",
     }
+
+
+_POSSIBLE_DECLINE_RE = re.compile(
+    r"\b(don'?t|dont|not|never ?mind|no more|hold on|hold off|"
+    r"wait|later|forget it|changed my mind|another time|some other time)\b",
+    re.I,
+)
+
+
+def _looks_like_possible_decline(text: str) -> bool:
+    """Cheap pre-filter before the expensive LLM soft-decline check
+    (detect_soft_decline, a ~1-2s reasoning-model call) — only messages
+    containing a negation/hesitation word are worth asking the LLM about
+    at all. Without this, every ordinary field answer during a workflow
+    (an amount, an account number, a name) would pay that latency just to
+    get "no" back. False positives here just mean one wasted LLM call
+    that (correctly) says "not a decline" — false negatives mean this
+    fix doesn't catch a genuinely oddly-phrased decline, same limitation
+    _is_cancel_command already accepted for its own keyword set."""
+    return bool(_POSSIBLE_DECLINE_RE.search(text.lower()))
 
 
 _RESUME_RE = re.compile(r"\b(continue|resume|keep going|carry on|go ?ahead|proceed)\b", re.I)

@@ -20,6 +20,7 @@ import unittest
 from unittest.mock import patch
 
 from app.workflows.constants import (
+    STEP_COLLECT_AADHAAR,
     STEP_CONFIRM_KYC,
     STEP_CONFIRM_LOAN,
     STEP_CONFIRM_REGISTRATION,

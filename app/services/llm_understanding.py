@@ -266,3 +266,72 @@ def detect_step_or_workflow_jump(
         f"confidence={confidence:.2f} | duration={duration:.2f}ms"
     )
     return JumpTarget(target_workflow=target, confidence=confidence)
+
+
+def detect_soft_decline(text: str, workflow_type: str, trace_id: str = "") -> bool:
+    """Catch a natural-language "I don't want to do this right now" that
+    app.workflows.manager._is_cancel_command's regex misses because it
+    doesn't contain a literal cancel/stop/end word ("okay I don't want to
+    go with the transfer right now", "let's not do this", "actually never
+    mind", "not this right now"). Only ever called as a fallback AFTER
+    the cheap regex already found nothing — this exists so a customer's
+    clearly-stated wish to pause isn't silently ignored (the workflow
+    just sits there active with no acknowledgment) just because they
+    didn't happen to say the exact word "cancel". Deliberately narrow:
+    only a message that unambiguously signals wanting to stop/pause
+    counts — an ordinary answer to the current step, or a side question,
+    must never be misread as a decline. Returns False on any failure,
+    low confidence, or ambiguity — matching this app's fail-safe pattern
+    (see interpret_choice_llm/detect_step_or_workflow_jump above)."""
+    if not text or not text.strip():
+        return False
+
+    start = time.time()
+    try:
+        response = _get_client().chat.completions(
+            model=_model(),
+            temperature=0,
+            max_tokens=_MAX_TOKENS,
+            reasoning_effort=_REASONING_EFFORT,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "A WhatsApp banking user is mid-way through a "
+                        f"'{workflow_type}' request. Decide if their message "
+                        "CLEARLY signals they want to stop or pause it right "
+                        "now — even phrased casually, e.g. \"I don't want to "
+                        "do this right now\", \"let's not do this\", \"actually "
+                        "never mind\", \"not now\", \"hold off on that\". "
+                        'Reply with ONLY a JSON object of the exact shape '
+                        '{"wants_to_pause": true or false, "confidence": 0.0-1.0}. '
+                        "Use false if the message is actually answering/"
+                        "continuing the current step, asks an unrelated "
+                        "question, or is at all ambiguous — only a genuinely "
+                        "clear wish to stop counts as true."
+                    ),
+                },
+                {"role": "user", "content": text[:300]},
+            ],
+        )
+        raw = response.choices[0].message.content or ""
+    except Exception as e:
+        logger.error(f"[{trace_id}] LLM soft-decline detection call failed | error={e}")
+        return False
+
+    parsed = _parse_json_object(raw)
+    if not parsed:
+        return False
+    try:
+        confidence = max(0.0, min(1.0, float(parsed.get("confidence", 0.0))))
+    except (TypeError, ValueError):
+        confidence = 0.0
+    wants_to_pause = bool(parsed.get("wants_to_pause")) and confidence >= 0.6
+
+    duration = (time.time() - start) * 1000
+    if wants_to_pause:
+        logger.info(
+            f"[{trace_id}] LLM soft decline detected | workflow={workflow_type} | "
+            f"confidence={confidence:.2f} | duration={duration:.2f}ms"
+        )
+    return wants_to_pause
