@@ -3,6 +3,7 @@ import re
 
 from app.logger import get_logger
 from app.workflows.constants import (
+    WORKFLOW_ADD_ACCOUNT,
     WORKFLOW_CHEQUE,
     WORKFLOW_LOAN,
     WORKFLOW_KYC,
@@ -30,7 +31,7 @@ from app.conversation.workflow_adapter import start_workflow_directly
 from app.workflows.processors.cheque import ChequeWorkflowProcessor
 from app.workflows.processors.loan import LoanWorkflowHandler, detect_loan_type_from_text, loan_type_list_prompt
 from app.workflows.processors.kyc import KYCWorkflowHandler
-from app.workflows.processors.onboarding import OnboardingWorkflowHandler
+from app.workflows.processors.onboarding import OnboardingWorkflowHandler, start_add_account_workflow
 from app.workflows.processors.transfer import TransferWorkflowProcessor, has_transferable_balance, start_transfer_from_text
 
 logger = get_logger(__name__)
@@ -43,6 +44,7 @@ _WORKFLOW_LABELS = {
     WORKFLOW_TRANSFER: "Money transfer",
     WORKFLOW_LOAN: "Loan application",
     WORKFLOW_KYC: "KYC update",
+    WORKFLOW_ADD_ACCOUNT: "Account creation",
 }
 
 
@@ -288,8 +290,12 @@ class WorkflowManager:
                 trace_id=trace_id,
             )
 
-        elif workflow_type == WORKFLOW_ONBOARDING:
+        elif workflow_type in (WORKFLOW_ONBOARDING, WORKFLOW_ADD_ACCOUNT):
 
+            # pending_service_query is only ever stashed by registration_gate.py
+            # for a genuinely unregistered customer (see below) — an
+            # add-account workflow never sets it, so this whole resume
+            # branch is naturally a no-op for WORKFLOW_ADD_ACCOUNT.
             pending_service_query = workflow.get("data", {}).get("pending_service_query")
 
             result = await self.onboarding_handler.handle(
@@ -348,6 +354,7 @@ class WorkflowManager:
             "5": "cheque status",
             "6": "loan",
             "7": "kyc",
+            "8": "create_account",
         }
         if normalized in menu_actions:
             action = menu_actions[normalized]
@@ -372,6 +379,8 @@ class WorkflowManager:
                 workflow = create_workflow_model(WORKFLOW_KYC, STEP_UPLOAD_KYC_FORM)
                 create_workflow(phone_number, workflow)
                 return {"handled": True, "response": with_nav_buttons(render_kyc_update_started())}
+            if action == "create_account":
+                return start_add_account_workflow(phone_number, trace_id)
             return {"handled": False, "response": None, "reprocess_query": f"check my {action}"}
         lookup_words = (
             "status", "list", "show", "my ", "all ", "details", "information",
@@ -533,6 +542,10 @@ _WORKFLOW_ON_TOPIC_TERMS = {
     WORKFLOW_ONBOARDING: (
         "register", "registration", "name", "aadhaar", "aadhar", "pan", "address",
         "document", "account", "profile", "field",
+    ),
+    WORKFLOW_ADD_ACCOUNT: (
+        "account", "aadhaar", "aadhar", "pan", "address", "document", "profile",
+        "field", "savings", "current", "salary",
     ),
 }
 

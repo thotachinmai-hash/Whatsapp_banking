@@ -20,7 +20,8 @@ from app.services.whatsapp import (
     get_media_id,
     download_media,
 )
-from app.conversation.renderer import as_structured_response, render_and_send
+from app.conversation.renderer import as_structured_response, render_and_send, spoken_choices_hint
+from app.services.language import translate_text
 from app.services.transcription import download_audio, transcribe_audio
 from app.services.tts import synthesize_voice_note
 from app.services.whatsapp import send_voice_message, send_document_message
@@ -336,9 +337,11 @@ async def send_voice_reply(response, chat_id: str, trace_id: str = "", language:
 
     `response` may be a plain string or a StructuredResponse carrying
     WhatsApp interactive buttons/list metadata (see
-    app/conversation/renderer.py) — only the body text is spoken; a
-    voice-in customer can still just say "yes"/"1" back, so the tappable
-    options aren't needed on this path.
+    app/conversation/renderer.py) — the button/row titles aren't shown as
+    tappable UI on this path, so spoken_choices_hint() folds them into the
+    spoken sentence instead (e.g. "You can say Yes, send it, or Edit
+    amount.") — otherwise a voice-in customer would hear the summary with
+    no indication of how to reply at all.
 
     `language` is a fallback ISO 639-1 code (e.g. Sarvam STT's per-turn
     detection — see transcribe_audio) used only when `response` carries no
@@ -353,6 +356,15 @@ async def send_voice_reply(response, chat_id: str, trace_id: str = "", language:
     structured = as_structured_response(response)
     response_text = structured.text
     resolved_language = structured.language or language
+    choices_hint = spoken_choices_hint(structured)
+    if choices_hint:
+        # spoken_choices_hint() is authored in English (button/list titles
+        # are never translated — see ConversationManager._finish), so it
+        # needs the same translation pass `.text` already went through,
+        # or a Hindi/etc. reply would end with a jarring English sentence.
+        if resolved_language:
+            choices_hint = translate_text(choices_hint, resolved_language, trace_id=trace_id)
+        response_text = f"{response_text} {choices_hint}"
     synthesized = await synthesize_voice_note(response_text, trace_id=trace_id, language=resolved_language)
     if synthesized is None:
         logger.info(f"[{trace_id}] Voice reply unavailable — falling back to text")
@@ -676,6 +688,7 @@ async def handle_incoming_message(payload: dict) -> dict:
             trace_id=trace_id,
             parsed_document=parsed_document,
             detected_language=detected_language,
+            is_voice=is_voice_message,
         )
 
         agent_duration = (time.time() - agent_start) * 1000

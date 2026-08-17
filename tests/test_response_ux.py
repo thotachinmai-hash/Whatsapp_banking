@@ -503,11 +503,11 @@ class InteractiveListConversionTests(unittest.IsolatedAsyncioTestCase):
         # 10 beneficiaries + 1 "add new" row = 11 > WhatsApp's 10-row cap.
         self.assertIsInstance(result["response"], str)
 
-    async def test_main_menu_list_has_seven_rows_with_expected_ids(self):
+    async def test_main_menu_list_has_eight_rows_with_expected_ids(self):
         response = render_main_menu_list("Alex", greeting=False)
         self.assertEqual(response.kind, ResponseKind.LIST)
         rows = [row for section in response.list_sections for row in section.rows]
-        self.assertEqual([row.id for row in rows], ["1", "2", "3", "4", "5", "6", "7"])
+        self.assertEqual([row.id for row in rows], ["1", "2", "3", "4", "5", "6", "7", "8"])
 
     async def test_onboarding_account_type_list_row_ids_match_aliases(self):
         response = account_type_list_prompt("Which account?")

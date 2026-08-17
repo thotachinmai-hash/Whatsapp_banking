@@ -4,7 +4,7 @@ from typing import Any
 
 import psycopg2
 
-from app.database import create_customer, create_zero_balance_account
+from app.database import create_customer, create_zero_balance_account, get_accounts_by_phone, get_customer_by_phone
 from app.logger import get_logger
 from app.memory import cache_active_account
 from app.conversation.responses.common import render_main_menu_list
@@ -14,9 +14,13 @@ from app.workflows.constants import (
     STEP_COLLECT_PAN,
     STEP_CONFIRM_REGISTRATION,
     STEP_SELECT_ACCOUNT_TYPE,
+    WORKFLOW_ADD_ACCOUNT,
+    WORKFLOW_ONBOARDING,
 )
 from app.workflows.memory import (
     complete_workflow,
+    create_workflow,
+    create_workflow_model,
     get_workflow,
     set_workflow_step,
     update_workflow_data,
@@ -39,12 +43,24 @@ PROFILE_FIELD_ALIASES = {
 
 
 _ACCOUNT_TYPE_ROWS = [("1", "savings", "Savings Account"), ("2", "current", "Current Account"), ("3", "salary", "Salary Account")]
+ALL_ACCOUNT_TYPES = tuple(key for _digit, key, _title in _ACCOUNT_TYPE_ROWS)
 
 
-def account_type_list_prompt(intro: str) -> StructuredResponse:
+def account_type_list_prompt(intro: str, eligible_types: "set[str] | None" = None) -> StructuredResponse:
     """Tap-to-reply account-type list — row ids "1"/"2"/"3" match
-    _handle_select_account_type's `aliases` dict exact lookup."""
-    rows = [InteractiveListRow(id=digit, title=title) for digit, _key, title in _ACCOUNT_TYPE_ROWS]
+    _handle_select_account_type's `aliases` dict exact lookup, and stay
+    fixed to their type even when a row is filtered out below (so "2"
+    always means "current", whether or not "1" is shown this time).
+
+    `eligible_types` restricts the rows shown to account types the
+    customer doesn't already hold — see start_add_account_workflow and
+    _handle_select_account_type. None (fresh registration, where nothing
+    is held yet) shows all three, unchanged from before this existed."""
+    rows = [
+        InteractiveListRow(id=digit, title=title)
+        for digit, key, title in _ACCOUNT_TYPE_ROWS
+        if eligible_types is None or key in eligible_types
+    ]
     return StructuredResponse.list_of(intro, "Choose account", [InteractiveListSection(title="Account types", rows=rows)])
 
 
@@ -54,6 +70,42 @@ def _yes_no_prompt(body: str) -> StructuredResponse:
     return StructuredResponse.buttons_of(
         body, [InteractiveButton(id="yes", title="Yes, confirm"), InteractiveButton(id="no", title="No, restart")]
     )
+
+
+def start_add_account_workflow(phone_number: str, trace_id: str = "") -> dict[str, Any]:
+    """Start the "create another account" flow for an already-registered
+    customer. Reuses the onboarding workflow's own Aadhaar/PAN collection
+    and confirmation steps end to end (WORKFLOW_ADD_ACCOUNT shares every
+    STEP_* constant with WORKFLOW_ONBOARDING — only the workflow *type*
+    differs, which OnboardingWorkflowHandler branches on to skip
+    create_customer(), cross-check the uploaded documents against the
+    identity already on file, and only offer account types the customer
+    doesn't already hold).
+
+    The single shared entry point for both triggers — the "Create Another
+    Account" menu row (app/workflows/manager.py::start_requested) and a
+    natural-language request ("I'd like to open another account", routed
+    via the registration_request intent — see
+    app/conversation/workflow_adapter.py) — so the two can't drift apart.
+
+    Returns a direct "you already have every account type" response
+    without starting a workflow at all when there's nothing left to offer,
+    the same guard _handle_select_account_type re-checks at the end of the
+    flow in case the customer's accounts changed in between."""
+    existing_types = {a["account_type"] for a in get_accounts_by_phone(phone_number)}
+    if not (set(ALL_ACCOUNT_TYPES) - existing_types):
+        customer = get_customer_by_phone(phone_number)
+        name = customer.get("full_name", "there") if customer else "there"
+        logger.info(f"[{trace_id}] Add-account requested with no eligible types left | phone={phone_number[-4:]}")
+        return {
+            "handled": True,
+            "response": render_main_menu_list(name, greeting=False, prefix=templates.render_no_eligible_account_types()),
+        }
+
+    workflow = create_workflow_model(WORKFLOW_ADD_ACCOUNT, STEP_COLLECT_AADHAAR)
+    create_workflow(phone_number, workflow)
+    logger.info(f"[{trace_id}] Add-account workflow started | phone={phone_number[-4:]}")
+    return {"handled": True, "response": templates.render_add_account_started()}
 
 
 class OnboardingWorkflowHandler:
@@ -78,19 +130,25 @@ class OnboardingWorkflowHandler:
     ) -> dict[str, Any]:
 
         step = workflow["step"]
-        logger.info(f"[{trace_id}] Onboarding workflow step | phone={phone_number[-4:]} | step={step}")
+        # Defaults to WORKFLOW_ONBOARDING (not required) so every existing
+        # caller/test that hands this method a bare {"step": ...} dict
+        # without a "type" key keeps behaving exactly as before — only a
+        # workflow explicitly created as WORKFLOW_ADD_ACCOUNT (see
+        # start_add_account_workflow) takes the "existing customer" path.
+        workflow_type = workflow.get("type") or WORKFLOW_ONBOARDING
+        logger.info(f"[{trace_id}] Onboarding workflow step | phone={phone_number[-4:]} | step={step} | type={workflow_type}")
 
         if step == STEP_COLLECT_AADHAAR:
-            return self._handle_collect_aadhaar(phone_number, query, parsed_document, trace_id)
+            return self._handle_collect_aadhaar(phone_number, query, parsed_document, workflow_type, trace_id)
 
         elif step == STEP_COLLECT_PAN:
-            return self._handle_collect_pan(phone_number, query, parsed_document, trace_id)
+            return self._handle_collect_pan(phone_number, query, parsed_document, workflow_type, trace_id)
 
         elif step == STEP_CONFIRM_REGISTRATION:
-            return self._handle_confirm_registration(workflow, phone_number, query, trace_id)
+            return self._handle_confirm_registration(workflow, phone_number, query, workflow_type, trace_id)
 
         elif step == STEP_SELECT_ACCOUNT_TYPE:
-            return self._handle_select_account_type(workflow, phone_number, query, trace_id)
+            return self._handle_select_account_type(workflow, phone_number, query, workflow_type, trace_id)
 
         return {
             "handled": True,
@@ -102,6 +160,7 @@ class OnboardingWorkflowHandler:
         phone_number: str,
         query: str,
         parsed_document: dict | None,
+        workflow_type: str = WORKFLOW_ONBOARDING,
         trace_id: str = "",
     ) -> dict[str, Any]:
 
@@ -149,6 +208,16 @@ class OnboardingWorkflowHandler:
                 )
             }
 
+        if workflow_type == WORKFLOW_ADD_ACCOUNT:
+            # An additional account must be verified against the SAME
+            # identity already on file for this phone number — a fresh
+            # registration has no such record to check against yet, so
+            # this only ever applies here.
+            customer = get_customer_by_phone(phone_number)
+            if customer and customer.get("aadhaar_number") and customer["aadhaar_number"] != digits:
+                logger.info(f"[{trace_id}] Add-account Aadhaar mismatch | phone={phone_number[-4:]}")
+                return {"handled": True, "response": templates.render_identity_document_mismatch("Aadhaar card")}
+
         workflow = get_workflow(phone_number) or {}
         stored_data = workflow.get("data", {}) or {}
         document_profile = self._extract_profile_fields(parsed_document.get("content"))
@@ -182,6 +251,7 @@ class OnboardingWorkflowHandler:
         phone_number: str,
         query: str,
         parsed_document: dict | None,
+        workflow_type: str = WORKFLOW_ONBOARDING,
         trace_id: str = "",
     ) -> dict[str, Any]:
 
@@ -213,6 +283,12 @@ class OnboardingWorkflowHandler:
                     "Please upload a clearer image of the PAN card."
                 )
             }
+
+        if workflow_type == WORKFLOW_ADD_ACCOUNT:
+            customer = get_customer_by_phone(phone_number)
+            if customer and customer.get("pan_number") and customer["pan_number"] != pan:
+                logger.info(f"[{trace_id}] Add-account PAN mismatch | phone={phone_number[-4:]}")
+                return {"handled": True, "response": templates.render_identity_document_mismatch("PAN card")}
 
         workflow = get_workflow(phone_number) or {}
         stored_data = workflow.get("data", {}) or {}
@@ -253,6 +329,7 @@ class OnboardingWorkflowHandler:
         workflow: dict[str, Any],
         phone_number: str,
         query: str,
+        workflow_type: str = WORKFLOW_ONBOARDING,
         trace_id: str = "",
     ) -> dict[str, Any]:
 
@@ -278,6 +355,50 @@ class OnboardingWorkflowHandler:
         if answer == "yes":
 
             data = workflow.get("data", {})
+
+            if workflow_type == WORKFLOW_ADD_ACCOUNT:
+                # The customer already exists — this flow only ever adds a
+                # new account for them, so create_customer() must NOT run
+                # again (it isn't idempotent; a second call either hits the
+                # DB's uniqueness constraint or, worse, silently duplicates
+                # the customer row). Pull the verified full_name from the
+                # customer's real record rather than trusting workflow
+                # data alone, in case OCR didn't yield a name this time.
+                customer = get_customer_by_phone(phone_number)
+                if not customer:
+                    logger.error(f"[{trace_id}] Add-account confirm reached with no existing customer | phone={phone_number[-4:]}")
+                    complete_workflow(phone_number)
+                    return {"handled": True, "response": templates.render_registration_failed(
+                        "we couldn't find your existing profile"
+                    )}
+                full_name = customer.get("full_name") or data.get("full_name", "")
+                update_workflow_data(phone_number, {"full_name": full_name})
+                set_workflow_step(phone_number, STEP_SELECT_ACCOUNT_TYPE)
+                existing_types = {a["account_type"] for a in get_accounts_by_phone(phone_number)}
+                eligible_types = {t for t in ALL_ACCOUNT_TYPES if t not in existing_types}
+                logger.info(
+                    f"[{trace_id}] Additional-account identity verified | phone={phone_number[-4:]} | "
+                    f"eligible_types={sorted(eligible_types)}"
+                )
+                if not eligible_types:
+                    # Between the flow starting and reaching here, every
+                    # type became held (e.g. created from another device
+                    # in parallel) — nothing left to offer.
+                    complete_workflow(phone_number)
+                    return {
+                        "handled": True,
+                        "response": render_main_menu_list(
+                            full_name or "there", greeting=False,
+                            prefix=templates.render_no_eligible_account_types(),
+                        ),
+                    }
+                return {
+                    "handled": True,
+                    "response": account_type_list_prompt(
+                        templates.render_additional_account_intro() + "\n\nWhich account would you like to open?",
+                        eligible_types=eligible_types,
+                    ),
+                }
 
             try:
                 customer = create_customer(
@@ -330,6 +451,7 @@ class OnboardingWorkflowHandler:
         workflow: dict[str, Any],
         phone_number: str,
         query: str,
+        workflow_type: str = WORKFLOW_ONBOARDING,
         trace_id: str = "",
     ) -> dict[str, Any]:
         aliases = {
@@ -337,6 +459,16 @@ class OnboardingWorkflowHandler:
             "2": "current", "current": "current", "current account": "current",
             "3": "salary", "salary": "salary", "salary account": "salary",
         }
+        # Always computed (not just for WORKFLOW_ADD_ACCOUNT) — a brand-new
+        # customer simply has zero accounts yet, so this is a no-op filter
+        # for fresh registration and the real guard for a repeat customer.
+        # Re-checked here (not just at start_add_account_workflow) as
+        # defense in depth against a race — e.g. two devices adding the
+        # same account type concurrently — and against a customer typing a
+        # type that isn't even shown in the (filtered) list.
+        existing_types = {a["account_type"] for a in get_accounts_by_phone(phone_number)}
+        eligible_types = {t for t in ALL_ACCOUNT_TYPES if t not in existing_types}
+
         normalized = query.strip().lower()
         account_type = aliases.get(normalized)
         if not account_type:
@@ -348,10 +480,36 @@ class OnboardingWorkflowHandler:
                 if alias in normalized:
                     account_type = candidate
                     break
-        if not account_type:
+
+        if account_type and account_type not in eligible_types:
+            logger.info(
+                f"[{trace_id}] Account type already held, re-prompting | "
+                f"phone={phone_number[-4:]} | account_type={account_type}"
+            )
             return {
                 "handled": True,
-                "response": account_type_list_prompt("Sorry, I didn't catch that — which account type?"),
+                "response": account_type_list_prompt(
+                    f"You already have a {account_type.title()} account — please choose one of the options below.",
+                    eligible_types=eligible_types,
+                ),
+            }
+
+        if not account_type:
+            if not eligible_types:
+                complete_workflow(phone_number)
+                customer = get_customer_by_phone(phone_number)
+                name = customer.get("full_name", "there") if customer else "there"
+                return {
+                    "handled": True,
+                    "response": render_main_menu_list(
+                        name, greeting=False, prefix=templates.render_no_eligible_account_types(),
+                    ),
+                }
+            return {
+                "handled": True,
+                "response": account_type_list_prompt(
+                    "Sorry, I didn't catch that — which account type?", eligible_types=eligible_types,
+                ),
             }
 
         data = workflow.get("data", {})

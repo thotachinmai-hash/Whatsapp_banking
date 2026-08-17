@@ -210,7 +210,8 @@ class OnboardingButtonTests(ButtonWiringTestCase):
         create_workflow(self.phone, workflow)
         fake_account = {"account_number": "GB12FNCL00010009999999", "account_type": "current"}
         with patch("app.workflows.processors.onboarding.create_zero_balance_account", return_value=fake_account) as mock_acct, \
-             patch("app.workflows.processors.onboarding.cache_active_account"):
+             patch("app.workflows.processors.onboarding.cache_active_account"), \
+             patch("app.workflows.processors.onboarding.get_accounts_by_phone", return_value=[]):
             result = await self.manager.handle(self.phone, "2", trace_id="ot3")  # row id "2" = Current Account
         self.assertTrue(result["handled"])
         mock_acct.assert_called_once()

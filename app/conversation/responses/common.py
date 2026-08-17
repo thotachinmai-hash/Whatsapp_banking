@@ -97,7 +97,8 @@ def render_main_menu(name: Optional[str] = None, greeting: bool = True) -> str:
         + "4. \U0001F9FE *Deposit a cheque*\n"
         + "5. \U0001F50E *Check cheque status*\n"
         + "6. \U0001F4DD *Apply for a loan*\n"
-        + "7. \U0001F4C7 *Update KYC*\n\n"
+        + "7. \U0001F4C7 *Update KYC*\n"
+        + "8. \U0001F3E6 *Create another account*\n\n"
         + "Reply with a number, type a request, or send a voice note.\n"
         + "Reply *Back* or *Cancel* anytime."
     )
@@ -111,6 +112,7 @@ _MAIN_MENU_ROWS = [
     ("5", "Check cheque status", "\U0001F50E Track a submitted cheque"),
     ("6", "Apply for a loan", "\U0001F4DD Start a loan application"),
     ("7", "Update KYC", "\U0001F4C7 Update your identity details"),
+    ("8", "Create another account", "\U0001F3E6 Open a new Savings, Current, or Salary account"),
 ]
 
 
@@ -292,6 +294,10 @@ WORKFLOW_STEP_HINTS = {
     ("onboarding", "COLLECT_PAN"): "We're currently waiting for your PAN card — please upload a clear image of it.",
     ("onboarding", "CONFIRM_REGISTRATION"): "Please review your details above and reply YES to confirm or NO to cancel.",
     ("onboarding", "SELECT_ACCOUNT_TYPE"): "Please choose the type of account you'd like to open.",
+    ("add_account", "COLLECT_AADHAAR"): "We're currently waiting for your Aadhaar card — please upload a clear image of it.",
+    ("add_account", "COLLECT_PAN"): "We're currently waiting for your PAN card — please upload a clear image of it.",
+    ("add_account", "CONFIRM_REGISTRATION"): "Please review your details above and reply YES to confirm or NO to cancel.",
+    ("add_account", "SELECT_ACCOUNT_TYPE"): "Please choose the type of account you'd like to open.",
 }
 
 _WORKFLOW_INTRO_LABELS = {
@@ -300,6 +306,7 @@ _WORKFLOW_INTRO_LABELS = {
     "loan": "your loan application",
     "kyc": "updating your KYC details",
     "onboarding": "your banking registration",
+    "add_account": "opening a new account",
 }
 
 

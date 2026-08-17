@@ -116,6 +116,42 @@ def render_registration_declined_initial() -> str:
     return "We are not proceeding with your registration but you can still chat with us."
 
 
+def render_add_account_started() -> str:
+    """Opening prompt for an already-registered customer adding a second
+    (or third) account — distinct from render_onboarding_welcome()/
+    render_ask_aadhaar(), which are written for a brand-new customer."""
+    return (
+        "Let's get you set up with a new account! Please upload a clear "
+        "image of your Aadhaar card to verify your identity."
+    )
+
+
+def render_additional_account_intro() -> str:
+    """Replaces render_registration_success()'s "Welcome aboard" wording
+    at the account-type step for a returning customer — they're already a
+    customer, so nothing about this is a first-time welcome."""
+    return "✅ Thanks, your identity is verified."
+
+
+def render_no_eligible_account_types() -> str:
+    return (
+        "You already have all of our available account types — Savings, "
+        "Current, and Salary. There's nothing new to open right now."
+    )
+
+
+def render_identity_document_mismatch(document_name: str) -> str:
+    """Shown when a document uploaded for an ADDITIONAL account doesn't
+    match the identity already on file — e.g. a different Aadhaar number
+    than the one this phone number registered with. Fresh registration
+    has nothing to cross-check against yet, so this is only ever reached
+    for the add-account flow (see OnboardingWorkflowHandler)."""
+    return (
+        f"That {document_name} doesn't match the one on file for your account. "
+        f"Please upload the {document_name} registered with us, or reply *Cancel* to stop."
+    )
+
+
 def render_account_type_prompt() -> str:
     return (
         "Which account would you like to open?\n"

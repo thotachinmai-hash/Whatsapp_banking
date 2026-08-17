@@ -14,6 +14,7 @@ from app.agent.tools import CATEGORY_SYNONYMS
 from app.conversation.context import ConversationContext
 from app.conversation.intent.models import IntentResult
 from app.services.registration_gate import GREETING_KEYWORDS
+from app.workflows.nlu import PAY_VERB_PATTERN, SEND_VERB_PATTERN
 
 # ─── shared helpers ─────────────────────────────────────────────────────
 
@@ -365,10 +366,12 @@ def classify_workflow_request(text: str) -> Optional[IntentResult]:
 
     amount_currency = _extract_amount_and_currency(text)
     beneficiary = _extract_beneficiary_name(text)
+    has_send_verb = bool(re.search(SEND_VERB_PATTERN, normalized))
+    has_pay_verb = bool(re.search(PAY_VERB_PATTERN, normalized))
     looks_like_transfer = (
         "transfer" in normalized
-        or ("send" in normalized and (amount_currency or "money" in normalized or beneficiary))
-        or ("pay" in normalized and (" to " in normalized or beneficiary))
+        or (has_send_verb and (amount_currency or "money" in normalized or beneficiary))
+        or (has_pay_verb and (" to " in normalized or beneficiary))
     )
     # Every branch below requires "not a question" — matching
     # kyc_update_request's existing guard (further down). Without it, a

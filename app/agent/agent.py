@@ -376,6 +376,7 @@ async def run_agent(
     trace_id: str,
     parsed_document: dict | None = None,
     detected_language: str | None = None,
+    is_voice: bool = False,
 ):
     """Thin entry point — see app/conversation/manager.py::ConversationManager
     for the actual turn orchestration (Phase 5). Kept here as a stable,
@@ -387,7 +388,14 @@ async def run_agent(
     `detected_language` is an optional ISO 639-1 hint from voice
     transcription (Whisper already detected the spoken language — see
     app/services/transcription.py) so ConversationManager doesn't need a
-    second, redundant text-based detection call for voice turns."""
+    second, redundant text-based detection call for voice turns.
+    `is_voice` tells ConversationManager which of its two independent
+    sticky languages (voice vs text) this turn belongs to — see
+    ConversationManager._update_language; it must be passed explicitly
+    rather than inferred from `detected_language` being set, since a short
+    voice utterance can arrive with `detected_language=None` too (Sarvam's
+    own per-utterance tag gets dropped as unreliable below a length
+    threshold) and must still update the voice channel, not the text one."""
     logger.info(f"[{trace_id}] Agent started | phone={phone_number[-4:]} | query={query[:50]}")
     try:
         return await conversation_manager.handle_message(
@@ -397,6 +405,7 @@ async def run_agent(
             llm_fallback=_run_llm_agent,
             parsed_document=parsed_document,
             detected_language=detected_language,
+            is_voice=is_voice,
         )
     except Exception as e:
         logger.error(f"[{trace_id}] Agent failed | error={e}")

@@ -163,6 +163,32 @@ def _fits_list_limits(structured: StructuredResponse) -> bool:
     )
 
 
+def spoken_choices_hint(structured: StructuredResponse) -> str:
+    """A short spoken-friendly sentence naming the tappable choices on a
+    BUTTONS/LIST response, for callers that speak `.text` aloud (see
+    app/services/message_handler.py::send_voice_reply) instead of
+    rendering the interactive UI. TEXT/TEMPLATE responses have nothing to
+    add here — the customer already got the whole reply as speech.
+
+    Without this, a voice-in customer heard the confirmation summary or
+    the account list with no indication of how to reply at all, since the
+    button/row titles only exist as tap targets in the WhatsApp UI, never
+    spoken — the customer would have to already know they could just say
+    "yes" or the account name.
+    """
+    if structured.kind == ResponseKind.BUTTONS:
+        titles = [b.title for b in structured.buttons]
+    elif structured.kind == ResponseKind.LIST:
+        titles = [row.title for section in structured.list_sections for row in section.rows]
+    else:
+        return ""
+    if not titles:
+        return ""
+    if len(titles) == 1:
+        return f"Say {titles[0]}."
+    return "You can say " + ", ".join(titles[:-1]) + f", or {titles[-1]}."
+
+
 def _flattened_fallback_text(structured: StructuredResponse) -> str:
     """A plain numbered-text rendering of the same choices, used whenever
     the interactive shape can't be sent — matches this app's pre-buttons
