@@ -30,10 +30,12 @@ from app.workflows.constants import (
     WORKFLOW_CHEQUE,
     WORKFLOW_KYC,
     WORKFLOW_LOAN,
+    WORKFLOW_ONBOARDING,
     WORKFLOW_TRANSFER,
 )
 from app.workflows.memory import create_workflow, create_workflow_model
 from app.workflows.processors.transfer import start_transfer_from_text
+from app.workflows.processors.onboarding import start_add_account_workflow
 from app.conversation.responses.cheque import render_cheque_deposit_started
 from app.conversation.responses.loan import render_loan_application_started
 from app.conversation.responses.kyc import render_kyc_update_started
@@ -47,10 +49,18 @@ def start_workflow_directly(
     trace_id: str = "",
 ) -> Optional[dict[str, Any]]:
     """Returns {"handled": True, "response": ...} for a supported
-    workflow_type, or None if there's nothing extra for this adapter to do
-    (e.g. "onboarding" — registration_gate.py already starts that for any
-    unregistered customer on any message, so a registered customer
-    matching registration_request has nothing to start)."""
+    workflow_type, or None if there's nothing extra for this adapter to do.
+
+    "onboarding" reaching this adapter specifically means the customer is
+    ALREADY registered: registration_gate.py intercepts every message from
+    an unregistered number before intent classification/routing ever run,
+    so a "registration_request" intent that gets this far can only be a
+    registered customer asking for a second/third account in free text
+    ("I'd like to open another account") — start the add-account flow
+    instead of the (inapplicable) fresh-registration one."""
+
+    if workflow_type == WORKFLOW_ONBOARDING:
+        return start_add_account_workflow(phone_number, trace_id)
 
     if workflow_type == WORKFLOW_TRANSFER:
         if transfer_handler is None:

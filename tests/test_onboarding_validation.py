@@ -56,6 +56,30 @@ class OnboardingValidationTests(unittest.TestCase):
 
         self.assertEqual(errors, [])
 
+    def test_pan_only_document_does_not_bleed_into_other_profile_fields(self) -> None:
+        # _document_value's deep-search fallback used to apply its
+        # PAN-shape regex unconditionally for ANY field lookup — so a PAN
+        # card whose OCR content only had a bare "pan_number" key (no
+        # separate name/DOB/address — a realistic OCR outcome, PAN cards
+        # print far less than Aadhaar) had its own PAN number string
+        # wrongly extracted AS the person's full_name/date_of_birth/
+        # address/guardian_name, producing a false "details don't match"
+        # rejection on a completely valid PAN upload.
+        profile = self.handler._extract_profile_fields({"pan_number": "ABCDE1234F"})
+        self.assertEqual(profile, {})
+
+        stored = {"full_name": "John Smith", "date_of_birth": "1990-01-01", "address": "1 Test St"}
+        self.assertEqual(self.handler._validate_profile_data(stored, profile), [])
+
+    def test_pan_number_itself_is_still_found_via_deep_search(self) -> None:
+        # The fix above must not break the deep-search fallback's actual
+        # intended job — finding a PAN number nested inside an unexpected
+        # shape (e.g. a wrapper object the vision model returned).
+        value = self.handler._document_value(
+            {"nested": {"raw_text": "ABCDE1234F"}}, "pan_number", "pan", "pan_card_number"
+        )
+        self.assertEqual(value, "ABCDE1234F")
+
     def test_accepts_initial_expansion_for_name(self) -> None:
         user_profile = {
             "full_name": "J. Doe",

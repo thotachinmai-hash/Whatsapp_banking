@@ -369,7 +369,67 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
 
         after = get_workflow(self.phone)
         self.assertEqual(after["workflow_id"], workflow_id_before)
-        self.assertEqual(after["step"], STEP_UPLOAD_CHEQUE)
+
+    async def test_natural_soft_decline_offers_continue_or_stop(self):
+        # "I don't want to go with transfer right now" has none of
+        # _is_cancel_command's literal cancel/stop/end words — without
+        # the LLM fallback this was silently ignored (the workflow just
+        # sat there, unacknowledged). It must now be recognized and
+        # offer the same tappable Continue/Stop confirmation a literal
+        # "cancel" already gets.
+        from app.workflows.constants import STEP_SELECT_BENEFICIARY, WORKFLOW_TRANSFER
+
+        workflow = create_workflow_model(WORKFLOW_TRANSFER, STEP_SELECT_BENEFICIARY)
+        create_workflow(self.phone, workflow)
+
+        with patch("app.workflows.manager.detect_soft_decline", return_value=True):
+            result = await self.manager.handle(
+                self.phone, "okay i dont want to go with transfer right now", trace_id="t9"
+            )
+
+        self.assertTrue(result["handled"])
+        response = result["response"]
+        self.assertEqual(response.kind.value, "buttons")
+        self.assertEqual({b.id for b in response.buttons}, {"continue", "stop"})
+
+    async def test_llm_soft_decline_never_called_without_a_negation_word(self):
+        # The cheap pre-filter (_looks_like_possible_decline) must gate
+        # the LLM call — an ordinary field answer (an account number)
+        # must never pay that latency on every single message.
+        from app.workflows.constants import STEP_COLLECT_BENEFICIARY_ACCOUNT, WORKFLOW_TRANSFER
+
+        workflow = create_workflow_model(WORKFLOW_TRANSFER, STEP_COLLECT_BENEFICIARY_ACCOUNT)
+        create_workflow(self.phone, workflow)
+
+        with patch("app.workflows.manager.detect_soft_decline") as mock_decline, \
+             patch("app.workflows.processors.transfer.create_beneficiary", return_value=None):
+            await self.manager.handle(self.phone, "GB29NWBK60161331926819", trace_id="t10")
+
+        mock_decline.assert_not_called()
+
+    async def test_soft_decline_does_not_preempt_a_named_workflow_jump(self):
+        # "actually let me apply for a loan instead" must still resolve
+        # via the more specific jump-detection path (offering "Switch to
+        # Loan"), not the generic decline path — the two must not fight
+        # over the same message.
+        from app.services.llm_understanding import JumpTarget
+        from app.workflows.constants import STEP_UPLOAD_CHEQUE, WORKFLOW_CHEQUE
+
+        workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
+        create_workflow(self.phone, workflow)
+
+        with patch("app.workflows.manager.detect_soft_decline") as mock_decline, \
+             patch(
+                "app.workflows.manager.detect_step_or_workflow_jump",
+                return_value=JumpTarget(target_workflow="loan", confidence=0.9),
+             ):
+            result = await self.manager.handle(
+                self.phone, "actually let me apply for a loan instead", trace_id="t11"
+            )
+
+        mock_decline.assert_not_called()
+        self.assertTrue(result["handled"])
+        self.assertIn("loan", result["response"].text.lower())
 
     async def test_llm_answer_failure_falls_back_to_reprocess_query(self):
         workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
@@ -503,11 +563,11 @@ class InteractiveListConversionTests(unittest.IsolatedAsyncioTestCase):
         # 10 beneficiaries + 1 "add new" row = 11 > WhatsApp's 10-row cap.
         self.assertIsInstance(result["response"], str)
 
-    async def test_main_menu_list_has_seven_rows_with_expected_ids(self):
+    async def test_main_menu_list_has_eight_rows_with_expected_ids(self):
         response = render_main_menu_list("Alex", greeting=False)
         self.assertEqual(response.kind, ResponseKind.LIST)
         rows = [row for section in response.list_sections for row in section.rows]
-        self.assertEqual([row.id for row in rows], ["1", "2", "3", "4", "5", "6", "7"])
+        self.assertEqual([row.id for row in rows], ["1", "2", "3", "4", "5", "6", "7", "8"])
 
     async def test_onboarding_account_type_list_row_ids_match_aliases(self):
         response = account_type_list_prompt("Which account?")

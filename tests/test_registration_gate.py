@@ -72,6 +72,57 @@ class RegistrationGateDeferralTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("pending_service_query", workflow["data"])
 
 
+class RegisteredCustomerMenuTapTests(unittest.IsolatedAsyncioTestCase):
+    """A tapped main-menu row (WhatsApp list_reply id "1".."7") for a
+    REGISTERED customer with no session history yet (their very first
+    message ever, or any time after the session history TTL expires)
+    must not be swallowed by the "first message -> show the menu again"
+    fallback — otherwise every menu option looks unwired the first time
+    it's actually used. See registration_gate.py's MENU_DIGITS."""
+
+    def setUp(self):
+        self.fake_redis = FakeRedis()
+        patcher = patch("app.workflows.memory.redis_client", self.fake_redis)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        memory_patcher = patch("app.memory.redis_client", self.fake_redis)
+        memory_patcher.start()
+        self.addCleanup(memory_patcher.stop)
+
+    async def test_menu_digit_is_not_swallowed_on_first_ever_message(self):
+        with patch(
+            "app.services.registration_gate.get_customer_by_phone",
+            return_value={"full_name": "John Smith"},
+        ):
+            for digit in ("1", "2", "3", "4", "5", "6", "7"):
+                with self.subTest(digit=digit):
+                    result = await check_registration_gate(
+                        phone_number=f"44770090020{digit}",
+                        query=digit,
+                        trace_id=f"t{digit}",
+                    )
+                    # None means "let this fall through to
+                    # WorkflowManager.start_requested()", which is what
+                    # actually knows what each digit means — the gate
+                    # must not intercept it with the greeting/menu again.
+                    self.assertIsNone(result)
+
+    async def test_non_menu_first_message_still_shows_the_menu(self):
+        # A genuinely ambiguous first message ("hey there") is correctly
+        # still shown the welcome menu — this fix is scoped to the seven
+        # known menu digits only, not a blanket bypass.
+        with patch(
+            "app.services.registration_gate.get_customer_by_phone",
+            return_value={"full_name": "John Smith"},
+        ), patch("app.services.registration_gate.get_accounts_by_phone", return_value=[]):
+            result = await check_registration_gate(
+                phone_number="447700900299",
+                query="hey there",
+                trace_id="t8",
+            )
+        self.assertTrue(result["handled"])
+
+
 class ResumePendingServiceTests(unittest.IsolatedAsyncioTestCase):
     """WorkflowManager.handle() should resume a stashed pending_service_query
     once onboarding actually completes (a real customer record now exists),

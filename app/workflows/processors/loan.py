@@ -143,6 +143,67 @@ def detect_loan_type_from_text(text: str) -> str | None:
     return loan_type
 
 
+# Closed vocabulary for employment type — same low-risk approach as
+# LOAN_TYPE_SYNONYMS above (a fixed word list, not a guess), so "I'm
+# salaried" or "self employed" resolve without a separate question.
+_EMPLOYMENT_TYPE_WORDS = {
+    "self-employed": "Self-employed", "self employed": "Self-employed", "selfemployed": "Self-employed",
+    "salaried": "Salaried",
+    "business owner": "Business", "businessman": "Business", "businesswoman": "Business", "business": "Business",
+    "unemployed": "Unemployed", "retired": "Retired", "student": "Student",
+}
+_TENURE_HINT_RE = re.compile(r"\b([0-9]+(?:\.[0-9]+)?)\s*(years?|yrs?|months?|mos?)\b", re.I)
+_INCOME_HINT_RE = re.compile(
+    r"\b(?:income|salary|earn\w*|take[\s-]?home)\D{0,12}?([0-9][0-9,]*(?:\.[0-9]{1,2})?)", re.I
+)
+_AMOUNT_HINT_RE = re.compile(
+    r"\b(?:loan\s*(?:of|amount)?|borrow\w*|requested\s*amount)\D{0,12}?([0-9][0-9,]*(?:\.[0-9]{1,2})?)", re.I
+)
+
+
+def extract_loan_fields_from_text(text: str) -> dict[str, str]:
+    """Pull whatever loan fields a free-form sentence already states —
+    e.g. "personal loan of 5,00,000 for 24 months, I'm salaried, income
+    50000" — so the wizard only asks for what's still missing instead of
+    one field at a time for data already given.
+
+    Deliberately narrow: only tenure, monthly income, requested amount,
+    and employment type are extracted here, each behind its own anchor
+    keyword (or, for tenure, a mandatory units suffix) so three
+    plain-number fields can't get swapped for one another by an
+    unanchored guess. Applicant name, purpose, and account number are
+    NOT extracted from free text — a name/purpose has no reliable anchor
+    to key off, and an account number must still be validated against
+    the customer's real accounts (see _validate_field), so those stay
+    asked explicitly.
+    """
+    result: dict[str, str] = {}
+    lowered = text.lower()
+
+    tenure_match = _TENURE_HINT_RE.search(text)
+    if tenure_match:
+        result["tenure_months"] = _normalize_value(
+            "tenure_months", f"{tenure_match.group(1)} {tenure_match.group(2)}"
+        )
+
+    income_match = _INCOME_HINT_RE.search(text)
+    if income_match:
+        result["monthly_income"] = income_match.group(1).replace(",", "")
+
+    amount_match = _AMOUNT_HINT_RE.search(text)
+    if amount_match:
+        amount_value = amount_match.group(1).replace(",", "")
+        if amount_value != result.get("monthly_income"):
+            result["requested_amount"] = amount_value
+
+    for phrase, label in sorted(_EMPLOYMENT_TYPE_WORDS.items(), key=lambda kv: -len(kv[0])):
+        if phrase in lowered:
+            result["employment_type"] = label
+            break
+
+    return result
+
+
 def _is_acknowledgment(text: str) -> bool:
     return re.sub(r"[^a-z ]", "", text.strip().lower()) in ACKNOWLEDGMENTS
 
@@ -241,6 +302,22 @@ class LoanWorkflowHandler:
             )
             return self._ask_next_or_confirm(phone_number, data, trace_id)
 
+        # No document pending — but the same message that named the loan
+        # type may already state other fields too ("personal loan of
+        # 500000 for 24 months, I'm salaried") — fill whatever's
+        # recognizable so the wizard only asks for what's still missing.
+        extracted = extract_loan_fields_from_text(query)
+        if extracted:
+            data = dict(workflow.get("data", {}))
+            data["loan_type"] = loan_type
+            data.update(extracted)
+            update_workflow_data(phone_number, extracted)
+            logger.info(
+                f"[{trace_id}] Loan fields extracted from trigger text | "
+                f"phone={phone_number[-4:]} | fields={list(extracted)}"
+            )
+            return self._ask_next_or_confirm(phone_number, data, trace_id)
+
         return self._account_prompt(phone_number, intro=templates.render_loan_type_selected(loan_type))
 
     def _collect_field(self, workflow: dict[str, Any], phone_number: str, query: str, parsed_document: dict | None, trace_id: str = "") -> dict[str, Any]:
@@ -304,6 +381,16 @@ class LoanWorkflowHandler:
     def _ask_next_or_confirm(self, phone_number: str, data: dict, trace_id: str = "", just_completed_field: str | None = None) -> dict[str, Any]:
         next_field = _next_missing_field(data)
         if next_field == "account_number":
+            # Nothing to actually choose between when there's only one
+            # account on file — skip straight past this question instead
+            # of asking the customer to pick their own only account.
+            accounts = get_accounts_by_phone(phone_number)
+            if len(accounts) == 1:
+                data = dict(data)
+                data["account_number"] = accounts[0]["account_number"]
+                update_workflow_data(phone_number, {"account_number": data["account_number"]})
+                logger.info(f"[{trace_id}] Loan account auto-selected (only one on file) | phone={phone_number[-4:]}")
+                return self._ask_next_or_confirm(phone_number, data, trace_id, just_completed_field=just_completed_field)
             ack = templates.FIELD_ACKS.get(just_completed_field, "") if just_completed_field else ""
             return self._account_prompt(phone_number, intro=ack or None)
         if next_field:

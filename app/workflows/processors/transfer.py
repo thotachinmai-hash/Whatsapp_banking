@@ -16,7 +16,7 @@ from app.workflows.constants import (
     WORKFLOW_TRANSFER,
 )
 from app.workflows.memory import complete_workflow, create_workflow, create_workflow_model, set_workflow_step, update_workflow_data
-from app.workflows.nlu import interpret_confirmation, interpret_menu_choice
+from app.workflows.nlu import PAY_VERB_PATTERN, SEND_VERB_PATTERN, interpret_confirmation, interpret_menu_choice
 from app.services.llm_understanding import interpret_choice_llm, is_llm_fallback_enabled
 from app.conversation.renderer import InteractiveButton, InteractiveListRow, InteractiveListSection, StructuredResponse
 from app.conversation.responses.common import format_currency, mask_account_number as _mask_account, with_nav_buttons
@@ -34,9 +34,52 @@ _NAME_TRAILERS = re.compile(
     r"\s+(?:please|now|today|thanks|thank you|asap|urgently)\W*$", re.I
 )
 _BENEFICIARY_INTENT_RE = re.compile(
-    r"(?:transfer|send|pay)\b.*?\bto\s+([A-Za-z][A-Za-z .'\-]{1,50})", re.I
+    rf"(?:\btransfer\w*\b|{SEND_VERB_PATTERN}|{PAY_VERB_PATTERN})"
+    r".*?\bto\s+([A-Za-z][A-Za-z .'\-]{1,50})",
+    re.I,
 )
-_AMOUNT_INTENT_RE = re.compile(r"(?:₹|£|GBP|Rs\.?|INR)?\s*([0-9]+(?:[.,][0-9]{1,2})?)\s*(k)?", re.I)
+# Matches an optional currency marker, digits with optional thousands
+# commas (Indian-style grouping like "1,00,000" included — the comma
+# positions aren't validated, just stripped), an optional decimal part,
+# and an optional "k" shorthand ("5k" -> 5000).
+_AMOUNT_INTENT_RE = re.compile(r"(?:₹|£|GBP|Rs\.?|INR)?\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)\s*(k)?", re.I)
+
+
+_SOURCE_HINT_RE = re.compile(r"\bfrom\s+(?:my\s+)?(savings|current|salary)\b", re.I)
+
+
+def _extract_source_hint(text: str) -> Optional[str]:
+    """Pull an account-type hint ("from my savings account") out of the
+    trigger message, so it can disambiguate the source account without a
+    separate question when the customer already said which one they mean —
+    see resolve_source_account_or_prompt below."""
+    match = _SOURCE_HINT_RE.search(text)
+    return match.group(1).lower() if match else None
+
+
+def _parse_amount_text(text: str) -> Optional[Decimal]:
+    """Parse a human-written amount out of free text, e.g. "10,000",
+    "₹500", "5k". Commas are always treated as thousands separators here,
+    never a decimal point — this app's own currency formatting always uses
+    "." for decimals. (The regex used to cap the comma group at 1-2
+    digits, as if it were a decimal separator, so "10,000" was misread as
+    "10,00" -> ₹1,000 instead of ₹10,000.)
+
+    Shared by both the free-text trigger-message extraction
+    (start_transfer_from_text) and the per-step amount prompt
+    (TransferWorkflowProcessor._parse_amount) so the two parse identically
+    instead of drifting, as they did before this existed as one function.
+    """
+    match = _AMOUNT_INTENT_RE.search(text)
+    if not match:
+        return None
+    try:
+        value = Decimal(match.group(1).replace(",", ""))
+    except InvalidOperation:
+        return None
+    if match.group(2):
+        value *= 1000
+    return value if 0 < value <= Decimal("100000") else None
 
 
 def _looks_like_account_number(candidate: str) -> bool:
@@ -107,15 +150,11 @@ def start_transfer_from_text(
     ) if requested_name else None
 
     amount: Optional[str] = None
-    amount_match = _AMOUNT_INTENT_RE.search(query)
-    if amount_match:
-        try:
-            raw_amount = amount_match.group(1).replace(",", "")
-            amount_value = float(raw_amount) * (1000 if amount_match.group(2) else 1)
-            if 0 < amount_value <= 100000:
-                amount = f"₹{amount_value:,.2f}"
-        except ValueError:
-            amount = None
+    amount_value = _parse_amount_text(query)
+    if amount_value is not None:
+        amount = f"₹{amount_value:,.2f}"
+
+    source_hint = _extract_source_hint(query)
 
     data: dict[str, Any] = {}
     if amount:
@@ -138,7 +177,7 @@ def start_transfer_from_text(
 
     if requested_name and saved:
         response = (
-            transfer_handler._source_prompt(phone_number)["response"] if amount
+            transfer_handler.resolve_source_account_or_prompt(phone_number, data, source_hint)["response"] if amount
             else templates.render_transfer_amount_prompt()
         )
         if not amount:
@@ -287,14 +326,16 @@ class TransferWorkflowProcessor:
             # amount — only look for a combined amount when the customer
             # wrote something beyond the plain menu digit (e.g. "Priya 50").
             amount = self._parse_amount(text) if not choice.isdigit() else None
-            update_workflow_data(phone_number, {
+            beneficiary_data = {
                 "beneficiary_name": selected["beneficiary_name"],
                 "beneficiary_account": selected["account_number"],
-            })
+            }
+            update_workflow_data(phone_number, beneficiary_data)
             if amount:
-                update_workflow_data(phone_number, {"amount": f"₹{amount:,.2f}"})
-                set_workflow_step(phone_number, STEP_SELECT_SOURCE_ACCOUNT)
-                return self._source_prompt(phone_number)
+                amount_label = f"₹{amount:,.2f}"
+                update_workflow_data(phone_number, {"amount": amount_label})
+                data = {**workflow.get("data", {}), **beneficiary_data, "amount": amount_label}
+                return self.resolve_source_account_or_prompt(phone_number, data, _extract_source_hint(text))
             set_workflow_step(phone_number, STEP_SELECT_AMOUNT)
             return self._amount_prompt()
         if choice in {str(len(beneficiaries) + 1), "new", "new beneficiary", "someone new", "add", "add beneficiary", "add new"}:
@@ -325,9 +366,10 @@ class TransferWorkflowProcessor:
             value = self._parse_amount(text)
         if value is None:
             return self._amount_prompt(templates.render_invalid_amount())
-        update_workflow_data(phone_number, {"amount": f"₹{value:,.2f}"})
-        set_workflow_step(phone_number, STEP_SELECT_SOURCE_ACCOUNT)
-        return self._source_prompt(phone_number)
+        amount_label = f"₹{value:,.2f}"
+        update_workflow_data(phone_number, {"amount": amount_label})
+        data = {**workflow.get("data", {}), "amount": amount_label}
+        return self.resolve_source_account_or_prompt(phone_number, data)
 
     def _source_account(self, workflow: dict, phone_number: str, text: str) -> dict:
         accounts = workflow.get("data", {}).get("source_accounts") or get_accounts_by_phone(phone_number)
@@ -356,7 +398,14 @@ class TransferWorkflowProcessor:
                 return self._source_account(workflow, phone_number, llm_choice)
             return self._source_prompt(phone_number, "Please choose one of the numbered accounts.")
 
-        data = workflow.get("data", {})
+        return self._finalize_source_account(phone_number, workflow.get("data", {}), account)
+
+    def _finalize_source_account(self, phone_number: str, data: dict, account: dict) -> dict:
+        """Validate the chosen account has enough balance and, if so, move
+        straight to the confirmation summary. Shared by the explicit
+        source-account step (_source_account, above) and
+        resolve_source_account_or_prompt's auto-select path (no separate
+        question asked at all when there's only one account to choose)."""
         balance = Decimal(str(account["balance"]))
         amount_value = self._parse_amount(data.get("amount", "")) or Decimal("0")
 
@@ -384,6 +433,25 @@ class TransferWorkflowProcessor:
             source_account_label=account["account_number"],
         )
         return {"handled": True, "response": self._confirm_prompt(summary)}
+
+    def resolve_source_account_or_prompt(self, phone_number: str, data: dict, source_hint: str | None = None) -> dict:
+        """Skip the "which account?" question entirely when there's nothing
+        genuinely ambiguous to ask: exactly one account on file, or the
+        customer already named a type (e.g. "from my savings account")
+        that matches exactly one. Otherwise falls back to the normal
+        source-account picker template (with 2+ real accounts to choose
+        between, that template is still the right UX — this only removes
+        the question when there's no real choice being made)."""
+        accounts = get_accounts_by_phone(phone_number)
+        candidates = accounts
+        if source_hint:
+            type_matches = [a for a in accounts if str(a["account_type"]).lower() == source_hint]
+            if len(type_matches) == 1:
+                candidates = type_matches
+        if len(candidates) == 1:
+            return self._finalize_source_account(phone_number, data, candidates[0])
+        set_workflow_step(phone_number, STEP_SELECT_SOURCE_ACCOUNT)
+        return self._source_prompt(phone_number)
 
     def _back(self, workflow: dict, phone_number: str) -> dict:
         previous = {
@@ -420,14 +488,7 @@ class TransferWorkflowProcessor:
 
     @staticmethod
     def _parse_amount(text: str) -> Decimal | None:
-        match = re.search(r"(?:₹|£|GBP|Rs\.?|INR)?\s*([0-9]+(?:[.,][0-9]{1,2})?)", text, re.I)
-        if not match:
-            return None
-        try:
-            value = Decimal(match.group(1).replace(",", ""))
-            return value if value > 0 and value <= 100000 else None
-        except InvalidOperation:
-            return None
+        return _parse_amount_text(text)
 
     @staticmethod
     def _ask(question: str, footer: str) -> dict:

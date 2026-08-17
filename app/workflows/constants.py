@@ -4,6 +4,7 @@ WORKFLOW_CHEQUE = "cheque"
 WORKFLOW_LOAN = "loan"
 WORKFLOW_KYC = "kyc"
 WORKFLOW_ONBOARDING = "onboarding"
+WORKFLOW_ADD_ACCOUNT = "add_account"
 WORKFLOW_CREDIT_CARD = "credit_card"
 WORKFLOW_TRANSFER = "transfer"
 

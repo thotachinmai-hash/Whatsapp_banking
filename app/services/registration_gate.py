@@ -15,6 +15,16 @@ GREETING_KEYWORDS = {
     "menu", "start", "help", "services",
 }
 
+# The row ids of app/conversation/responses/common.py's _MAIN_MENU_ROWS /
+# app/workflows/manager.py's start_requested() menu_actions — kept as its
+# own literal set (like GREETING_KEYWORDS above) rather than importing
+# from workflows/manager.py, which already imports FROM this module and
+# would create a cycle. A tapped WhatsApp list row arrives as this bare
+# digit with no banking keyword in it, so _is_service_request() alone
+# never recognizes it as one — see MENU_DIGITS's use in
+# check_registration_gate() below.
+MENU_DIGITS = {"1", "2", "3", "4", "5", "6", "7", "8"}
+
 
 def _is_greeting(query: str) -> bool:
     normalized = query.strip().lower().strip("!.? ")
@@ -43,7 +53,14 @@ async def check_registration_gate(
     if customer:
         history = get_session_history(phone_number)
 
-        if _is_greeting(query) or (not history and not _is_service_request(query)):
+        # A tapped main-menu row (bare digit "1".."7") must never be
+        # swallowed by the "first message ever" greeting fallback below —
+        # otherwise a registered customer's very first message being a
+        # menu tap (or any tap after their session history has expired)
+        # just re-shows the same menu instead of acting on it, making
+        # every menu option look unwired. See MENU_DIGITS above.
+        is_menu_tap = query.strip() in MENU_DIGITS
+        if _is_greeting(query) or (not history and not _is_service_request(query) and not is_menu_tap):
             logger.info(
                 f"[{trace_id}] Registration gate | greeting shown | phone={phone_number[-4:]}"
             )
@@ -110,7 +127,7 @@ def _is_service_request(query: str) -> bool:
     text = query.strip().lower()
     return any(term in text for term in (
         "loan", "borrow", "finance", "kyc", "know your customer",
-        "cheque", "check", "balance", "transaction", "transfer",
+        "cheque", "check", "balance", "transaction", "transfer", "account",
     ))
 
 

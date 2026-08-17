@@ -122,6 +122,7 @@ class ConversationManager:
         llm_fallback: LlmFallbackFn,
         parsed_document: Optional[dict] = None,
         detected_language: Optional[str] = None,
+        is_voice: bool = False,
     ) -> ResponseLike:
         """Run one full conversation turn and return the response text.
 
@@ -142,7 +143,7 @@ class ConversationManager:
         context = self._load_context(phone_number, trace_id)
         if context is not None:
             context.last_user_message = message[:500]
-            self._update_language(context, message, detected_language, trace_id)
+            self._update_language(context, message, detected_language, is_voice, trace_id)
 
         intent_result = self._classify_intent(context, message, trace_id)
         query = message
@@ -312,53 +313,75 @@ class ConversationManager:
         context: ConversationContext,
         message: str,
         detected_language: Optional[str],
+        is_voice: bool,
         trace_id: str,
     ) -> None:
-        """Keep context.detected_language current — see
-        app/services/language.py. A language hint from voice
-        transcription (Whisper already detected it) always wins over a
-        fresh text-based detection — each voice turn re-signals its own
-        language independently, so voice-to-voice never gets stuck: a
-        customer who spoke Hindi and then English gets an English voice
-        reply, no special-casing needed here. For text: a bare "yes"/"1"
-        reply is too short to mean anything either way, so it keeps
-        whatever language this conversation already established.
+        """Keep context.voice_language/text_language current, and set
+        context.detected_language to whichever of the two applies to THIS
+        turn — see app/services/language.py and the field docs on
+        ConversationContext.
 
-        Sticky ONLY for low-signal text — a bare "yes", a number, a
-        one-word reply. Once a non-English language is established, a
-        SHORT plain-ASCII reply does NOT silently reset the conversation
-        back to English (the customer never asked for that), but a
-        substantive plain-ASCII message (a real sentence, not a menu-tap)
-        is itself a strong, unambiguous signal the customer has switched
-        to English for this turn — it doesn't need "reply in English"
-        phrasing (detect_explicit_language_change) to count. Without this,
-        a native-language voice message would make an unrelated later
-        English question ("What are all my available accounts") keep
-        getting answered in the old language, which is the bug this
-        guards against. Language changes on: a genuine non-ASCII
-        detection (should_attempt_detection), an explicit meta-request
-        ("reply in English", "switch to Hindi") — see
-        detect_explicit_language_change — or now, a plain-ASCII message
+        Voice and text are tracked as two fully independent sticky
+        languages. A language established on a voice call must never
+        leak into a text reply, and a language established over text must
+        never leak into a voice reply — each channel is answered in
+        whatever language THAT channel is currently using (see the
+        module's "Language Separation" requirement). Without this split,
+        a Hindi voice conversation followed by a short English text reply
+        ("ok") would incorrectly keep answering in Hindi, since a bare
+        ASCII reply carries no language signal of its own and used to
+        fall back to one shared sticky field.
+
+        Voice branch: every voice turn re-signals its own language
+        (Sarvam STT detects it from the audio itself, not the transcript
+        text — see app/services/transcription.py), so voice-to-voice
+        never gets stuck: a customer who spoke Hindi and then English gets
+        an English voice reply immediately, no special-casing needed here.
+        `detected_language` is None when STT's own tag was dropped as
+        unreliable (transcript too short to carry real signal) — the
+        voice channel then simply stays on whatever it last established
+        (voice continuity), same idea as the text branch's stickiness
+        below but scoped to voice_language only.
+
+        Text branch: a bare "yes"/"1" reply is too short to mean anything
+        either way, so it keeps whatever language the TEXT channel already
+        established — sticky ONLY for low-signal text. Once a non-English
+        text language is established, a SHORT plain-ASCII reply does NOT
+        silently reset the conversation back to English (the customer
+        never asked for that), but a substantive plain-ASCII message (a
+        real sentence, not a menu-tap) is itself a strong, unambiguous
+        signal the customer has switched to English for this turn — it
+        doesn't need "reply in English" phrasing
+        (detect_explicit_language_change) to count. Language changes on: a
+        genuine non-ASCII detection (should_attempt_detection), an
+        explicit meta-request ("reply in English", "switch to Hindi") —
+        see detect_explicit_language_change — or a plain-ASCII message
         with real sentence content. If no non-English language is active,
         the ASCII fast path is unchanged (no LLM call, stays English)."""
-        if detected_language:
-            context.detected_language = detected_language
+        if is_voice:
+            if detected_language:
+                context.voice_language = detected_language
+            context.detected_language = context.voice_language
             return
+
         stripped = (message or "").strip()
         if len(stripped) < MIN_DETECTABLE_LENGTH:
+            context.detected_language = context.text_language
             return
         if should_attempt_detection(message):
-            context.detected_language = detect_language(message, trace_id=trace_id)
+            context.text_language = detect_language(message, trace_id=trace_id)
+            context.detected_language = context.text_language
             return
-        if context.detected_language and context.detected_language != DEFAULT_LANGUAGE:
+        if context.text_language and context.text_language != DEFAULT_LANGUAGE:
             explicit = detect_explicit_language_change(message)
             if explicit:
-                context.detected_language = explicit
+                context.text_language = explicit
             elif len(stripped.split()) >= MIN_ENGLISH_SWITCH_WORDS:
-                context.detected_language = DEFAULT_LANGUAGE
+                context.text_language = DEFAULT_LANGUAGE
             # else: a short/low-signal reply — stays sticky, no change.
         else:
-            context.detected_language = DEFAULT_LANGUAGE
+            context.text_language = DEFAULT_LANGUAGE
+        context.detected_language = context.text_language
 
     def _classify_intent(self, context: Optional[ConversationContext], message: str, trace_id: str):
         if context is None:

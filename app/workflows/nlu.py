@@ -20,6 +20,21 @@ app/services/llm_understanding.py::interpret_choice_llm, gated behind
 import re
 from typing import Callable, Optional
 
+# Shared verb patterns for recognizing a transfer/payment request in free
+# text, split by verb family so callers can keep each family's own trigger
+# conditions (e.g. "pay" alone is only a transfer signal alongside "to",
+# since "pay attention"/"pay bills" isn't one) — only the tense/form
+# coverage is shared, not when a match should actually count. Covers
+# "send"/"sent"/"sending" and "pay"/"paid"/"paying" so a customer's own
+# phrasing ("I sent 500 to Priya") isn't missed just because it wasn't the
+# bare infinitive. Shared between app/conversation/intent/rules.py (decides
+# whether to start the transfer workflow at all) and
+# app/workflows/processors/transfer.py (re-parses the same trigger message
+# once the workflow starts) so the two can't drift out of sync the way two
+# separately hand-rolled keyword lists would.
+SEND_VERB_PATTERN = r"\bsen[dt]\w*\b"
+PAY_VERB_PATTERN = r"\bpa(?:y\w*|id)\b"
+
 ChoiceFallbackFn = Callable[[str], Optional[str]]
 
 # Idioms that contain a denial-looking word ("no") but function as an

@@ -60,10 +60,21 @@ class ConversationContext(BaseModel):
     last_intent: Optional[str] = None
     intent_confidence: Optional[float] = None
 
-    # ISO 639-1 code — see app/services/language.py. Persisted so a short
-    # reply ("yes", "1") that carries no detectable language signal still
-    # gets answered in whatever language this conversation already
-    # established, rather than silently reverting to English.
+    # ISO 639-1 codes — see app/services/language.py. Voice and text each
+    # get their own sticky language, tracked independently: a language
+    # established on a voice call must never carry over to a text reply
+    # (or vice versa) — each channel is answered in whatever language THAT
+    # channel is currently using. See ConversationManager._update_language.
+    voice_language: str = "en"
+    text_language: str = "en"
+
+    # The language resolved for THIS turn's response — always a copy of
+    # either voice_language or text_language depending on which channel
+    # the current message came in on (set fresh every turn by
+    # ConversationManager._update_language). Persisted so a short reply
+    # that carries no detectable language signal of its own still gets
+    # answered in whatever language its own channel already established,
+    # rather than silently reverting to English.
     detected_language: str = "en"
 
     last_user_message: Optional[str] = None
