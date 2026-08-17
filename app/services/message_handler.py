@@ -24,7 +24,7 @@ from app.conversation.renderer import as_structured_response, render_and_send
 from app.services.transcription import download_audio, transcribe_audio
 from app.services.tts import synthesize_voice_note
 from app.services.whatsapp import send_voice_message
-from app.services.document_parser import download_document, parse_document
+from app.services.document_parser import GENERIC_DOCUMENT_SCHEMA, download_document, parse_document
 from app.workflows.constants import (
     STEP_COLLECT_AADHAAR,
     STEP_COLLECT_PAN,
@@ -154,6 +154,93 @@ def build_document_prompt(active_workflow: dict | None, filename: str) -> str:
             """
 
     return document_prompt
+
+
+def _string_field(description: str) -> dict:
+    return {"type": "string", "description": description}
+
+
+def build_document_schema(active_workflow: dict | None) -> dict:
+    """The JSON Schema counterpart to build_document_prompt(), for image
+    uploads only — see app/services/document_parser.py's
+    _extract_via_doc_ai. Mirrors the same (workflow, step) branches so the
+    two never name a different set of fields for the same context; PDF/
+    DOCX uploads keep using build_document_prompt()'s natural-language
+    text instead (see parse_document()'s docstring for why)."""
+    if active_workflow and active_workflow.get("step") == STEP_COLLECT_AADHAAR:
+        return {
+            "type": "object",
+            "properties": {
+                "aadhaar_number": _string_field("The 12-digit Aadhaar number, preserving the digits exactly"),
+                "full_name": _string_field("Full name as printed"),
+                "date_of_birth": _string_field("Date of birth as printed"),
+                "address": _string_field("Address as printed"),
+                "guardian_name": _string_field("Father/spouse/guardian name as printed"),
+            },
+        }
+    if active_workflow and active_workflow.get("step") == STEP_COLLECT_PAN:
+        return {
+            "type": "object",
+            "properties": {
+                "pan_number": _string_field("The PAN in the format ABCDE1234F, preserving it exactly"),
+                "full_name": _string_field("Full name as printed"),
+                "date_of_birth": _string_field("Date of birth as printed"),
+                "address": _string_field("Address as printed"),
+                "guardian_name": _string_field("Father/spouse/guardian name as printed"),
+            },
+        }
+    if active_workflow and active_workflow.get("type") == WORKFLOW_CHEQUE:
+        return {
+            "type": "object",
+            "properties": {
+                "bank_name": _string_field("Bank name printed on the cheque"),
+                "branch": _string_field("Bank branch printed on the cheque"),
+                "payee": _string_field("Who the cheque is payable to (after 'Pay')"),
+                "amount_in_figures": _string_field("The cheque amount in numeric figures"),
+                "amount_in_words": _string_field("The cheque amount written out in words"),
+                "numbers": _string_field("The cheque number"),
+                "signatory_title": _string_field("The signatory's title"),
+                "date_written": _string_field("The date written on the cheque"),
+                "drawer_name": _string_field("Name of the cheque's drawer/issuer"),
+            },
+        }
+    if active_workflow and active_workflow.get("type") == WORKFLOW_LOAN:
+        return {
+            "type": "object",
+            "properties": {
+                "applicant_name": _string_field("The loan applicant's full name"),
+                "monthly_income": _string_field("The applicant's monthly income"),
+                "employment_type": _string_field("The applicant's employment type"),
+                "requested_amount": _string_field("The loan amount requested"),
+                "tenure_months": _string_field("The requested loan tenure in months"),
+                "purpose": _string_field("The purpose of the loan"),
+            },
+        }
+    if active_workflow and active_workflow.get("type") == WORKFLOW_KYC:
+        return {
+            "type": "object",
+            "properties": {
+                "id_type": {
+                    "type": "string",
+                    "enum": ["aadhaar", "pan", "passport", "voter_id", "driving_license", "other"],
+                    "description": (
+                        "Which government ID this is. Only aadhaar/pan/passport/voter_id/"
+                        "driving_license when the image is genuinely that document — anything "
+                        "else (a ration card, utility bill, bank statement, student ID, or a "
+                        "blurry/unreadable image) is 'other'."
+                    ),
+                },
+                "id_number": _string_field(
+                    "That document's own ID number — the Aadhaar number, PAN, passport "
+                    "number, EPIC/voter ID number, or driving licence number, whichever "
+                    "applies — preserved exactly as printed"
+                ),
+                "full_name": _string_field("Full name as printed"),
+                "date_of_birth": _string_field("Date of birth as printed"),
+                "address": _string_field("Address as printed"),
+            },
+        }
+    return GENERIC_DOCUMENT_SCHEMA
 
 
 async def _handle_bare_document_upload(
@@ -466,13 +553,15 @@ async def handle_incoming_message(payload: dict) -> dict:
 
             active_workflow = get_workflow(phone_number)
             document_prompt = build_document_prompt(active_workflow, filename)
+            document_schema = build_document_schema(active_workflow)
 
             parsed_document = await parse_document(
                 file_bytes=file_bytes,
                 filename=filename,
                 mime_type=mime_type,
                 prompt=document_prompt,
-                trace_id=trace_id
+                trace_id=trace_id,
+                schema=document_schema,
             )
 
             logger.info(
@@ -481,7 +570,7 @@ async def handle_incoming_message(payload: dict) -> dict:
             if not parsed_document.get("success"):
 
                 logger.error(
-                    f"[{trace_id}] Document parsing failed"
+                    f"[{trace_id}] Document parsing failed | error={parsed_document.get('error')}"
                 )
 
                 await render_and_send(

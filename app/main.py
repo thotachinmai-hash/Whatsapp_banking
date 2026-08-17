@@ -240,7 +240,7 @@ async def test_document(
     file: UploadFile = File(...)
 ):
     """
-    Upload image/pdf/docx and test Qwen vision document extraction.
+    Upload image/pdf/docx and test Sarvam document extraction.
     """
 
     trace_id = str(uuid.uuid4())[:8]
