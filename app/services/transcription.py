@@ -55,10 +55,21 @@ async def transcribe_audio(audio_data: bytes, trace_id: str) -> tuple[str | None
             temp_file.write(audio_data)
 
         with open(temp_path, "rb") as audio_file:
+            # "codemix" (not the default "transcribe") keeps English words
+            # in Latin script instead of transliterating them into the
+            # spoken language's own script (e.g. "balance" stays "balance"
+            # instead of becoming "బ్యాలెన్స్") — Indian customers routinely
+            # mix English banking terms into a native-language sentence
+            # ("naa balance entha undi"), and the intent classifier's rules
+            # keyword-match the literal English word, so a transliterated
+            # version never matches anything. Confirmed live: codemix mode
+            # was also simply more accurate in testing, not just
+            # differently-scripted — no observed downside for pure-English
+            # or pure-native-language speech.
             transcription = get_sarvam_client().speech_to_text.transcribe(
                 file=audio_file,
                 model=STT_MODEL,
-                mode="transcribe",
+                mode="codemix",
             )
 
         duration = (time.time() - start) * 1000

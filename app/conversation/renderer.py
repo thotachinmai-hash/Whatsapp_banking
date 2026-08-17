@@ -94,6 +94,15 @@ class StructuredResponse(BaseModel):
     send_voice_reply() reads THIS field to pick the TTS voice, not the
     raw STT hint, so the spoken reply always matches the language the
     text was actually translated into.
+
+    `pdf_bytes`/`pdf_filename` carry an optional generated receipt (see
+    app/services/receipts.py) a workflow processor wants sent as a
+    WhatsApp document alongside `text` — e.g. a cheque/loan/KYC/transfer
+    success confirmation. Processors only ever set data here; the actual
+    WhatsApp document send happens in app/services/message_handler.py,
+    which is the only place that talks to app.services.whatsapp — kept
+    consistent with how this class already carries buttons/list metadata
+    without sending anything itself.
     """
 
     kind: ResponseKind = ResponseKind.TEXT
@@ -103,6 +112,8 @@ class StructuredResponse(BaseModel):
     list_button_label: Optional[str] = None
     list_sections: list[InteractiveListSection] = []
     language: Optional[str] = None
+    pdf_bytes: Optional[bytes] = None
+    pdf_filename: Optional[str] = None
 
     @classmethod
     def template(cls, text: str, template_name: str) -> "StructuredResponse":

@@ -11,6 +11,7 @@ from app.workflows.constants import STEP_UPLOAD_CHEQUE, STEP_CORRECT_CHEQUE
 from app.workflows.memory import complete_workflow, set_workflow_step, update_workflow_data
 from app.conversation.responses import cheque as templates
 from app.conversation.responses.common import with_nav_buttons
+from app.services.receipts import build_receipt_response
 
 logger = get_logger(__name__)
 
@@ -431,14 +432,25 @@ class ChequeWorkflowProcessor:
             f"[{trace_id}] Cheque request created | phone={phone_number[-4:]} | request_id={request_id}"
         )
 
+        summary_text = templates.render_cheque_summary(
+            request_id=request_id,
+            payee=payee,
+            amount_label=amount_figures,
+            date_written=date_written,
+            drawer_name=drawer_name,
+            bank_name=bank_name,
+        )
         return {
             "handled": True,
-            "response": templates.render_cheque_summary(
-                request_id=request_id,
-                payee=payee,
-                amount_label=amount_figures,
-                date_written=date_written,
-                drawer_name=drawer_name,
-                bank_name=bank_name,
-            )
+            "response": build_receipt_response(
+                summary_text, "Cheque Deposit Receipt", request_id,
+                [
+                    ("Payee", payee),
+                    ("Amount", amount_figures),
+                    ("Date", date_written or "Not detected"),
+                    ("Drawer", drawer_name or "Not detected"),
+                    ("Bank", bank_name or "Not detected"),
+                    ("Status", "PENDING"),
+                ],
+            ),
         }

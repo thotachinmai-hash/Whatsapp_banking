@@ -308,6 +308,64 @@ async def send_voice_message(chat_id: str, audio_bytes: bytes, mimetype: str, tr
         return False
 
 
+async def send_document_message(chat_id: str, file_bytes: bytes, filename: str, caption: str, trace_id: str) -> bool:
+    """
+    Upload document bytes (e.g. a generated PDF receipt) to the Graph API
+    and send as a document message. Same two-step Graph flow as
+    send_voice_message: upload media -> send message with media id.
+    """
+    upload_url = f"{GRAPH_API_BASE}/{PHONE_NUMBER_ID}/media"
+    send_url = f"{GRAPH_API_BASE}/{PHONE_NUMBER_ID}/messages"
+
+    try:
+        async with httpx.AsyncClient() as client:
+            files = {"file": (filename, file_bytes, "application/pdf")}
+            data = {"messaging_product": "whatsapp"}
+            upload_resp = await client.post(
+                upload_url,
+                headers={"Authorization": f"Bearer {ACCESS_TOKEN}"},
+                data=data,
+                files=files,
+                timeout=30.0,
+            )
+
+        if upload_resp.status_code not in (200, 201):
+            logger.error(f"[{trace_id}] Document upload failed | status={upload_resp.status_code} | body={upload_resp.text[:200]}")
+            return False
+
+        media_id = upload_resp.json().get("id")
+        if not media_id:
+            logger.error(f"[{trace_id}] Document upload returned no id | body={upload_resp.text[:200]}")
+            return False
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                send_url,
+                headers={
+                    "Authorization": f"Bearer {ACCESS_TOKEN}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "messaging_product": "whatsapp",
+                    "to": chat_id,
+                    "type": "document",
+                    "document": {"id": media_id, "filename": filename, "caption": caption},
+                },
+                timeout=15.0,
+            )
+
+        if resp.status_code in (200, 201):
+            logger.info(f"[{trace_id}] Document message sent | to={chat_id[-4:]} | filename={filename}")
+            return True
+
+        logger.error(f"[{trace_id}] Document message send failed | status={resp.status_code} | body={resp.text[:200]}")
+        return False
+
+    except Exception as e:
+        logger.error(f"[{trace_id}] send_document_message error | error={e}")
+        return False
+
+
 def extract_phone_number(chat_id: str) -> str:
     if not chat_id:
         return ""

@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch
 
+from app.conversation.renderer import as_structured_response
 from app.workflows.processors.cheque import ChequeWorkflowProcessor
 
 
@@ -25,8 +26,9 @@ class ChequeProcessorTests(unittest.TestCase):
         )
 
         self.assertTrue(result["handled"])
-        self.assertIn("payee", result["response"].lower())
-        self.assertIn("john smith", result["response"].lower())
+        response_text = as_structured_response(result["response"]).text.lower()
+        self.assertIn("payee", response_text)
+        self.assertIn("john smith", response_text)
         mock_update_workflow_data.assert_called_once()
         mock_set_workflow_step.assert_called_once()
 
@@ -53,8 +55,9 @@ class ChequeProcessorTests(unittest.TestCase):
         )
 
         self.assertTrue(result["handled"])
-        self.assertIn("request id", result["response"].lower())
-        self.assertIn("date", result["response"].lower())
-        self.assertIn("drawer", result["response"].lower())
+        response_text = as_structured_response(result["response"]).text.lower()
+        self.assertIn("request id", response_text)
+        self.assertIn("date", response_text)
+        self.assertIn("drawer", response_text)
         mock_create_cheque_request.assert_called_once()
         mock_complete_workflow.assert_called_once_with("447000000000")

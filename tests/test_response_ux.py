@@ -166,7 +166,10 @@ class ResponseRendererTests(unittest.IsolatedAsyncioTestCase):
         fields = set(StructuredResponse.model_fields.keys())
         self.assertEqual(
             fields,
-            {"kind", "text", "template_name", "buttons", "list_button_label", "list_sections", "language"},
+            {
+                "kind", "text", "template_name", "buttons", "list_button_label", "list_sections",
+                "language", "pdf_bytes", "pdf_filename",
+            },
         )
 
 
@@ -274,9 +277,14 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         workflow = create_workflow_model(WORKFLOW_TRANSFER, STEP_SELECT_BENEFICIARY)
         create_workflow(self.phone, workflow)
 
-        result = await self.manager.handle(
-            self.phone, "What's the interest rate on a personal loan?", trace_id="t4"
-        )
+        # Deliberately forced off (regardless of the ambient
+        # LLM_FALLBACK_ENABLED env var) — this test verifies the
+        # LLM-fallback-unavailable/declined path specifically: falling
+        # back to reprocess_query rather than answering inline.
+        with patch("app.workflows.manager.is_llm_fallback_enabled", return_value=False):
+            result = await self.manager.handle(
+                self.phone, "What's the interest rate on a personal loan?", trace_id="t4"
+            )
 
         # handled=False + reprocess_query means "let the router/LLM answer
         # this", not the workflow processor and not the boundary message.

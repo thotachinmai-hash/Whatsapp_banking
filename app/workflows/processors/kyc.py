@@ -13,6 +13,7 @@ from app.services.llm_understanding import interpret_choice_llm, is_llm_fallback
 from app.conversation.renderer import InteractiveButton, StructuredResponse
 from app.conversation.responses import kyc as templates
 from app.conversation.responses.common import with_nav_buttons
+from app.services.receipts import build_receipt_response
 
 logger = get_logger(__name__)
 
@@ -128,4 +129,18 @@ class KYCWorkflowHandler:
             return {"handled": True, "response": with_nav_buttons(templates.render_kyc_failed())}
         complete_workflow(phone_number)
         logger.info(f"[{trace_id}] KYC request created | phone={phone_number[-4:]} | request_id={request_id}")
-        return {"handled": True, "response": templates.render_kyc_success(request_id)}
+        data = workflow.get("data", {})
+        return {
+            "handled": True,
+            "response": build_receipt_response(
+                templates.render_kyc_success(request_id), "KYC Update Receipt", request_id,
+                [
+                    ("Document Type", templates.ACCEPTED_ID_LABELS.get(data.get("id_type"), data.get("id_type"))),
+                    ("Name", data.get("full_name")),
+                    ("Date of Birth", data.get("date_of_birth")),
+                    ("Address", data.get("address") or "—"),
+                    ("ID Number", "Provided ✅"),
+                    ("Status", "PENDING"),
+                ],
+            ),
+        }

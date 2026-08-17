@@ -23,7 +23,7 @@ from app.services.whatsapp import (
 from app.conversation.renderer import as_structured_response, render_and_send
 from app.services.transcription import download_audio, transcribe_audio
 from app.services.tts import synthesize_voice_note
-from app.services.whatsapp import send_voice_message
+from app.services.whatsapp import send_voice_message, send_document_message
 from app.services.document_parser import GENERIC_DOCUMENT_SCHEMA, download_document, parse_document
 from app.workflows.constants import (
     STEP_COLLECT_AADHAAR,
@@ -304,6 +304,27 @@ async def _handle_bare_document_upload(
         )
 
     return None
+
+
+async def _send_receipt_if_any(response, chat_id: str, trace_id: str = "") -> None:
+    """Send the generated PDF receipt (see app/services/receipts.py) a
+    workflow processor attached to its success response, if any. Never
+    raises and never blocks the turn — the text/voice confirmation with
+    the request ID has already been sent by the time this runs, so a
+    failure here just means the customer doesn't get the bonus PDF, not
+    that their request silently failed."""
+    structured = as_structured_response(response)
+    if not structured.pdf_bytes:
+        return
+    try:
+        sent = await send_document_message(
+            chat_id, structured.pdf_bytes, structured.pdf_filename or "receipt.pdf",
+            "Here's your receipt.", trace_id,
+        )
+        if not sent:
+            logger.warning(f"[{trace_id}] Receipt PDF send failed | to={chat_id[-4:]}")
+    except Exception as e:
+        logger.error(f"[{trace_id}] Receipt PDF send error | error={e}")
 
 
 async def send_voice_reply(response, chat_id: str, trace_id: str = "", language: str | None = None) -> bool:
@@ -599,6 +620,7 @@ async def handle_incoming_message(payload: dict) -> dict:
                     if auto_response is not None:
                         send_success = await render_and_send(auto_response, from_person, trace_id)
                         log_whatsapp_send(send_success, trace_id)
+                        await _send_receipt_if_any(auto_response, from_person, trace_id)
                         total_duration = (time.time() - request_start) * 1000
                         log_request(total_duration, trace_id)
                         return {
@@ -667,6 +689,11 @@ async def handle_incoming_message(payload: dict) -> dict:
         else:
             send_success = await render_and_send(response, from_person, trace_id)
         log_whatsapp_send(send_success, trace_id)
+
+        # A successful cheque/loan/KYC/transfer submission carries a
+        # generated PDF receipt (see app/services/receipts.py) — send it
+        # as a document right after the confirmation, voice or text alike.
+        await _send_receipt_if_any(response, from_person, trace_id)
 
         # Log total request time
         total_duration = (time.time() - request_start) * 1000

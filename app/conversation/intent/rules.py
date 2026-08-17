@@ -261,7 +261,18 @@ def classify_status_request(text: str) -> Optional[IntentResult]:
     if "kyc" in normalized and any(k in normalized for k in ("status", "approved")):
         return IntentResult(intent="kyc_status", confidence=0.88, method="rule")
 
-    if "account" in normalized and any(k in normalized for k in ("information", "details", "info")) and "balance" not in normalized:
+    if "account" in normalized and any(k in normalized for k in (
+        "information", "details", "info", "available", "which", "list", "show",
+        "all my", "do i have", "my account",
+    )) and "balance" not in normalized:
+        # A personal-data request ("what are my accounts", "which accounts
+        # do I have") — not a generic "what is a savings account"
+        # educational question. Must be classified here, ahead of
+        # classify_banking_question()'s generic ("account",) keyword rule
+        # (which would otherwise route it to ACCOUNT_GUIDANCE, a static
+        # explainer that never calls the real account-listing tool — see
+        # app/agent/tools.py::tool_get_account_balance, which already lists
+        # every account when none is specified).
         return IntentResult(intent="account_information", confidence=0.7, method="rule")
 
     return None

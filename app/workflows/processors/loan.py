@@ -18,6 +18,7 @@ from app.conversation.renderer import InteractiveButton, InteractiveListRow, Int
 from app.conversation.responses.common import format_currency
 from app.conversation.responses import loan as templates
 from app.conversation.responses.common import with_nav_buttons
+from app.services.receipts import build_receipt_response
 
 logger = get_logger(__name__)
 
@@ -436,5 +437,18 @@ class LoanWorkflowHandler:
         logger.info(f"[{trace_id}] Loan request created | phone={phone_number[-4:]} | request_id={request_id}")
         return {
             "handled": True,
-            "response": templates.render_loan_success(request_id),
+            "response": build_receipt_response(
+                templates.render_loan_success(request_id), "Loan Application Receipt", request_id,
+                [
+                    ("Loan Type", LOAN_LABELS.get(data.get("loan_type"), data.get("loan_type"))),
+                    ("Applicant Name", data.get("applicant_name")),
+                    ("Account Number", data.get("account_number")),
+                    ("Monthly Income", data.get("monthly_income")),
+                    ("Employment Type", data.get("employment_type")),
+                    ("Requested Amount", data.get("requested_amount")),
+                    ("Tenure (months)", data.get("tenure_months")),
+                    ("Purpose", data.get("purpose")),
+                    ("Status", "PENDING"),
+                ],
+            ),
         }

@@ -20,6 +20,7 @@ from app.workflows.nlu import interpret_confirmation, interpret_menu_choice
 from app.services.llm_understanding import interpret_choice_llm, is_llm_fallback_enabled
 from app.conversation.renderer import InteractiveButton, InteractiveListRow, InteractiveListSection, StructuredResponse
 from app.conversation.responses.common import format_currency, mask_account_number as _mask_account, with_nav_buttons
+from app.services.receipts import build_receipt_response
 from app.conversation.responses import transfer as templates
 
 logger = get_logger(__name__)
@@ -227,14 +228,24 @@ class TransferWorkflowProcessor:
                     f"[{trace_id}] Transfer initiated | phone={phone_number[-4:]} | "
                     f"reference={reference} | amount={data.get('amount')}"
                 )
+                summary_text = templates.render_transfer_success(
+                    reference=reference,
+                    beneficiary_name=data.get("beneficiary_name"),
+                    beneficiary_account_masked=data.get("beneficiary_account"),
+                    amount_label=data.get("amount"),
+                    source_account_label=data.get("source_account"),
+                )
                 return {
                     "handled": True,
-                    "response": templates.render_transfer_success(
-                        reference=reference,
-                        beneficiary_name=data.get("beneficiary_name"),
-                        beneficiary_account_masked=data.get("beneficiary_account"),
-                        amount_label=data.get("amount"),
-                        source_account_label=data.get("source_account"),
+                    "response": build_receipt_response(
+                        summary_text, "Money Transfer Receipt", reference,
+                        [
+                            ("Beneficiary", data.get("beneficiary_name")),
+                            ("Beneficiary Account", data.get("beneficiary_account")),
+                            ("Amount", data.get("amount")),
+                            ("Source Account", data.get("source_account")),
+                            ("Status", "INITIATED"),
+                        ],
                     ),
                 }
             if command == "2" or confirmation == "no" or "edit" in command or "change" in command:

@@ -57,6 +57,12 @@ logger = get_logger(__name__)
 # field can't grow unbounded across a long run of ambiguous messages.
 MAX_CLARIFICATION_RETRIES = 3
 
+# A plain-ASCII text message with at least this many words is treated as
+# an implicit "the customer is writing in English now" signal — see
+# _update_language(). Below this, a short reply ("yes", "1", "ok") is too
+# ambiguous to mean anything and the sticky non-English language is kept.
+MIN_ENGLISH_SWITCH_WORDS = 3
+
 # Guidance types that replace a turn's answer (skipping the LLM, or —
 # for the two loan/cheque classifier gaps documented in
 # app/conversation/guidance/policy.py — skipping an incorrect
@@ -311,19 +317,30 @@ class ConversationManager:
         """Keep context.detected_language current — see
         app/services/language.py. A language hint from voice
         transcription (Whisper already detected it) always wins over a
-        fresh text-based detection. For text: a bare "yes"/"1" reply is too
-        short to mean anything either way, so it keeps whatever language
-        this conversation already established.
+        fresh text-based detection — each voice turn re-signals its own
+        language independently, so voice-to-voice never gets stuck: a
+        customer who spoke Hindi and then English gets an English voice
+        reply, no special-casing needed here. For text: a bare "yes"/"1"
+        reply is too short to mean anything either way, so it keeps
+        whatever language this conversation already established.
 
-        Sticky, explicit-opt-in only: once a non-English language is
-        established, a later plain-ASCII message (a bare "yes", a number,
-        an ASCII-typed reply) does NOT silently reset the conversation back
-        to English — the customer never asked for that. Language only
-        changes on a genuine non-ASCII detection (should_attempt_detection)
-        or an explicit meta-request ("reply in English", "switch to
-        Hindi") — see detect_explicit_language_change. If no non-English
-        language is active, the ASCII fast path is unchanged (no LLM call,
-        stays English)."""
+        Sticky ONLY for low-signal text — a bare "yes", a number, a
+        one-word reply. Once a non-English language is established, a
+        SHORT plain-ASCII reply does NOT silently reset the conversation
+        back to English (the customer never asked for that), but a
+        substantive plain-ASCII message (a real sentence, not a menu-tap)
+        is itself a strong, unambiguous signal the customer has switched
+        to English for this turn — it doesn't need "reply in English"
+        phrasing (detect_explicit_language_change) to count. Without this,
+        a native-language voice message would make an unrelated later
+        English question ("What are all my available accounts") keep
+        getting answered in the old language, which is the bug this
+        guards against. Language changes on: a genuine non-ASCII
+        detection (should_attempt_detection), an explicit meta-request
+        ("reply in English", "switch to Hindi") — see
+        detect_explicit_language_change — or now, a plain-ASCII message
+        with real sentence content. If no non-English language is active,
+        the ASCII fast path is unchanged (no LLM call, stays English)."""
         if detected_language:
             context.detected_language = detected_language
             return
@@ -337,7 +354,9 @@ class ConversationManager:
             explicit = detect_explicit_language_change(message)
             if explicit:
                 context.detected_language = explicit
-            # else: stays sticky, no change.
+            elif len(stripped.split()) >= MIN_ENGLISH_SWITCH_WORDS:
+                context.detected_language = DEFAULT_LANGUAGE
+            # else: a short/low-signal reply — stays sticky, no change.
         else:
             context.detected_language = DEFAULT_LANGUAGE
 
