@@ -317,7 +317,7 @@ class TransferWorkflowProcessor:
                     updates["amount"] = f"₹{amount:,.2f}"
                 update_workflow_data(phone_number, updates)
                 set_workflow_step(phone_number, STEP_COLLECT_BENEFICIARY_ACCOUNT)
-                return self._ask(
+                return self._prompt(
                     f"\U0001F44B Got it — you want to pay {name}. What is {name}'s account number?",
                     "Reply *Back* to choose a saved beneficiary or *Cancel* to stop.",
                 )
@@ -466,7 +466,7 @@ class TransferWorkflowProcessor:
             return self._source_prompt(phone_number)
         if previous == STEP_CONFIRM_TRANSFER:
             return self._confirm_prompt("Let's review this transfer again.")
-        return self._ask("What is the beneficiary's name?", "Reply Back or Cancel.")
+        return self._prompt("What is the beneficiary's name?", "Reply Back or Cancel.")
 
     @staticmethod
     def _confirm_prompt(summary: str) -> dict:
@@ -485,7 +485,17 @@ class TransferWorkflowProcessor:
 
     @staticmethod
     def _ask(question: str, footer: str) -> dict:
+        """A retry/failure re-prompt (invalid input, a failed save, an
+        unrecognized reply) — gets Back/Cancel/Main Menu buttons since the
+        customer is stuck on something. For a normal forward-moving
+        question nothing has gone wrong yet, use _prompt() instead."""
         return {"handled": True, "response": with_nav_buttons(f"{question}\n\n{footer}")}
+
+    @staticmethod
+    def _prompt(question: str, footer: str) -> dict:
+        """A normal, nothing-has-gone-wrong-yet question — no nav buttons,
+        just the typed *Back*/*Cancel* already in `footer`."""
+        return {"handled": True, "response": f"{question}\n\n{footer}"}
 
     @staticmethod
     def _beneficiary_prompt(phone_number: str, error: str | None = None) -> dict:
