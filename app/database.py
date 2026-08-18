@@ -97,6 +97,7 @@ def get_transactions(
     end_date: str | None = None,
     transaction_type: str | None = None,
     category: str | None = None,
+    keyword: str | None = None,
 ) -> list:
     query = "SELECT * FROM transactions WHERE account_id = %s"
     params: list = [account_id]
@@ -113,6 +114,12 @@ def get_transactions(
     if category:
         query += " AND category = %s"
         params.append(category)
+    if keyword:
+        # Free-text match against the transaction description — lets a
+        # counterparty/purpose search ("payments to my landlord") work
+        # without needing a dedicated counterparty column.
+        query += " AND description ILIKE %s"
+        params.append(f"%{keyword}%")
 
     query += " ORDER BY created_at DESC LIMIT %s"
     params.append(limit)
@@ -402,6 +409,26 @@ def create_kyc_request(
            VALUES (%s, %s, %s::jsonb, %s)
            RETURNING *""",
         (request_id, phone_number, json.dumps(details), status),
+    )
+
+
+def get_kyc_request_by_id(request_id: str) -> dict | None:
+    ensure_application_tables()
+    results = execute_query(
+        "SELECT * FROM kyc_requests WHERE request_id = %s",
+        (request_id.strip().upper(),),
+    )
+    return results[0] if results else None
+
+
+def get_kyc_requests_by_phone(phone_number: str) -> list[dict]:
+    """Return all KYC update requests belonging to the signed-in customer."""
+    ensure_application_tables()
+    return execute_query(
+        """SELECT * FROM kyc_requests
+           WHERE phone_number = %s
+           ORDER BY created_at DESC""",
+        (phone_number,),
     )
 
 

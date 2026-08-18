@@ -2,6 +2,7 @@ import os
 import re
 import time
 import json
+from datetime import date
 from typing import Annotated, Any
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
@@ -19,10 +20,14 @@ from app.agent.tools import (
     tool_check_cheque_status,
     tool_check_loan_status,
     tool_check_transfer_status,
+    tool_check_kyc_status,
     tool_list_beneficiaries,
     tool_get_spend_summary,
     tool_get_loan_product_info,
     tool_search_bank_documents,
+    tool_start_transfer_workflow,
+    tool_start_loan_workflow,
+    tool_start_kyc_workflow,
 )
 from app.memory import get_session_history
 from app.logger import get_logger
@@ -58,6 +63,18 @@ def get_llm() -> ChatOpenAI:
         # `Authorization: Bearer` header the OpenAI SDK sends by default.
         default_headers={"api-subscription-key": api_key},
         temperature=0,
+        # sarvam-105b is a reasoning model — it spends tokens on internal
+        # reasoning_content before emitting the actual answer/tool call, so
+        # max_tokens needs real headroom here or a call can come back with
+        # empty content and zero tool calls (confirmed live: a compound
+        # tool-calling turn with the previous unset default returned "").
+        # Higher than the 800 used for the simpler single-shot calls in
+        # llm_understanding.py/language.py since this agent's replies often
+        # cite multiple tool results in one message. reasoning_effort="low"
+        # keeps the reasoning overhead itself down — same pattern as every
+        # other Sarvam call site in this codebase.
+        max_tokens=4500,
+        model_kwargs={"reasoning_effort": "low"},
     )
 
 
@@ -190,6 +207,73 @@ def make_tools(trace_id: str,phone_number: str,) -> list:
             transfer's details — always call this tool.
             """,
         ),
+        StructuredTool.from_function(
+            func=lambda request_id="": tool_check_kyc_status(request_id, phone_number, trace_id),
+            name="check_kyc_status",
+            description="""
+            Check the status of the customer's KYC update requests. If no
+            ID is provided, call with an empty request_id to list all KYC
+            requests linked to the customer's phone number, most recent
+            first. Use this for "check my KYC status", "is my KYC
+            complete/incomplete", or similar — never guess whether KYC is
+            complete or incomplete from memory or from context.
+            """,
+        ),
+        StructuredTool.from_function(
+            func=lambda beneficiary_name="", amount="": tool_start_transfer_workflow(
+                phone_number, beneficiary_name, amount, trace_id
+            ),
+            name="start_transfer_workflow",
+            description="""
+            Start a money-transfer workflow, optionally pre-filled with a
+            beneficiary name and/or amount already stated by the customer.
+
+            IMPORTANT: if the request has a condition (e.g. "if my balance
+            is above X", "if I have enough"), you MUST call
+            get_account_balance first and confirm the condition actually
+            holds against the real returned balance before calling this
+            tool. If the condition does not hold, do not call this tool —
+            explain the balance and that no transfer was started instead.
+
+            This tool only starts the guided transfer flow — it does not
+            move money. The customer still confirms the transfer at the
+            end of it, exactly as if they had typed "transfer money"
+            themselves.
+            """,
+        ),
+        StructuredTool.from_function(
+            func=lambda loan_type="", requested_amount="": tool_start_loan_workflow(
+                phone_number, loan_type, requested_amount, trace_id
+            ),
+            name="start_loan_workflow",
+            description="""
+            Start a loan application workflow, optionally pre-filled with
+            the loan type (personal, home, vehicle, education) and/or the
+            amount the customer wants to borrow.
+
+            IMPORTANT: if the request has a condition (e.g. "apply for a
+            loan if the interest rate is below X%"), you MUST call
+            get_loan_product_info first and confirm the condition actually
+            holds against the real returned rate before calling this tool.
+            If it does not hold, do not call this tool — explain the rate
+            and that no application was started instead.
+
+            This tool does not approve or submit a loan — the workflow
+            still requires the customer to upload supporting documents and
+            confirm before anything is actually submitted.
+            """,
+        ),
+        StructuredTool.from_function(
+            func=lambda: tool_start_kyc_workflow(phone_number, trace_id),
+            name="start_kyc_workflow",
+            description="""
+            Start a KYC update workflow — use this when the customer wants
+            to update/complete their KYC, including after
+            check_kyc_status shows it is incomplete or missing and the
+            customer wants (or was asked and agreed) to fix it. Do not use
+            this just to check status — use check_kyc_status for that.
+            """,
+        ),
         ]
 
 
@@ -211,10 +295,42 @@ def build_agent(trace_id: str,phone_number: str,) -> Any:
 You help customers check their account balance, view transactions and spend summaries,
 deposit cheques, check the status of a cheque deposit request, and start money transfers.
 
+Today's date is {date.today().isoformat()}. Use this — never guess or invent a date — to resolve
+any relative date/time reference ("this month", "last week", "today", "this year") into the actual
+start_date/end_date (YYYY-MM-DD) you pass to get_last_transactions/get_spend_summary. Do not assume
+any other date.
+
 Only answer questions related to banking and the services this app supports (accounts,
 balances, transactions, transfers, cheques, loans, KYC). Do not answer unrelated
 general-knowledge questions — if asked something outside banking, politely redirect the
 customer to what you can help with instead.
+
+GROUNDING RULE — the most important rule in this prompt: for any claim about the customer's
+real data — balance, transactions, beneficiaries, cheque/loan/KYC/transfer status, spend, or
+a condition compared against any of these — you must call the matching tool and use only what
+it returns. Never answer from memory, from an earlier turn in this conversation, or from
+general reasoning, even if you believe you already know the value — balances and statuses can
+change between turns, so always call the tool again for this turn. If no tool covers what is
+being asked, say so plainly instead of guessing.
+
+CHECK-THEN-ACT RULE: when a request states a condition ("if my balance is more than X",
+"if the rate is below X%", "if my KYC is incomplete") before asking you to do something, you
+must: (1) call the read tool(s) needed to get the real fact for THIS turn — never reuse a
+number mentioned earlier in the conversation, (2) evaluate the condition yourself against that
+real, current tool result, (3) only if the condition holds, call the matching start_*_workflow
+tool (start_transfer_workflow, start_loan_workflow, start_kyc_workflow) with whatever details
+(beneficiary, amount, loan type) you already have from the sentence, (4) if the condition does
+not hold, explain the real value you checked and that you have not started anything — do not
+call a start_*_workflow tool in that case. If the condition DOES hold, you must actually call the
+start_*_workflow tool in this same turn — do not just report that the condition is satisfied and
+stop there; reporting the fact without also calling the tool leaves the customer's original request
+undone. If the customer's condition was an absence of something ("if I haven't paid my landlord
+this month"), a tool result that found no matching transaction/record means the condition holds —
+call the start_*_workflow tool. Always state the fact you checked in your reply
+(e.g. "Your balance is INR X, which is above INR 50,000, so I've started the transfer") so the
+customer can see what the decision was based on. A start_*_workflow tool only begins the
+guided flow — it never moves money, submits KYC, or submits a loan application by itself; the
+existing confirmation step inside that workflow still has to happen before anything is final.
 For loan interest rates, fees, borrowing limits, or tenure, call get_loan_product_info and
 state exactly what it returns — never invent a rate/fee/limit yourself, and never state one
 from memory. That tool gives the bank's general published terms, not a personal decision:
@@ -257,12 +373,23 @@ the tool lists all cheques linked to their registered phone number. Never ask fo
 When a customer asks about a loan, loan status, application details, or their applications,
 use check_loan_status. If they do not provide an ID, call it with an empty request_id;
 the tool lists all loan applications linked to their registered phone number. Never ask for an ID first.
-When a customer wants to transfer money, the deterministic transfer workflow handles it before you are called.
+When a customer wants to transfer money with no condition attached, the deterministic transfer
+workflow usually handles it before you are called. If you are called anyway (e.g. the request
+was compound or had a condition, such as "check my balance and transfer to my landlord if I
+have enough"), use start_transfer_workflow yourself, following the CHECK-THEN-ACT RULE above.
 When a customer asks about a transfer, transaction ID (format TRF-XXXXXXXX), or "my last
 transfer"/"last transaction I made" in the context of money sent to someone, use
 check_transfer_status. If they do not provide an ID, call it with an empty request_id; the
 tool lists all transfers linked to their registered phone number, most recent first. Never
 ask for an ID first. Use get_last_transactions instead for general account/statement history.
+When a customer asks about their KYC status, use check_kyc_status the same way (empty
+request_id lists all their KYC requests). If they then want to fix an incomplete/missing KYC,
+use start_kyc_workflow. When a customer wants to apply for a loan with a condition attached
+(e.g. "apply if the rate is below 12%"), use start_loan_workflow following the CHECK-THEN-ACT
+RULE above, instead of just describing the rate and stopping.
+"Needs attention" (e.g. "does my KYC or loan application need attention") means a status of
+PENDING, INCOMPLETE, or REJECTED — not COMPLETED/ACTIVE/APPROVED. Only use these exact
+status values as returned by the tools, never invent your own status wording.
 Always be polite, concise, and professional.
 Format currency amounts clearly with the currency symbol.
 For balances: "Your current balance is INR 1,234.56"
@@ -284,6 +411,21 @@ Important: Keep responses short and suitable for WhatsApp messages.""")
             try:
                 response = llm_with_tools.invoke(messages)
                 duration = (time.time() - start) * 1000
+                # A reasoning model can occasionally spend its entire token
+                # budget on internal reasoning_content and come back with
+                # neither a tool call nor any real answer text — confirmed
+                # live on compound/conditional turns. That's the same kind
+                # of generation glitch as a malformed tool call, not a real
+                # failure, so retry it the same way rather than returning
+                # an empty reply to the customer.
+                has_tool_calls = bool(getattr(response, "tool_calls", None))
+                has_content = bool(str(getattr(response, "content", "") or "").strip())
+                if not has_tool_calls and not has_content and attempt < attempts:
+                    logger.warning(
+                        f"[{state['trace_id']}] LLM returned empty content with no tool calls, retrying "
+                        f"| attempt={attempt}/{attempts}"
+                    )
+                    continue
                 logger.info(f"[{state['trace_id']}] LLM call successful | duration={duration:.2f}ms")
                 return {"messages": [response]}
             except Exception as e:

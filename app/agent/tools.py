@@ -1,6 +1,8 @@
 import re
 import time
 from datetime import date, timedelta
+from typing import Any
+from app.conversation.renderer import StructuredResponse
 from app.database import (
     get_account_by_number,
     get_accounts_by_phone,
@@ -167,6 +169,7 @@ def tool_get_last_transactions(
     end_date: str | None = None,
     transaction_type: str | None = None,
     category: str | None = None,
+    keyword: str | None = None,
     trace_id: str = "",
     phone_number: str = "",
 ) -> dict:
@@ -175,9 +178,13 @@ def tool_get_last_transactions(
 
     By default returns the last 5 transactions. Optionally filter by
     start_date/end_date (YYYY-MM-DD), transaction_type ("credit"/"debit"),
-    and/or category (e.g. "groceries", "bills", "rent", "salary",
-    "transport", "entertainment", "shopping", "isa", "bonus", "interest",
-    "transfer", "other").
+    category (e.g. "groceries", "bills", "rent", "salary", "transport",
+    "entertainment", "shopping", "isa", "bonus", "interest", "transfer",
+    "other"), and/or keyword — a free-text match against the transaction
+    description, e.g. keyword="landlord" or keyword="rent payment" to
+    answer "did I pay my landlord this month" style questions. Always use
+    this (with a date range and/or keyword) instead of guessing whether a
+    payment happened.
     """
     start = time.time()
     try:
@@ -201,6 +208,7 @@ def tool_get_last_transactions(
             end_date=_normalize_date(end_date, trace_id),
             transaction_type=transaction_type,
             category=_normalize_category(category),
+            keyword=keyword,
         )
         duration = (time.time() - start) * 1000
 
@@ -490,6 +498,49 @@ def tool_check_transfer_status(request_id: str = "", phone_number: str = "", tra
         return {"found": False, "message": f"Error retrieving transfer: {str(e)}"}
 
 
+def tool_check_kyc_status(request_id: str = "", phone_number: str = "", trace_id: str = "") -> dict:
+    """
+    Check the status of a submitted KYC update request, or list the
+    customer's KYC requests (most recent first) if no request ID is given.
+    Use this for "check my KYC status", "is my KYC complete/incomplete",
+    or similar — never guess whether KYC is complete from memory.
+    """
+    from app.database import get_kyc_request_by_id, get_kyc_requests_by_phone
+
+    start = time.time()
+    try:
+        request_id = (request_id or "").strip().upper()
+        if request_id:
+            kyc_request = get_kyc_request_by_id(request_id)
+            requests = [kyc_request] if kyc_request else []
+        else:
+            requests = get_kyc_requests_by_phone(phone_number)
+        duration = (time.time() - start) * 1000
+
+        if not requests:
+            logger.info(f"[{trace_id}] TOOL | check_kyc_status | not_found | request_id={request_id}")
+            return {
+                "found": False,
+                "message": "No KYC update requests were found for this customer — this does not by "
+                "itself mean KYC is incomplete, only that no update request has been submitted.",
+            }
+
+        logger.info(f"[{trace_id}] TOOL | check_kyc_status | success | duration={duration:.2f}ms")
+
+        return {"found": True, "count": len(requests), "kyc_requests": [
+            {
+                "request_id": item["request_id"],
+                "status": item["status"],
+                "details": item.get("details", {}),
+                "created_at": str(item.get("created_at")),
+            }
+            for item in requests
+        ]}
+    except Exception as e:
+        logger.error(f"[{trace_id}] TOOL | check_kyc_status | error={e}")
+        return {"found": False, "message": f"Error retrieving KYC request: {str(e)}"}
+
+
 def tool_list_beneficiaries(phone_number: str = "", trace_id: str = "") -> dict:
     """
     List the customer's saved transfer beneficiaries (name and masked
@@ -547,4 +598,116 @@ def tool_start_cheque_workflow(phone_number: str) -> str:
     return (
         "Cheque deposit started successfully.\n\n"
         "Please upload a clear image of the cheque to continue."
+    )
+
+
+def _response_text(result: Any) -> str:
+    """Deterministic workflow processors return either a plain string or a
+    StructuredResponse (buttons/lists included) as their "response" — a
+    tool result consumed by the LLM only needs the text, since the LLM
+    composes its own reply to the customer from it."""
+    response = result.get("response") if isinstance(result, dict) else result
+    if isinstance(response, StructuredResponse):
+        return response.text
+    return str(response) if response is not None else ""
+
+
+def tool_start_transfer_workflow(
+    phone_number: str, beneficiary_name: str = "", amount: str = "", trace_id: str = ""
+) -> str:
+    """
+    Start a money-transfer workflow, optionally pre-filled with a
+    beneficiary name and/or amount already extracted from the
+    conversation (e.g. "my landlord", "20000").
+
+    IMPORTANT: only call this after you have already verified any stated
+    condition against a real tool result (e.g. checked the balance with
+    tool_get_account_balance and confirmed it actually meets the
+    condition). This tool does not move money itself — it only starts the
+    guided transfer flow; the customer still confirms the transfer at the
+    end of it, same as if they had typed "transfer money" themselves.
+    """
+    from app.workflows.processors.transfer import TransferWorkflowProcessor, has_transferable_balance, start_transfer_from_text
+
+    if get_workflow(phone_number):
+        return "You already have an active workflow in progress. Please complete it before starting a new one."
+    if not has_transferable_balance(phone_number):
+        return "This customer has no account with a positive balance, so a transfer can't be started."
+
+    query_parts = ["transfer"]
+    if amount.strip():
+        query_parts.append(amount.strip())
+    if beneficiary_name.strip():
+        query_parts.append(f"to {beneficiary_name.strip()}")
+    synthetic_query = " ".join(query_parts) if len(query_parts) > 1 else "transfer money"
+
+    result = start_transfer_from_text(phone_number, synthetic_query, TransferWorkflowProcessor(), trace_id)
+    logger.info(f"[{trace_id}] TOOL | start_transfer_workflow | beneficiary={beneficiary_name or 'none'} | amount={amount or 'none'}")
+    return _response_text(result) or "Transfer workflow started."
+
+
+def tool_start_loan_workflow(
+    phone_number: str, loan_type: str = "", requested_amount: str = "", trace_id: str = ""
+) -> str:
+    """
+    Start a loan application workflow, optionally pre-filled with the loan
+    type ("personal", "home", "vehicle", "education") already stated by
+    the customer, so the "which loan type?" question is skipped.
+
+    IMPORTANT: only call this after you have already verified any stated
+    condition against a real tool result (e.g. checked
+    tool_get_loan_product_info's interest rate and confirmed it actually
+    meets the condition). This tool does not approve or submit a loan —
+    the loan workflow still requires the customer to upload supporting
+    documents and confirm before anything is actually submitted.
+    """
+    from app.workflows.constants import STEP_SELECT_LOAN_TYPE, WORKFLOW_LOAN
+    from app.workflows.memory import update_workflow_data
+    from app.workflows.processors.loan import LoanWorkflowHandler, detect_loan_type_from_text, loan_type_list_prompt
+
+    if get_workflow(phone_number):
+        return "You already have an active workflow in progress. Please complete it before starting a new one."
+
+    workflow = create_workflow_model(WORKFLOW_LOAN, STEP_SELECT_LOAN_TYPE)
+    create_workflow(phone_number, workflow)
+
+    detected_type = detect_loan_type_from_text(loan_type) if loan_type.strip() else None
+    logger.info(f"[{trace_id}] TOOL | start_loan_workflow | loan_type={loan_type or 'none'} | requested_amount={requested_amount or 'none'}")
+
+    if not detected_type:
+        return _response_text({"response": loan_type_list_prompt(
+            "\U0001F4DD Loan application started — what kind of loan are you after?"
+        )})
+
+    if requested_amount.strip():
+        # Informational only — the loan flow still validates eligibility
+        # from the uploaded documents, not from a chat-typed figure, so
+        # this is carried along for context rather than treated as a
+        # confirmed request amount.
+        update_workflow_data(phone_number, {"requested_amount_hint": requested_amount.strip()})
+
+    result = LoanWorkflowHandler()._select_type(workflow, phone_number, detected_type, trace_id)
+    return _response_text(result) or "Loan application started."
+
+
+def tool_start_kyc_workflow(phone_number: str, trace_id: str = "") -> str:
+    """
+    Start a KYC update workflow. Use this when the customer wants to
+    update/complete their KYC (e.g. after tool_check_kyc_status shows it
+    is incomplete or missing) — not for merely checking KYC status, use
+    tool_check_kyc_status for that.
+    """
+    from app.workflows.constants import STEP_UPLOAD_KYC_FORM, WORKFLOW_KYC
+
+    if get_workflow(phone_number):
+        return "You already have an active workflow in progress. Please complete it before starting a new one."
+
+    workflow = create_workflow_model(WORKFLOW_KYC, STEP_UPLOAD_KYC_FORM)
+    create_workflow(phone_number, workflow)
+    logger.info(f"[{trace_id}] TOOL | start_kyc_workflow")
+
+    return (
+        "KYC update started successfully.\n\n"
+        "Please upload a clear photo of one of: Aadhaar card, PAN card, Passport, "
+        "Voter ID, or Driving Licence."
     )

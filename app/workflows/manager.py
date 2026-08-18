@@ -457,7 +457,7 @@ class WorkflowManager:
             return {"handled": True, "response": loan_type_list_prompt(
                 "\U0001F4DD *Loan application started* — what kind of loan are you after?"
             )}
-        if any(word in normalized for word in ("kyc", "know your customer", "update my details")):
+        if any(word in normalized for word in ("kyc", "know your customer", "update my details")) and not is_lookup:
             workflow = create_workflow_model(WORKFLOW_KYC, STEP_UPLOAD_KYC_FORM)
             create_workflow(phone_number, workflow)
             return {

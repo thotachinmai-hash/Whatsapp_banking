@@ -16,6 +16,7 @@ back here would be circular — dependency injection is the clean way
 around that, not a workaround.
 """
 
+import re
 import time
 from typing import Any, Awaitable, Callable, Optional
 
@@ -56,6 +57,32 @@ logger = get_logger(__name__)
 # Nothing currently branches on this value; it exists so the persisted
 # field can't grow unbounded across a long run of ambiguous messages.
 MAX_CLARIFICATION_RETRIES = 3
+
+# A cheap, local, no-LLM signal that a message needs real reasoning
+# (check a fact, then conditionally act — "transfer to my landlord if my
+# balance is more than 20k") rather than the deterministic
+# keyword-triggered workflow starters (WorkflowManager.start_requested).
+# Those blindly grab everything after "to"/a keyword via regex and have
+# no concept of a condition — see the compound-request routing plan. A
+# condition word alone is treated as sufficient (rather than also
+# requiring a comparison word) because false positives here just mean an
+# extra LLM round-trip, not a wrong answer, whereas requiring a
+# comparison word missed real cases like "check whether I paid my
+# landlord this month; if not, transfer ₹15,000". Deliberately narrow —
+# a plain "send 500 to Priya please" must still take the fast,
+# well-tested deterministic path.
+_CONDITION_WORD_RE = re.compile(r"\b(if|when|unless|provided|as long as)\b", re.I)
+_CHECK_VERB_RE = re.compile(r"\b(check|tell me|show|verify|find out|confirm)\b", re.I)
+_ACT_VERB_RE = re.compile(r"\b(transfer|send|pay|apply|update|start)\b", re.I)
+
+
+def _is_compound_or_conditional(query: str) -> bool:
+    text = query.strip()
+    if not text:
+        return False
+    if _CONDITION_WORD_RE.search(text):
+        return True
+    return bool(_CHECK_VERB_RE.search(text) and _ACT_VERB_RE.search(text))
 
 # A plain-ASCII text message with at least this many words is treated as
 # an implicit "the customer is writing in English now" signal — see
@@ -186,7 +213,21 @@ class ConversationManager:
                 )
             action = routing_decision.action if routing_decision else "SAFE_FALLBACK"
 
-            guidance_response = self._try_guidance(intent_result, context, phone_number, query, trace_id)
+            is_compound = _is_compound_or_conditional(query)
+            if is_compound:
+                # Skip guidance interception and the deterministic
+                # keyword-triggered workflow starters entirely — both are
+                # single-intent shortcuts that would either mangle this
+                # message (see start_requested()'s free-text regexes) or
+                # answer only part of it. Go straight to the LLM+tools
+                # agent, which has the check-then-act tools/instructions
+                # needed to actually reason through it.
+                logger.info(f"[{trace_id}] conversation.route.compound_or_conditional | phone={phone_number[-4:]}")
+                action = "BANKING_LLM"
+
+            guidance_response = None if is_compound else self._try_guidance(
+                intent_result, context, phone_number, query, trace_id
+            )
             if guidance_response is not None:
                 return guidance_response
 
