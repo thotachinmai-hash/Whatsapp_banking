@@ -356,14 +356,7 @@ class TransferWorkflowProcessor:
         return self._beneficiary_prompt(phone_number, "Please choose one of the options below.")
 
     def _amount(self, workflow: dict, phone_number: str, text: str) -> dict:
-        quick_amounts = {"1": Decimal("25"), "2": Decimal("50"), "3": Decimal("100"), "4": Decimal("250")}
-        if text.strip() in quick_amounts:
-            value = quick_amounts[text.strip()]
-        elif text.strip() == "5":
-            set_workflow_step(phone_number, STEP_COLLECT_AMOUNT)
-            return self._ask("What amount would you like to send?", "For example: 125. Reply Back or Cancel.")
-        else:
-            value = self._parse_amount(text)
+        value = self._parse_amount(text)
         if value is None:
             return self._amount_prompt(templates.render_invalid_amount())
         amount_label = f"₹{value:,.2f}"
@@ -522,13 +515,9 @@ class TransferWorkflowProcessor:
 
     @staticmethod
     def _amount_prompt(error: str | None = None) -> dict:
-        quick_amounts = [("1", "₹25"), ("2", "₹50"), ("3", "₹100"), ("4", "₹250"), ("5", "A different amount")]
-        rows = [InteractiveListRow(id=digit, title=label) for digit, label in quick_amounts]
         intro = f"{error}\n\n" if error else ""
-        intro += "\U0001F4B0 How much would you like to send?"
-        return {"handled": True, "response": StructuredResponse.list_of(
-            intro, "Choose amount", [InteractiveListSection(title="Quick amounts", rows=rows)]
-        )}
+        intro += "\U0001F4B0 How much would you like to send?\n\nJust type the amount you want to transfer."
+        return {"handled": True, "response": with_nav_buttons(intro)}
 
     @staticmethod
     def _source_prompt(phone_number: str, error: str | None = None) -> dict:

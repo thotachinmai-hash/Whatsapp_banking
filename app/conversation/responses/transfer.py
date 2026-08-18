@@ -59,8 +59,7 @@ def render_transfer_amount_prompt(error: Optional[str] = None) -> str:
     prefix = f"{error}\n\n" if error else ""
     return (
         prefix + "\U0001F4B0 How much would you like to send?\n\n"
-        "1. ₹25\n2. ₹50\n3. ₹100\n4. ₹250\n5. A different amount\n\n"
-        "Pick a number or just type the amount."
+        "Type the amount you want to transfer."
     )
 
 

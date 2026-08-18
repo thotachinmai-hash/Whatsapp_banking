@@ -204,6 +204,24 @@ class WorkflowManager:
         # exact missing fields.
         if _is_conversational_query(query):
             if not _is_allowed_for_workflow(workflow_type, query):
+                if workflow_type == WORKFLOW_TRANSFER:
+                    update_workflow_data(phone_number, {
+                        "pending_stop_confirmation": True,
+                        "pending_stop_was_closing": False,
+                        "pending_jump_workflow": None,
+                        "pending_jump_query": query,
+                    })
+                    logger.info(
+                        f"[{trace_id}] Transfer interruption confirmed, awaiting continue/stop | "
+                        f"phone={phone_number[-4:]} | query={query[:30]!r}"
+                    )
+                    return {
+                        "handled": True,
+                        "response": StructuredResponse.buttons_of(
+                            "You have an active money transfer in progress. Would you like to continue, or stop here?",
+                            [InteractiveButton(id="continue", title="Continue"), InteractiveButton(id="stop", title="Stop")],
+                        ),
+                    }
                 return {
                     "handled": True,
                     "response": _workflow_boundary_message(workflow_type, workflow.get("step")),
@@ -732,12 +750,18 @@ def _resolve_pending_stop(
             "pending_jump_query": None,
         })
         logger.info(f"[{trace_id}] Workflow stop declined, resuming | type={workflow_type} | phone={phone_number[-4:]}")
+        if workflow_type == WORKFLOW_TRANSFER and jump_query and not jump_workflow:
+            return {
+                "handled": True,
+                "response": "I will proceed with current request before addressing new request.",
+            }
         hint = render_workflow_step_hint(workflow_type, workflow.get("step"))
         resume_text = f"No problem, let's continue with your {label.lower()}."
         return {"handled": True, "response": f"{resume_text}\n\n{hint}" if hint else resume_text}
 
     if answer == "stop":
         was_closing = bool(workflow.get("data", {}).get("pending_stop_was_closing"))
+        pending_query = jump_query if not jump_workflow else None
         complete_workflow(phone_number)
         logger.info(
             f"[{trace_id}] Workflow stop confirmed | type={workflow_type} | "
@@ -750,6 +774,8 @@ def _resolve_pending_stop(
             )
             if started and started.get("handled"):
                 return started
+        if pending_query:
+            return {"handled": False, "response": None, "reprocess_query": pending_query}
         if was_closing:
             return {"handled": True, "response": render_goodbye()}
         from app.database import get_customer_by_phone

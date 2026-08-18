@@ -25,9 +25,11 @@ from app.conversation.responses.common import (
 from app.workflows.processors.onboarding import account_type_list_prompt
 from app.workflows.constants import (
     STEP_COLLECT_AADHAAR,
+    STEP_SELECT_BENEFICIARY,
     STEP_UPLOAD_CHEQUE,
     WORKFLOW_CHEQUE,
     WORKFLOW_ONBOARDING,
+    WORKFLOW_TRANSFER,
 )
 from app.workflows.manager import WorkflowManager
 from app.workflows.memory import create_workflow, create_workflow_model
@@ -252,6 +254,33 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         # Back/Cancel/Main Menu are tappable now, not just typed words.
         button_ids = {b.id for b in structured.buttons}
         self.assertEqual(button_ids, {"back", "cancel", "menu"})
+
+    async def test_active_transfer_balance_question_asks_continue_or_stop(self):
+        workflow = create_workflow_model(WORKFLOW_TRANSFER, STEP_SELECT_BENEFICIARY)
+        create_workflow(self.phone, workflow)
+
+        result = await self.manager.handle(self.phone, "check my balance", trace_id="t2a")
+
+        self.assertTrue(result["handled"])
+        structured = as_structured_response(result["response"])
+        text = structured.text.lower()
+        self.assertIn("active money transfer in progress", text)
+        self.assertIn("continue", text)
+        self.assertIn("stop here", text)
+        self.assertEqual({b.id for b in structured.buttons}, {"continue", "stop"})
+
+        result = await self.manager.handle(self.phone, "stop", trace_id="t2b")
+        self.assertFalse(result["handled"])
+        self.assertEqual(result.get("reprocess_query"), "check my balance")
+        self.assertIsNone(get_workflow(self.phone))
+
+        workflow = create_workflow_model(WORKFLOW_TRANSFER, STEP_SELECT_BENEFICIARY)
+        create_workflow(self.phone, workflow)
+        result = await self.manager.handle(self.phone, "check my balance", trace_id="t2c")
+        result = await self.manager.handle(self.phone, "continue", trace_id="t2d")
+        self.assertTrue(result["handled"])
+        response = as_structured_response(result["response"]).text.lower()
+        self.assertIn("proceed with current request before addressing new request", response)
 
     async def test_workflow_is_not_restarted_by_out_of_context_question(self):
         from app.workflows.memory import get_workflow
