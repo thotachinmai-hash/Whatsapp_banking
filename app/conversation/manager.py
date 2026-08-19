@@ -100,6 +100,16 @@ def _looks_like_transfer_request_with_condition(query: str) -> bool:
     has_condition = bool(_CONDITION_WORD_RE.search(text))
     return has_transfer_intent and has_beneficiary and has_condition
 
+
+def _looks_like_numeric_value(query: str) -> bool:
+    """A bare number is not out of scope: it could be an amount the user is
+    typing into a transfer or another numeric prompt. Keep menu taps on the
+    dedicated digit path, but let true numeric values continue through to the
+    regular LLM/tool logic instead of being rejected as a generic banking
+    question."""
+    text = (query or "").strip()
+    return bool(text) and text not in {"1", "2", "3", "4", "5", "6", "7"} and bool(re.fullmatch(r"\d+(?:[.,]\d+)?", text))
+
 # A plain-ASCII text message with at least this many words is treated as
 # an implicit "the customer is writing in English now" signal — see
 # _update_language(). Below this, a short reply ("yes", "1", "ok") is too
@@ -201,10 +211,9 @@ class ConversationManager:
 
         intent_result = self._classify_intent(context, message, trace_id)
         query = message
+        reprocess_query = None
 
         try:
-            if reprocess_query is not None:
-                query = _as_text(reprocess_query)
             gate_result = await check_registration_gate(
                 phone_number=phone_number, query=query, trace_id=trace_id
             )
@@ -303,6 +312,9 @@ class ConversationManager:
                     # unambiguous menu tap was out of scope.
                     query = deterministic["reprocess_query"]
                     action = "BANKING_LLM"
+
+            if action == "OUT_OF_SCOPE" and _looks_like_numeric_value(query):
+                action = "BANKING_LLM"
 
             if action == "OUT_OF_SCOPE":
                 return self._finish(
