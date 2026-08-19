@@ -84,6 +84,22 @@ def _is_compound_or_conditional(query: str) -> bool:
         return True
     return bool(_CHECK_VERB_RE.search(text) and _ACT_VERB_RE.search(text))
 
+
+def _looks_like_transfer_request_with_condition(query: str) -> bool:
+    """Compound transfer intents with a balance condition still belong in the
+    deterministic transfer flow (the same free-text parser that handles plain
+    'send 2000 to Bhavitha' messages) rather than being sent to the generic
+    LLM fallback. The condition check is a policy decision to be handled by
+    the transfer workflow or the LLM tool layer, not a reason to drop the
+    actual transfer intent entirely."""
+    text = (query or "").strip()
+    if not text:
+        return False
+    has_transfer_intent = bool(re.search(r"\b(?:transfer|send|pay)\b", text, re.I))
+    has_beneficiary = bool(re.search(r"\bto\s+[A-Za-z][A-Za-z .'-]{1,50}\b", text, re.I))
+    has_condition = bool(_CONDITION_WORD_RE.search(text))
+    return has_transfer_intent and has_beneficiary and has_condition
+
 # A plain-ASCII text message with at least this many words is treated as
 # an implicit "the customer is writing in English now" signal — see
 # _update_language(). Below this, a short reply ("yes", "1", "ok") is too
@@ -161,6 +177,13 @@ class ConversationManager:
         start = time.time()
         logger.info(f"[{trace_id}] conversation.turn.started | phone={phone_number[-4:]}")
 
+        # Normalize non-string payloads before any .strip()/regex work.
+        # Numeric menu taps or other unexpected types can reach this entry
+        # point from downstream callers; turning them into strings here keeps
+        # the rest of the pipeline consistent and prevents crashes like
+        # 'int' object has no attribute 'strip'.
+        message = str(message or "")
+
         # Strip laughter/filler noise ("check my balance ha ha ha") before
         # anything tries to classify or match this message — see
         # app/conversation/intent/text_clean.py. Voice transcriptions and
@@ -214,6 +237,18 @@ class ConversationManager:
             action = routing_decision.action if routing_decision else "SAFE_FALLBACK"
 
             is_compound = _is_compound_or_conditional(query)
+            if is_compound and _looks_like_transfer_request_with_condition(query):
+                deterministic = self.workflow_manager.start_requested(phone_number, query, trace_id=trace_id)
+                if deterministic["handled"]:
+                    self._register_progress(context)
+                    return self._finish(
+                        context, phone_number, query, deterministic["response"], trace_id, pending_action=None
+                    )
+                logger.info(
+                    f"[{trace_id}] conversation.route.compound_transfer_fallback | "
+                    f"phone={phone_number[-4:]} | query={query[:80]!r}"
+                )
+
             if is_compound:
                 # Skip guidance interception and the deterministic
                 # keyword-triggered workflow starters entirely — both are

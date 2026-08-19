@@ -31,6 +31,9 @@ def clean_noisy_text(text: str) -> str:
     instead so a real (if entirely filler-looking) message isn't silently
     emptied out.
     """
+    if text is None:
+        return ""
+    text = str(text)
     if not text:
         return text
 

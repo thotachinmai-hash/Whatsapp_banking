@@ -89,6 +89,30 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(llm_calls, [])
         self.assertIn("banking", response.lower())
 
+    async def test_02a_non_string_message_is_normalized_before_stripping(self):
+        manager, wf = _manager_with()
+        p1, p2, p3, p4 = self._patches()
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
+            response = await manager.handle_message(
+                "447818658034", 2000, "t2a", llm_fallback=_fake_llm_fallback
+            )
+        self.assertIsInstance(response, str)
+        self.assertIn("2000", response)
+
+    async def test_02b_conditional_transfer_request_starts_transfer_workflow(self):
+        manager, wf = _manager_with(
+            start_requested_result={"handled": True, "response": "Who would you like to pay?"}
+        )
+        p1, p2, p3, p4 = self._patches()
+        query = (
+            "I want to transfer 2000 to Bhavitha if my balance is greater than 10000. "
+            "Proceed with transfer if balance is greater than 10000"
+        )
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
+            response = await manager.handle_message("447818658034", query, "t2b", llm_fallback=_fake_llm_fallback)
+        self.assertEqual(response, "Who would you like to pay?")
+        self.assertEqual(len(wf.start_requested_calls), 1)
+
     # 3. Low-confidence request
     async def test_03_low_confidence_request_asks_for_clarification(self):
         manager, wf = _manager_with()
