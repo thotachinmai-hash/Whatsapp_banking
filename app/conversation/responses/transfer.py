@@ -111,7 +111,8 @@ def render_transfer_success(
         "\U0001F4CC Status: COMPLETED\n\n"
         "Your bank will process this shortly and I'll reflect the status here once it "
         f'settles. Feel free to check in anytime, e.g. "check status of {reference}" or '
-        '"what was my last transfer".'
+        '"what was my last transfer".\n\n'
+        "\U0001F4CB What would you like to do?"
     )
 
 

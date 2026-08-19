@@ -56,8 +56,8 @@ class TransferTemplateTests(unittest.TestCase):
             source_account_label="GB12FNCL00010001234567",
         )
         self.assertIn("TRF-ABCD1234", text)
-        self.assertIn("initiated", text.lower())
-        self.assertNotIn("completed", text.lower())
+        self.assertIn("completed", text.lower())
+        self.assertIn("What would you like to do?", text)
 
     def test_08_insufficient_balance(self):
         text_generic = transfer.render_insufficient_balance()

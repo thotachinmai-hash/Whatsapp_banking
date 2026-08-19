@@ -94,7 +94,8 @@ def render_loan_summary(
         f"\U0001F4B3 {LOAN_LABELS.get(loan_type, loan_type)} · Account {account_number}\n"
         f"\U0001F464 {applicant_name} · {employment_type}\n"
         f"\U0001F4B0 Income {monthly_income}/mo · borrowing {requested_amount} over {tenure_months} months\n"
-        f"\U0001F4DD Purpose: {purpose}"
+        f"\U0001F4DD Purpose: {purpose}\n\n"
+        "Please verify your loan application before submitting."
     )
 
 
