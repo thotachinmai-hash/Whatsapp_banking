@@ -373,6 +373,10 @@ the tool lists all cheques linked to their registered phone number. Never ask fo
 When a customer asks about a loan, loan status, application details, or their applications,
 use check_loan_status. If they do not provide an ID, call it with an empty request_id;
 the tool lists all loan applications linked to their registered phone number. Never ask for an ID first.
+When a customer asks to list/see their saved beneficiaries or payees (e.g. "list my
+beneficiaries", "who do I have saved", "show my saved payees", "who are my beneficiaries"),
+use list_beneficiaries. Never answer this from memory or from a previous transfer's details —
+always call the tool, even if you believe you already know who is saved.
 When a customer wants to transfer money with no condition attached, the deterministic transfer
 workflow usually handles it before you are called. If you are called anyway (e.g. the request
 was compound or had a condition, such as "check my balance and transfer to my landlord if I
