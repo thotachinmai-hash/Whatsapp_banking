@@ -70,11 +70,22 @@ def get_llm() -> ChatOpenAI:
         # tool-calling turn with the previous unset default returned "").
         # Higher than the 800 used for the simpler single-shot calls in
         # llm_understanding.py/language.py since this agent's replies often
-        # cite multiple tool results in one message. reasoning_effort="low"
-        # keeps the reasoning overhead itself down — same pattern as every
-        # other Sarvam call site in this codebase.
-        max_tokens=4500,
-        model_kwargs={"reasoning_effort": "low"},
+        # cite multiple tool results in one message.
+        #
+        # reasoning_effort="medium" (raised from "low") — this is the one
+        # call site in the codebase actually worth the extra thinking: the
+        # compound/conditional banking reasoning (check a balance, evaluate
+        # a threshold, decide whether to act) this agent does, unlike the
+        # simple single-shot classification/detection calls elsewhere
+        # (llm_understanding.py, language.py, classifier.py,
+        # document_parser.py), which stay at "low" since more effort there
+        # is just latency with no real quality gain. max_tokens raised
+        # alongside it — medium effort spends more of the budget on
+        # reasoning_content before the answer, so the same headroom
+        # problem this comment already describes gets worse, not better,
+        # if max_tokens isn't raised too.
+        max_tokens=6500,
+        model_kwargs={"reasoning_effort": "medium"},
     )
 
 
@@ -516,6 +527,18 @@ async def _run_llm_agent(
 
     duration = (time.time() - start) * 1000
     logger.info(f"[{trace_id}] Agent completed | duration={duration:.2f}ms | tools={tools_called}")
+
+    if not response_content:
+        # The retry loop in agent_node() already tries again on empty
+        # content — this is what's left after every attempt still came
+        # back empty (confirmed live: a reasoning model can occasionally
+        # exhaust its whole token budget on internal reasoning across
+        # every retry with nothing left to say). Without this, the
+        # customer would receive a genuinely blank WhatsApp message,
+        # which reads as the bot being broken — an honest apology is a
+        # real answer, an empty bubble is not.
+        logger.warning(f"[{trace_id}] Agent returned empty content after all retries — using fallback text")
+        return "Sorry, I wasn't able to work that out just now. Could you try asking again?"
 
     return response_content
 
