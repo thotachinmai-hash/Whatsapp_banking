@@ -13,6 +13,28 @@ def test_build_default_account_transaction_history_has_15_entries_and_20000_bala
     assert history[-1]["reference"] == "INIT-015"
 
 
+def test_get_accounts_by_phone_normalizes_phone_variants(monkeypatch):
+    calls = {}
+
+    def fake_execute_query(query, params):
+        calls["query"] = query
+        calls["params"] = params
+        return [{
+            "account_number": "FNCL000000000001",
+            "account_type": "savings",
+            "balance": Decimal("20000.00"),
+            "currency": "INR",
+            "status": "active",
+        }]
+
+    monkeypatch.setattr(database, "execute_query", fake_execute_query)
+
+    result = database.get_accounts_by_phone("+91 98765 43210")
+
+    assert result[0]["account_number"] == "FNCL000000000001"
+    assert calls["params"] == ("919876543210",)
+
+
 def test_create_transfer_debits_source_account_balance(monkeypatch):
     class FakeCursor:
         def __init__(self):

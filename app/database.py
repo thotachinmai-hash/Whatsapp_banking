@@ -1,4 +1,5 @@
 import os
+import re
 import secrets
 import json
 from decimal import Decimal
@@ -10,6 +11,31 @@ from app.logger import get_logger
 
 load_dotenv()
 logger = get_logger(__name__)
+
+
+def normalize_phone_number(phone_number: str | None) -> str:
+    """Normalize WhatsApp-style phone forms to the canonical digits-only
+    format used in the bank database.
+
+    This handles values such as "+91 98765 43210", "919876543210",
+    "447818658034", and numbers with leading zeros or formatting noise.
+    """
+    if phone_number is None:
+        return ""
+
+    raw = str(phone_number).strip()
+    if not raw:
+        return ""
+
+    digits = re.sub(r"\D+", "", raw)
+    if not digits:
+        return raw.strip()
+
+    if digits.startswith("00"):
+        digits = digits[2:]
+    if digits.startswith("0") and len(digits) == 10:
+        digits = digits[1:]
+    return digits
 
 
 def get_db_connection():
@@ -81,12 +107,15 @@ def get_account_by_number(account_number: str) -> dict | None:
 
 def get_accounts_by_phone(phone_number: str) -> list[dict]:
     """Return all active accounts linked to a customer's mobile number."""
+    normalized = normalize_phone_number(phone_number)
+    if not normalized:
+        return []
     return execute_query(
         """SELECT account_number, account_type, balance, currency, status
            FROM accounts
            WHERE phone_number = %s AND status = 'active'
            ORDER BY id""",
-        (phone_number,),
+        (normalized,),
     )
 
 
@@ -155,9 +184,12 @@ def get_spend_summary(
 
 
 def get_customer_by_phone(phone_number: str) -> dict | None:
+    normalized = normalize_phone_number(phone_number)
+    if not normalized:
+        return None
     results = execute_query(
         "SELECT * FROM customers WHERE phone_number = %s",
-        (phone_number,)
+        (normalized,)
     )
     return results[0] if results else None
 
@@ -171,13 +203,14 @@ def create_customer(
     guardian_name: str = "",
     address: str = "",
 ) -> dict | None:
+    normalized_phone = normalize_phone_number(phone_number)
     return execute_write_returning(
         """INSERT INTO customers (
             phone_number, full_name, aadhaar_number, pan_number,
             date_of_birth, guardian_name, address
         ) VALUES (%s, %s, %s, %s, %s, %s, %s)
            RETURNING *""",
-        (phone_number, full_name, aadhaar_number, pan_number, date_of_birth, guardian_name, address)
+        (normalized_phone, full_name, aadhaar_number, pan_number, date_of_birth, guardian_name, address)
     )
 
 
@@ -237,6 +270,7 @@ def create_zero_balance_account(
     account_type: str,
 ) -> dict | None:
     """Create an active account with the default bank opening balance."""
+    normalized_phone = normalize_phone_number(phone_number)
     normalized_type = account_type.strip().lower()
     if normalized_type not in ACCOUNT_TYPES:
         raise ValueError(f"Unsupported account type: {account_type}")
@@ -253,7 +287,7 @@ def create_zero_balance_account(
                     balance, currency, status)
                    VALUES (%s, %s, %s, %s, %s, 'INR', 'active')
                    RETURNING *""",
-                (account_number, account_holder, phone_number, normalized_type, Decimal("20000.00")),
+                (account_number, account_holder, normalized_phone, normalized_type, Decimal("20000.00")),
             )
             account = dict(cursor.fetchone())
             for item in build_default_account_transaction_history():
@@ -326,11 +360,14 @@ def get_cheque_request_by_id(request_id: str) -> dict | None:
 
 def get_cheque_requests_by_phone(phone_number: str) -> list[dict]:
     """Return all cheque requests belonging to the signed-in customer."""
+    normalized = normalize_phone_number(phone_number)
+    if not normalized:
+        return []
     return execute_query(
         """SELECT * FROM cheque_requests
            WHERE phone_number = %s
            ORDER BY created_at DESC""",
-        (phone_number,),
+        (normalized,),
     )
 
 
@@ -389,11 +426,14 @@ def get_loan_request_by_id(request_id: str) -> dict | None:
 def get_loan_requests_by_phone(phone_number: str) -> list[dict]:
     """Return all loan applications belonging to the signed-in customer."""
     ensure_application_tables()
+    normalized = normalize_phone_number(phone_number)
+    if not normalized:
+        return []
     return execute_query(
         """SELECT * FROM loan_requests
            WHERE phone_number = %s
            ORDER BY created_at DESC""",
-        (phone_number,),
+        (normalized,),
     )
 
 
@@ -424,11 +464,14 @@ def get_kyc_request_by_id(request_id: str) -> dict | None:
 def get_kyc_requests_by_phone(phone_number: str) -> list[dict]:
     """Return all KYC update requests belonging to the signed-in customer."""
     ensure_application_tables()
+    normalized = normalize_phone_number(phone_number)
+    if not normalized:
+        return []
     return execute_query(
         """SELECT * FROM kyc_requests
            WHERE phone_number = %s
            ORDER BY created_at DESC""",
-        (phone_number,),
+        (normalized,),
     )
 
 
@@ -450,11 +493,14 @@ def ensure_beneficiaries_table() -> None:
 def get_beneficiaries_by_phone(phone_number: str) -> list[dict]:
     """Return all saved beneficiaries for a customer, oldest first."""
     ensure_beneficiaries_table()
+    normalized = normalize_phone_number(phone_number)
+    if not normalized:
+        return []
     return execute_query(
         """SELECT * FROM beneficiaries
            WHERE phone_number = %s
            ORDER BY id""",
-        (phone_number,),
+        (normalized,),
     )
 
 
@@ -469,6 +515,7 @@ def create_beneficiary(
     the same account number for this customer (re-adding is harmless).
     """
     ensure_beneficiaries_table()
+    normalized_phone = normalize_phone_number(phone_number)
     return execute_write_returning(
         """INSERT INTO beneficiaries (phone_number, beneficiary_name, account_number, bank_name)
            VALUES (%s, %s, %s, %s)
@@ -476,7 +523,7 @@ def create_beneficiary(
            DO UPDATE SET beneficiary_name = EXCLUDED.beneficiary_name,
                           bank_name = COALESCE(EXCLUDED.bank_name, beneficiaries.bank_name)
            RETURNING *""",
-        (phone_number, beneficiary_name, account_number, bank_name),
+        (normalized_phone, beneficiary_name, account_number, bank_name),
     )
 
 
@@ -554,6 +601,7 @@ def create_transfer(
     status: str = "COMPLETED",
 ) -> dict | None:
     ensure_transfers_table()
+    normalized_phone = normalize_phone_number(phone_number)
     amount_decimal = Decimal(str(amount))
     conn = None
     try:
@@ -564,7 +612,7 @@ def create_transfer(
                (reference, phone_number, source_account, beneficiary_name, beneficiary_account, amount, status)
                VALUES (%s, %s, %s, %s, %s, %s, %s)
                RETURNING *""",
-            (reference, phone_number, source_account, beneficiary_name, beneficiary_account, amount_decimal, status),
+            (reference, normalized_phone, source_account, beneficiary_name, beneficiary_account, amount_decimal, status),
         )
         transfer = dict(cursor.fetchone())
 
@@ -629,11 +677,14 @@ def get_transfer_by_reference(reference: str) -> dict | None:
 def get_transfers_by_phone(phone_number: str) -> list[dict]:
     """Return all transfers initiated by this customer, most recent first."""
     ensure_transfers_table()
+    normalized = normalize_phone_number(phone_number)
+    if not normalized:
+        return []
     return execute_query(
         """SELECT * FROM transfers
            WHERE phone_number = %s
            ORDER BY created_at DESC""",
-        (phone_number,),
+        (normalized,),
     )
 
 

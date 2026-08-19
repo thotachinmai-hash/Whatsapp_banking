@@ -369,7 +369,18 @@ async def send_document_message(chat_id: str, file_bytes: bytes, filename: str, 
 def extract_phone_number(chat_id: str) -> str:
     if not chat_id:
         return ""
-    return chat_id.replace("@c.us", "").replace("@g.us", "").replace("@lid", "").strip()
+    cleaned = chat_id.replace("@c.us", "").replace("@g.us", "").replace("@lid", "").strip()
+    if not cleaned:
+        return ""
+
+    digits = "".join(ch for ch in cleaned if ch.isdigit())
+    if not digits:
+        return cleaned
+    if digits.startswith("00"):
+        digits = digits[2:]
+    if digits.startswith("0") and len(digits) == 10:
+        digits = digits[1:]
+    return digits
 
 
 def detect_message_type(payload: dict) -> str:
