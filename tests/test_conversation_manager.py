@@ -4,6 +4,8 @@ from unittest.mock import AsyncMock, patch
 from app.conversation.context import ConversationContext
 from app.conversation.intent.models import IntentResult
 from app.conversation.manager import ConversationManager
+from app.conversation.renderer import ResponseKind, as_structured_response
+from app.conversation.responses.common import render_main_menu_list
 from app.workflows.constants import STEP_CONFIRM_TRANSFER
 
 
@@ -98,6 +100,22 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
             )
         self.assertIsInstance(response, str)
         self.assertIn("2000", response)
+
+    async def test_02aa_display_menu_returns_list(self):
+        manager, wf = _manager_with()
+        p1, p2, p3, p4 = self._patches()
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True), \
+             patch.object(ConversationManager, "_classify_intent", return_value=IntentResult(intent="main_menu", confidence=0.95)):
+            response = await manager.handle_message(
+                "447818658034", "Display menu", "t2aa", llm_fallback=_fake_llm_fallback
+            )
+        structured = as_structured_response(response)
+        self.assertEqual(structured.kind, ResponseKind.LIST)
+        self.assertIn("What would you like to do?", structured.text)
+        self.assertEqual(wf.start_requested_calls, [])
+        self.assertEqual(structured.text, render_main_menu_list().text)
+        self.assertEqual(len(structured.list_sections), 1)
+        self.assertEqual(len(structured.list_sections[0].rows), 8)
 
     async def test_02b_conditional_transfer_request_starts_transfer_workflow(self):
         manager, wf = _manager_with(

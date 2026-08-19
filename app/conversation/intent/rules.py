@@ -122,7 +122,10 @@ def looks_like_injection(text: str) -> bool:
 
 _CANCEL_WORDS = {"cancel", "cancel it", "stop", "stop it", "quit", "exit", "end", "never mind", "nevermind", "forget it"}
 _BACK_WORDS = {"back", "go back", "previous", "previous step", "b"}
-_MENU_WORDS = {"menu", "main menu", "show menu", "take me to the main menu", "home"}
+_MENU_WORDS = {
+    "menu", "main menu", "show menu", "display menu", "show me the menu",
+    "take me to the main menu", "open menu", "home",
+}
 _REPEAT_WORDS = {"repeat", "repeat that", "say again", "say that again", "what did you say"}
 _RESTART_WORDS = {"start over", "start again", "restart", "begin again"}
 _HELP_WORDS = {

@@ -32,6 +32,9 @@ class IntentClassifierRequiredMessageTests(unittest.TestCase):
     def test_04_show_menu(self):
         self.assertEqual(classify_intent("Show menu").intent, "main_menu")
 
+    def test_04b_display_menu(self):
+        self.assertEqual(classify_intent("Display menu").intent, "main_menu")
+
     def test_05_what_should_i_do_onboarding_aadhaar(self):
         context = _ctx("onboarding", STEP_COLLECT_AADHAAR)
         result = classify_intent("What should I do?", context=context)

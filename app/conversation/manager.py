@@ -241,6 +241,11 @@ class ConversationManager:
 
             routing_decision = None
             if intent_result is not None:
+                if intent_result.intent == "main_menu":
+                    self._register_progress(context)
+                    return self._finish(
+                        context, phone_number, query, render_main_menu_list(), trace_id, pending_action=None
+                    )
                 routing_decision = route_intent(intent_result, context=context)
                 logger.info(
                     f"[{trace_id}] conversation.route.decided | phone={phone_number[-4:]} | "
