@@ -83,6 +83,7 @@ class WorkflowManager:
             "response": "..."
         }
         """
+        query = str(query or "")
 
         workflow = get_workflow(phone_number)
 
@@ -391,6 +392,7 @@ class WorkflowManager:
 
     def start_requested(self, phone_number: str, query: str, trace_id: str = "") -> dict[str, Any]:
         """Start deterministic workflows without depending on an LLM intent call."""
+        query = str(query or "")
         normalized = query.strip().lower()
         logger.info(
             f"[{trace_id}] Checking for deterministic workflow start | "

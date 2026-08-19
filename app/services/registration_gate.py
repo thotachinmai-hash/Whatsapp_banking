@@ -27,7 +27,7 @@ MENU_DIGITS = {"1", "2", "3", "4", "5", "6", "7", "8"}
 
 
 def _is_greeting(query: str) -> bool:
-    normalized = query.strip().lower().strip("!.? ")
+    normalized = str(query or "").strip().lower().strip("!.? ")
     return normalized in GREETING_KEYWORDS
 
 
@@ -43,6 +43,8 @@ async def check_registration_gate(
     then LLM agent). Returns {"handled": True, "response": "..."} if this
     turn is fully handled by the gate.
     """
+
+    query = str(query or "")
 
     if get_workflow(phone_number):
         # A workflow (onboarding, cheque, etc.) already owns this turn.
@@ -113,7 +115,7 @@ def _looks_like_question(query: str) -> bool:
     classify_workflow_request() already applies — a banking keyword inside
     a question ("what documents do I need for a home loan?") must not be
     read as a request to actually start that service."""
-    stripped = query.strip()
+    stripped = str(query or "").strip()
     if stripped.endswith("?"):
         return True
     normalized = stripped.lower()
@@ -124,7 +126,7 @@ def _looks_like_question(query: str) -> bool:
 
 
 def _is_service_request(query: str) -> bool:
-    text = query.strip().lower()
+    text = str(query or "").strip().lower()
     return any(term in text for term in (
         "loan", "borrow", "finance", "kyc", "know your customer",
         "cheque", "check", "balance", "transaction", "transfer", "account",

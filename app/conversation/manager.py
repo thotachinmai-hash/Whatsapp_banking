@@ -77,7 +77,7 @@ _ACT_VERB_RE = re.compile(r"\b(transfer|send|pay|apply|update|start)\b", re.I)
 
 
 def _is_compound_or_conditional(query: str) -> bool:
-    text = query.strip()
+    text = _as_text(query).strip()
     if not text:
         return False
     if _CONDITION_WORD_RE.search(text):
@@ -146,6 +146,10 @@ LlmFallbackFn = Callable[[str, str, str, Optional[dict]], Awaitable[str]]
 _UNSET = object()
 
 
+def _as_text(value: Any) -> str:
+    return "" if value is None else str(value)
+
+
 class ConversationManager:
     """Orchestrates one conversation turn using the existing components."""
 
@@ -182,7 +186,7 @@ class ConversationManager:
         # point from downstream callers; turning them into strings here keeps
         # the rest of the pipeline consistent and prevents crashes like
         # 'int' object has no attribute 'strip'.
-        message = str(message or "")
+        message = _as_text(message)
 
         # Strip laughter/filler noise ("check my balance ha ha ha") before
         # anything tries to classify or match this message — see
@@ -199,6 +203,8 @@ class ConversationManager:
         query = message
 
         try:
+            if reprocess_query is not None:
+                query = _as_text(reprocess_query)
             gate_result = await check_registration_gate(
                 phone_number=phone_number, query=query, trace_id=trace_id
             )
