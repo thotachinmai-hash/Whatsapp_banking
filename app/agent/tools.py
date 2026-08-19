@@ -634,6 +634,11 @@ def tool_start_transfer_workflow(
     if not has_transferable_balance(phone_number):
         return "This customer has no account with a positive balance, so a transfer can't be started."
 
+    # The LLM tool-calling layer can emit a bare number (e.g. 2000) instead
+    # of a string for "amount" — coerce before any .strip() call.
+    amount = "" if amount is None else str(amount)
+    beneficiary_name = "" if beneficiary_name is None else str(beneficiary_name)
+
     query_parts = ["transfer"]
     if amount.strip():
         query_parts.append(amount.strip())
@@ -670,6 +675,10 @@ def tool_start_loan_workflow(
 
     workflow = create_workflow_model(WORKFLOW_LOAN, STEP_SELECT_LOAN_TYPE)
     create_workflow(phone_number, workflow)
+
+    # Same non-string tool-argument guard as tool_start_transfer_workflow.
+    loan_type = "" if loan_type is None else str(loan_type)
+    requested_amount = "" if requested_amount is None else str(requested_amount)
 
     detected_type = detect_loan_type_from_text(loan_type) if loan_type.strip() else None
     logger.info(f"[{trace_id}] TOOL | start_loan_workflow | loan_type={loan_type or 'none'} | requested_amount={requested_amount or 'none'}")
