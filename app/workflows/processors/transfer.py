@@ -3,7 +3,7 @@ import secrets
 from decimal import Decimal, InvalidOperation
 from typing import Any, Optional
 
-from app.database import create_beneficiary, create_transfer, get_accounts_by_phone, get_beneficiaries_by_phone
+from app.database import create_beneficiary, create_transfer, get_accounts_by_phone, get_beneficiaries_by_phone, get_customer_by_phone
 from app.logger import get_logger
 from app.workflows.constants import (
     STEP_COLLECT_AMOUNT,
@@ -19,7 +19,7 @@ from app.workflows.memory import complete_workflow, create_workflow, create_work
 from app.workflows.nlu import PAY_VERB_PATTERN, SEND_VERB_PATTERN, interpret_confirmation, interpret_menu_choice
 from app.services.llm_understanding import interpret_choice_llm, is_llm_fallback_enabled
 from app.conversation.renderer import InteractiveButton, InteractiveListRow, InteractiveListSection, StructuredResponse
-from app.conversation.responses.common import format_currency, mask_account_number as _mask_account, with_nav_buttons
+from app.conversation.responses.common import format_currency, mask_account_number as _mask_account, render_main_menu_list, with_nav_buttons
 from app.services.receipts import build_receipt_response
 from app.conversation.responses import transfer as templates
 
@@ -274,19 +274,31 @@ class TransferWorkflowProcessor:
                     amount_label=data.get("amount"),
                     source_account_label=data.get("source_account"),
                 )
-                return {
-                    "handled": True,
-                    "response": build_receipt_response(
-                        summary_text, "Money Transfer Receipt", reference,
-                        [
-                            ("Beneficiary", data.get("beneficiary_name")),
-                            ("Beneficiary Account", data.get("beneficiary_account")),
-                            ("Amount", data.get("amount")),
-                            ("Source Account", data.get("source_account")),
-                            ("Status", "INITIATED"),
-                        ],
-                    ),
-                }
+                customer = get_customer_by_phone(phone_number)
+                name = customer.get("full_name", "there") if customer else "there"
+                menu_prefix = summary_text
+                for marker in (
+                    "📋 What would you like to do?",
+                    "What would you like to do?",
+                    "what would you like to do?",
+                ):
+                    if marker in menu_prefix:
+                        menu_prefix = menu_prefix.split(marker, 1)[0].rstrip()
+                        break
+                menu_response = render_main_menu_list(name, greeting=False, prefix=menu_prefix)
+                receipt_response = build_receipt_response(
+                    summary_text, "Money Transfer Receipt", reference,
+                    [
+                        ("Beneficiary", data.get("beneficiary_name")),
+                        ("Beneficiary Account", data.get("beneficiary_account")),
+                        ("Amount", data.get("amount")),
+                        ("Source Account", data.get("source_account")),
+                        ("Status", "INITIATED"),
+                    ],
+                )
+                menu_response.pdf_bytes = receipt_response.pdf_bytes
+                menu_response.pdf_filename = receipt_response.pdf_filename
+                return {"handled": True, "response": menu_response}
             if command == "2" or confirmation == "no" or "edit" in command or "change" in command:
                 set_workflow_step(phone_number, STEP_SELECT_AMOUNT)
                 return self._amount_prompt()

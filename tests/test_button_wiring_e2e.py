@@ -251,6 +251,25 @@ class TransferButtonTests(ButtonWiringTestCase):
         mock_transfer.assert_called_once()
         self.assertIsNone(get_workflow(self.phone))
 
+    async def test_transfer_success_returns_main_menu_list(self):
+        from app.conversation.renderer import ResponseKind, as_structured_response
+
+        workflow = create_workflow_model(WORKFLOW_TRANSFER, STEP_CONFIRM_TRANSFER, data={
+            "beneficiary_name": "Priya", "beneficiary_account": "GB12FNCL00010009999999",
+            "amount": "£25.00", "source_account": "GB12FNCL00010001111111",
+        })
+        create_workflow(self.phone, workflow)
+        with patch("app.workflows.processors.transfer.create_transfer") as mock_transfer, \
+             patch("app.workflows.processors.transfer.get_customer_by_phone", return_value={"full_name": "Alex"}):
+            result = await self.manager.handle(self.phone, "1", trace_id="tt2a")
+        self.assertTrue(result["handled"])
+        mock_transfer.assert_called_once()
+        structured = as_structured_response(result["response"])
+        self.assertEqual(structured.kind, ResponseKind.LIST)
+        rows = [row for section in structured.list_sections for row in section.rows]
+        self.assertEqual([row.id for row in rows], ["1", "2", "3", "4", "5", "6", "7", "8"])
+        self.assertIn("What would you like to do?", structured.text)
+
     async def test_tapping_edit_amount_returns_to_amount_step(self):
         workflow = create_workflow_model(WORKFLOW_TRANSFER, STEP_CONFIRM_TRANSFER, data={
             "beneficiary_name": "Priya", "beneficiary_account": "GB12FNCL00010009999999",
