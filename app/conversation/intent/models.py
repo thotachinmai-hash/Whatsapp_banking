@@ -47,6 +47,7 @@ WORKFLOW_CONVERSATION_INTENTS = {
 # "cheque_status" spelling — see docs/current_architecture.md for why.
 STATUS_INTENTS = {
     "account_information", "transfer_status", "loan_status", "kyc_status",
+    "beneficiary_information",
 }
 
 # ─── G/H. Out of scope / unknown ───────────────────────────────────────
@@ -77,6 +78,7 @@ WORKFLOW_EXECUTING_INTENTS = {
 LLM_ELIGIBLE_INTENTS = {
     "balance_request", "transaction_request", "cheque_status_request",
     "loan_status", "transfer_status", "kyc_status", "account_information",
+    "beneficiary_information",
     "banking_question", "account_question", "transfer_question",
     "cheque_question", "loan_question", "kyc_question",
     "financial_guidance", "loan_eligibility_question", "transaction_insight_question",

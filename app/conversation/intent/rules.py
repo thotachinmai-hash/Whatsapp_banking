@@ -262,6 +262,15 @@ def classify_status_request(text: str) -> Optional[IntentResult]:
     if "kyc" in normalized and any(k in normalized for k in ("status", "approved")):
         return IntentResult(intent="kyc_status", confidence=0.88, method="rule")
 
+    if "beneficiar" in normalized or "payee" in normalized:
+        # A personal-data request for the customer's saved beneficiaries
+        # ('list my beneficiaries', 'who do I have saved', 'show my saved
+        # payees') — must be classified here, ahead of the generic
+        # out_of_scope/unknown fallback, so it reaches the LLM+tools agent
+        # (tool_list_beneficiaries) with real confidence instead of a
+        # low-confidence 'unknown' that only asks for clarification.
+        return IntentResult(intent="beneficiary_information", confidence=0.85, method="rule")
+
     if "account" in normalized and any(k in normalized for k in (
         "information", "details", "info", "available", "which", "list", "show",
         "all my", "do i have", "my account",
@@ -459,8 +468,8 @@ BANKING_DOMAIN_KEYWORDS = {
     "transaction", "transactions", "deposit", "aadhaar", "aadhar", "pan",
     "register", "registration", "emi", "otp", "interest", "saving",
     "savings", "income", "salary", "spend", "spent", "spending", "money",
-    "payment", "pay", "send", "beneficiary", "statement", "credit", "debit",
-    "branch", "atm", "card", "overdraft", "withdraw", "withdrawal",
+    "payment", "pay", "send", "beneficiar", "payee", "statement", "credit",
+    "debit", "branch", "atm", "card", "overdraft", "withdraw", "withdrawal",
 }
 
 
