@@ -51,7 +51,8 @@ class LoanPendingDocumentTests(unittest.IsolatedAsyncioTestCase):
         )
         create_workflow("447700900200", workflow)
 
-        with patch("app.workflows.processors.loan.get_accounts_by_phone", return_value=FAKE_ACCOUNTS):
+        with patch("app.workflows.processors.loan.get_accounts_by_phone", return_value=FAKE_ACCOUNTS), \
+             patch("app.workflows.processors.loan.get_customer_by_phone", return_value={"full_name": "Jane Doe"}):
             result = await self.handler.handle(
                 workflow=get_workflow("447700900200"),
                 phone_number="447700900200",
@@ -74,7 +75,8 @@ class LoanPendingDocumentTests(unittest.IsolatedAsyncioTestCase):
         workflow = create_workflow_model("loan", STEP_SELECT_LOAN_TYPE)
         create_workflow("447700900201", workflow)
 
-        with patch("app.workflows.processors.loan.get_accounts_by_phone", return_value=FAKE_ACCOUNTS):
+        with patch("app.workflows.processors.loan.get_accounts_by_phone", return_value=FAKE_ACCOUNTS), \
+             patch("app.workflows.processors.loan.get_customer_by_phone", return_value={"full_name": "Alex Doe"}):
             result = await self.handler.handle(
                 workflow=get_workflow("447700900201"),
                 phone_number="447700900201",

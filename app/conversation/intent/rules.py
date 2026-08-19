@@ -247,7 +247,9 @@ def classify_status_request(text: str) -> Optional[IntentResult]:
     chq_match = _CHQ_ID_PATTERN.search(text)
     if chq_match or ("cheque" in normalized and "status" in normalized) or (
         "cheque" in normalized and normalized.strip().startswith("check")
-    ):
+    ) or ("cheque" in normalized and any(k in normalized for k in (
+        "where is", "where's", "been processed", "has it been", "track",
+    ))):
         entities = {"cheque_request_id": chq_match.group(0).upper()} if chq_match else {}
         # Deliberately the same intent name as the category-B request —
         # see docs/current_architecture.md for why "cheque_status" (the
@@ -372,7 +374,13 @@ def _dampen_for_hedging(confidence: float, normalized_text: str) -> float:
 def classify_workflow_request(text: str) -> Optional[IntentResult]:
     normalized = text.lower()
 
-    if any(k in normalized for k in ("register", "sign up", "open an account", "create an account")):
+    # "open an account"/"create an account" only matched that exact
+    # phrase — "open a savings account" (a real, common phrasing) fell
+    # through to a generic out-of-scope fallback. \w* covers "savings"/
+    # "current"/"salary"/nothing at all.
+    if any(k in normalized for k in ("register", "sign up", "create an account")) or re.search(
+        r"\bopen\s+(?:an?|my)\s+\w*\s*account\b", normalized
+    ):
         confidence = _dampen_for_hedging(0.85, normalized)
         return IntentResult(intent="registration_request", confidence=confidence, method="rule")
 
@@ -432,7 +440,7 @@ _QUESTION_DOMAIN_RULES = (
     (("address",), "kyc_question"),
     (("cheque", "clear", "clearance"), "cheque_question"),
     (("transfer", "wire"), "transfer_question"),
-    (("emi", "loan"), "loan_question"),
+    (("emi", "loan", "borrow"), "loan_question"),
     (("savings account", "current account", "account"), "account_question"),
 )
 

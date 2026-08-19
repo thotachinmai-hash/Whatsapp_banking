@@ -138,10 +138,10 @@ CREATE TABLE IF NOT EXISTS loan_products (
 );
 
 INSERT INTO loan_products (loan_type, display_name, interest_rate_min, interest_rate_max, min_amount, max_amount, min_tenure_months, max_tenure_months, processing_fee_percent, currency, notes) VALUES
-('personal',  'Personal Loan',  10.50, 15.00,   1000.00,   25000.00,  6,  60, 1.50, 'INR', 'Unsecured. Final rate depends on credit profile and income.'),
-('home',      'Home Loan',       6.75,  9.25,  25000.00, 500000.00, 60, 360, 0.50, 'INR', 'Secured against the property. Final rate depends on loan-to-value and credit profile.'),
-('vehicle',   'Vehicle Loan',    8.50, 12.00,   2000.00,   50000.00, 12,  84, 1.00, 'INR', 'Secured against the vehicle. Final rate depends on vehicle age and credit profile.'),
-('education', 'Education Loan',  7.00, 11.00,   1000.00,  100000.00, 12, 180, 0.75, 'INR', 'Repayment can often be deferred until after course completion — ask about moratorium terms.');
+('personal',  'Personal Loan',  10.50, 15.00,    10000.00,  1000000.00, 2, 60, 1.50, 'INR', 'Unsecured. Final rate depends on credit profile and income.'),
+('home',      'Home Loan',       6.75,  9.25,   100000.00, 4000000.00, 12, 78, 0.50, 'INR', 'Secured against the property. Final rate depends on loan-to-value and credit profile.'),
+('vehicle',   'Vehicle Loan',    8.50, 12.00,    20000.00, 1500000.00, 2, 60, 1.00, 'INR', 'Secured against the vehicle. Final rate depends on vehicle age and credit profile.'),
+('education', 'Education Loan',  7.00, 11.00,    10000.00, 2000000.00, 2, 78, 0.75, 'INR', 'Repayment can often be deferred until after course completion — ask about moratorium terms.');
 
 -- Seed data — 3 test accounts
 INSERT INTO accounts (account_number, account_holder, phone_number, account_type, balance, currency) VALUES

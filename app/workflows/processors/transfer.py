@@ -38,6 +38,54 @@ _BENEFICIARY_INTENT_RE = re.compile(
     r".*?\bto\s+([A-Za-z][A-Za-z .'\-]{1,50})",
     re.I,
 )
+# Words/tokens that mean the regex's greedy capture grabbed more than a
+# name — either a clause/sentence fragment ("to an account I haven't
+# added" -> "An Account I Haven'T Added") or a relationship/possessive
+# description instead of a literal name ("to my landlord anna" -> "My
+# Landlord Anna", when the actual name is just "anna"). Both were
+# confirmed live. Rather than trying to out-guess every such phrasing
+# with more regex/word lists (name-stripping heuristics, more synonym
+# tables, ...), a capture that hits any of these gets handed off to the
+# LLM+tools agent instead of guessed at — see start_transfer_from_text.
+# It can actually reason about what was said ("anna" is the name, "my
+# landlord" is just how she was described) rather than pattern-match it.
+_IMPLAUSIBLE_NAME_WORDS = {
+    "i", "haven't", "havent", "don't", "dont", "won't", "wont", "not",
+    "never", "that", "this", "who", "whom", "someone", "anyone", "somebody",
+    "account", "added", "existing", "new", "yet", "already", "haven",
+    "my",
+}
+_MAX_PLAUSIBLE_NAME_WORDS = 4
+
+
+def _extract_beneficiary_name(text: str) -> tuple[str, bool]:
+    """Pull a plausible beneficiary name out of free text.
+
+    Returns (name, needs_llm):
+    - (name, False) — a plausible name was found; the fast deterministic
+      path can use it as-is.
+    - ("", False) — no "...to <name>" was said at all; the existing
+      beneficiary-selection prompt already handles this fine, nothing new
+      needed.
+    - ("", True) — something WAS captured but doesn't look like a real
+      name (see _IMPLAUSIBLE_NAME_WORDS) — the caller should defer the
+      whole message to the LLM+tools agent instead of guessing.
+    """
+    match = _BENEFICIARY_INTENT_RE.search(text.strip())
+    if not match:
+        return "", False
+    candidate = _NAME_TRAILERS.sub("", match.group(1).strip())
+    # The capture's char class allows ".'-" so it doesn't break mid-name
+    # ("D'Souza", "Jean-Paul") — but that also means a sentence-ending
+    # period gets swallowed too ("...to John." -> "John."). Strip trailing
+    # punctuation only, never punctuation that's actually inside the name.
+    candidate = candidate.rstrip(" .,!?").strip()
+    words = candidate.split()
+    if not words or len(words) > _MAX_PLAUSIBLE_NAME_WORDS:
+        return "", True
+    if any(w.strip(".,'\"").lower() in _IMPLAUSIBLE_NAME_WORDS for w in words):
+        return "", True
+    return candidate.strip().title(), False
 # Matches an optional currency marker, digits with optional thousands
 # commas (Indian-style grouping like "1,00,000" included — the comma
 # positions aren't validated, just stripped), an optional decimal part,
@@ -133,26 +181,53 @@ def start_transfer_from_text(
     if not has_transferable_balance(phone_number):
         return {"handled": True, "response": templates.render_insufficient_balance()}
 
-    requested_name = ""
-    name_match = _BENEFICIARY_INTENT_RE.search(query.strip())
-    if name_match:
-        candidate = _NAME_TRAILERS.sub("", name_match.group(1).strip())
-        requested_name = candidate.strip().title()
+    requested_name, needs_llm = _extract_beneficiary_name(query)
+    if needs_llm:
+        # The regex captured something, but it doesn't look like a real
+        # name — don't guess and don't start a workflow with it. Report
+        # unhandled so the caller (WorkflowManager.start_requested /
+        # workflow_adapter.start_workflow_directly) falls through to the
+        # LLM+tools agent, which can actually understand the sentence
+        # (e.g. call start_transfer_workflow with the right name) instead
+        # of pattern-matching it.
+        logger.info(
+            f"[{trace_id}] Transfer trigger text needs real understanding, "
+            f"deferring to LLM+tools agent | phone={phone_number[-4:]}"
+        )
+        return {"handled": False, "response": None}
 
     beneficiaries = get_beneficiaries_by_phone(phone_number)
-    saved = next(
-        (
-            item for item in beneficiaries
-            if item["beneficiary_name"].lower() in requested_name.lower()
-            or requested_name.lower() in item["beneficiary_name"].lower()
-        ),
-        None,
-    ) if requested_name else None
+    matches = [
+        item for item in beneficiaries
+        if item["beneficiary_name"].lower() in requested_name.lower()
+        or requested_name.lower() in item["beneficiary_name"].lower()
+    ] if requested_name else []
+    saved = matches[0] if len(matches) == 1 else None
 
     amount: Optional[str] = None
     amount_value = _parse_amount_text(query)
     if amount_value is not None:
         amount = f"₹{amount_value:,.2f}"
+
+    if len(matches) > 1:
+        # More than one saved beneficiary matches (e.g. two "John"s) —
+        # never silently pick one, ask which. Reuses the full,
+        # already-tested beneficiary list/prompt (its row ids index into
+        # the complete list, not just these matches) rather than building
+        # a second, separately-indexed list to keep in sync.
+        workflow = create_workflow_model(
+            WORKFLOW_TRANSFER, STEP_SELECT_BENEFICIARY, data={"amount": amount} if amount else {}
+        )
+        create_workflow(phone_number, workflow)
+        logger.info(
+            f"[{trace_id}] Transfer beneficiary name ambiguous | phone={phone_number[-4:]} | "
+            f"name={requested_name!r} | matches={len(matches)}"
+        )
+        response = transfer_handler._beneficiary_prompt(
+            phone_number,
+            error=f"I found more than one saved beneficiary matching \"{requested_name}\" — which one did you mean?",
+        )["response"]
+        return {"handled": True, "response": response}
 
     source_hint = _extract_source_hint(query)
 
@@ -242,7 +317,7 @@ class TransferWorkflowProcessor:
             confirmation = interpret_confirmation(
                 text, llm_fallback=_llm_fallback(["yes", "no"], "Confirm or edit the transfer summary just shown.")
             )
-            if command in {"1", "confirm transfer"} or confirmation == "yes":
+            if command in {"1", "confirm transfer", "txfr_confirm"} or confirmation == "yes":
                 data = workflow.get("data", {})
                 reference = f"TRF-{secrets.token_hex(4).upper()}"
                 amount_value = self._parse_amount(data.get("amount", "")) or Decimal("0")
@@ -299,7 +374,7 @@ class TransferWorkflowProcessor:
                 menu_response.pdf_bytes = receipt_response.pdf_bytes
                 menu_response.pdf_filename = receipt_response.pdf_filename
                 return {"handled": True, "response": menu_response}
-            if command == "2" or confirmation == "no" or "edit" in command or "change" in command:
+            if command in {"2", "txfr_edit"} or confirmation == "no" or "edit" in command or "change" in command:
                 set_workflow_step(phone_number, STEP_SELECT_AMOUNT)
                 return self._amount_prompt()
             return self._ask("Please choose 1 to confirm or 2 to edit.", "Reply Back or Cancel.")
@@ -307,6 +382,12 @@ class TransferWorkflowProcessor:
 
     def _beneficiary(self, workflow: dict, phone_number: str, text: str) -> dict:
         beneficiaries = get_beneficiaries_by_phone(phone_number)
+        # Strip the "ben_" namespace a tapped list row sends back (see
+        # _beneficiary_prompt) so the rest of this method's existing
+        # digit-index/"new" matching — unchanged — works identically
+        # whether the customer tapped a row or typed a bare number.
+        if text.lower().startswith("ben_"):
+            text = text[4:]
         choice = text.lower()
         selected = None
         if choice.isdigit() and 1 <= int(choice) <= len(beneficiaries):
@@ -378,6 +459,12 @@ class TransferWorkflowProcessor:
 
     def _source_account(self, workflow: dict, phone_number: str, text: str) -> dict:
         accounts = workflow.get("data", {}).get("source_accounts") or get_accounts_by_phone(phone_number)
+        # Strip the "src_" namespace a tapped list row sends back (see
+        # _source_prompt) so the rest of this method's existing
+        # digit-index matching — unchanged — works identically whether the
+        # customer tapped a row or typed a bare number.
+        if text.strip().lower().startswith("src_"):
+            text = text.strip()[4:]
         choice = text.strip().lower()
         account = None
         if choice.isdigit() and 1 <= int(choice) <= len(accounts):
@@ -482,13 +569,19 @@ class TransferWorkflowProcessor:
 
     @staticmethod
     def _confirm_prompt(summary: str) -> dict:
-        """Ready-to-send confirmation with tap-to-reply Yes/Edit buttons —
-        ids "1"/"2" match the digit fast-path STEP_CONFIRM_TRANSFER already
-        checks (see handle()), so a typed "1"/"2" still works exactly as
-        before if the interactive send falls back to plain text."""
+        """Ready-to-send confirmation with tap-to-reply Yes/Edit buttons.
+
+        Ids are namespaced ("txfr_confirm"/"txfr_edit"), not bare "1"/"2" —
+        a bare digit here would collide with the main menu's own digit ids
+        (mirrors the loan-type-list bug: a stray reply with no active
+        workflow falls through to WorkflowManager.start_requested's
+        unrelated menu_actions dispatch, e.g. "1" would silently start a
+        second, unrelated transfer). The typed "1"/"confirm transfer" and
+        "2" shortcuts in handle()'s STEP_CONFIRM_TRANSFER branch are kept
+        working unchanged — this only renames what the *button* sends."""
         return StructuredResponse.buttons_of(
             summary,
-            [InteractiveButton(id="1", title="Yes, send it"), InteractiveButton(id="2", title="Edit amount")],
+            [InteractiveButton(id="txfr_confirm", title="Yes, send it"), InteractiveButton(id="txfr_edit", title="Edit amount")],
         )
 
     @staticmethod
@@ -521,14 +614,22 @@ class TransferWorkflowProcessor:
         # cap, fall back to the plain numbered text list rather than fail.
         if len(beneficiaries) + 1 > 10:
             return {"handled": True, "response": templates.render_beneficiary_selection(beneficiaries, error=error)}
+        # "ben_" prefixed ids, not bare "1".."N" — a bare digit here would
+        # collide with the main menu's own digit ids (mirrors the
+        # loan-type-list bug: a stray reply with no active workflow falls
+        # through to WorkflowManager.start_requested's unrelated
+        # menu_actions dispatch). _beneficiary() strips this prefix before
+        # its existing digit-index logic, so typed bare digits ("1", "2",
+        # ...) keep working exactly as before — only the button's own id
+        # changes.
         rows = [
             InteractiveListRow(
-                id=str(index), title=b["beneficiary_name"][:24],
+                id=f"ben_{index}", title=b["beneficiary_name"][:24],
                 description=_mask_account(b["account_number"]),
             )
             for index, b in enumerate(beneficiaries, 1)
         ]
-        rows.append(InteractiveListRow(id="new", title="Add new beneficiary"))
+        rows.append(InteractiveListRow(id="ben_new", title="Add new beneficiary"))
         intro = f"{error}\n\n" if error else ""
         intro += "\U0001F464 Sure, who would you like to pay?"
         return {"handled": True, "response": StructuredResponse.list_of(
@@ -546,9 +647,12 @@ class TransferWorkflowProcessor:
         accounts = get_accounts_by_phone(phone_number)
         if len(accounts) > 10:
             return {"handled": True, "response": templates.render_source_account_prompt(accounts, error=error)}
+        # "src_" prefixed ids, not bare "1".."N" — same collision risk (and
+        # fix pattern) as the beneficiary list above; _source_account()
+        # strips this prefix before its existing digit-index logic.
         rows = [
             InteractiveListRow(
-                id=str(index), title=f"{str(a['account_type']).title()} · {a['account_number']}"[:24],
+                id=f"src_{index}", title=f"{str(a['account_type']).title()} · {a['account_number']}"[:24],
                 description=f"Balance {format_currency(a['balance'], a.get('currency', 'INR'))}",
             )
             for index, a in enumerate(accounts, 1)

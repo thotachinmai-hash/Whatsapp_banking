@@ -4,7 +4,7 @@ from typing import Any
 
 import psycopg2
 
-from app.database import create_loan_request, get_accounts_by_phone
+from app.database import create_loan_request, get_accounts_by_phone, get_customer_by_phone, get_loan_product
 from app.logger import get_logger
 from app.workflows.constants import (
     STEP_CONFIRM_LOAN,
@@ -22,7 +22,26 @@ from app.services.receipts import build_receipt_response
 
 logger = get_logger(__name__)
 
-LOAN_TYPES = {"1": "personal", "2": "home", "3": "vehicle", "4": "education"}
+# Namespaced ids (not bare digits, and not plain words) — a bare "1".."4"
+# here would collide with the main menu's own digit ids ("1"=transfer,
+# "2"=balance, "3"=transactions, "4"=cheque, etc. — see
+# WorkflowManager.start_requested's menu_actions). If a tap on this list
+# ever arrives with no active loan workflow to interpret it (observed
+# live: a stray/late list_reply after the workflow was already gone), a
+# bare digit falls through to that unrelated main-menu dispatch and
+# silently starts the wrong thing — confirmed live: tapping "Education
+# Loan" (old id "4") started a cheque deposit instead.
+#
+# A plain-word id like "loan_education" or "home" isn't safe either:
+# start_requested()'s free-text keyword matching is substring-based
+# (`"loan" in normalized`), so "loan_education" alone re-triggers the
+# loan-start keyword path — confirmed live, it silently created and
+# advanced a fresh loan workflow. "home" also exactly matches the
+# main-menu-navigation word set (`_MENU_WORDS`) elsewhere. The "lt_"
+# prefix isn't a substring any keyword/navigation matcher looks for, so a
+# stray reply with no active workflow now safely falls through to
+# "out of scope" instead of silently starting an unrelated action.
+LOAN_TYPES = {"lt_personal": "personal", "lt_home": "home", "lt_vehicle": "vehicle", "lt_education": "education"}
 LOAN_LABELS = {"personal": "Personal Loan", "home": "Home Loan", "vehicle": "Vehicle Loan", "education": "Education Loan"}
 # Natural synonyms beyond the canonical words themselves — so "I'd like a
 # mortgage" or "loan for a car" resolve without needing a number or the
@@ -36,9 +55,13 @@ LOAN_TYPE_SYNONYMS = {
 
 # Asked one at a time, in this order — account number first, so the loan is
 # tied to a real account on the customer's profile from the start.
+# "purpose" and "applicant_name" are deliberately NOT here — both are
+# derived automatically instead of asked (see _select_type): applicant_name
+# from the customer's own profile, purpose from the loan type itself
+# (a "Home Loan" doesn't need a separate "what's this for?" question).
 FIELD_ORDER = (
-    "account_number", "applicant_name", "monthly_income", "employment_type",
-    "requested_amount", "tenure_months", "purpose",
+    "account_number", "monthly_income", "employment_type",
+    "requested_amount", "tenure_months",
 )
 FIELD_LABELS = {
     "account_number": "Account number", "applicant_name": "Applicant name",
@@ -63,7 +86,6 @@ ALIASES = {
     "employment": "employment_type", "employmenttype": "employment_type",
     "amount": "requested_amount", "requestedamount": "requested_amount", "loanamount": "requested_amount",
     "tenure": "tenure_months", "tenuremonths": "tenure_months", "loantenure": "tenure_months",
-    "purpose": "purpose", "loanpurpose": "purpose", "reason": "purpose",
 }
 ACKNOWLEDGMENTS = {
     "ok", "okay", "kk", "alright", "all right", "sure", "fine",
@@ -153,12 +175,28 @@ _EMPLOYMENT_TYPE_WORDS = {
     "unemployed": "Unemployed", "retired": "Retired", "student": "Student",
 }
 _TENURE_HINT_RE = re.compile(r"\b([0-9]+(?:\.[0-9]+)?)\s*(years?|yrs?|months?|mos?)\b", re.I)
+# Indian-English amount shorthand ("5 lakh", "50k", "2 crore") — captured
+# as an optional group alongside the digits so a stated amount/income
+# isn't silently truncated to its bare leading digits (confirmed live:
+# "a personal loan of ₹5 lakh" was recorded as a requested_amount of "5").
+_AMOUNT_MULTIPLIERS = {"k": 1_000, "thousand": 1_000, "lac": 100_000, "lakh": 100_000, "crore": 10_000_000}
+_AMOUNT_SUFFIX_RE = r"\s*(k|thousand|lac|lakhs?|crores?)?\s*(?:rupees?)?"
 _INCOME_HINT_RE = re.compile(
-    r"\b(?:income|salary|earn\w*|take[\s-]?home)\D{0,12}?([0-9][0-9,]*(?:\.[0-9]{1,2})?)", re.I
+    rf"\b(?:income|salary|earn\w*|take[\s-]?home)\D{{0,12}}?([0-9][0-9,]*(?:\.[0-9]{{1,2}})?){_AMOUNT_SUFFIX_RE}", re.I
 )
 _AMOUNT_HINT_RE = re.compile(
-    r"\b(?:loan\s*(?:of|amount)?|borrow\w*|requested\s*amount)\D{0,12}?([0-9][0-9,]*(?:\.[0-9]{1,2})?)", re.I
+    rf"\b(?:loan\s*(?:of|amount)?|borrow\w*|requested\s*amount)\D{{0,12}}?([0-9][0-9,]*(?:\.[0-9]{{1,2}})?){_AMOUNT_SUFFIX_RE}", re.I
 )
+
+
+def _apply_amount_suffix(number_str: str, suffix: str | None) -> str:
+    """Multiply a captured digit string by its Indian-English shorthand
+    suffix ("lakh" -> ×100,000, "crore" -> ×10,000,000, "k"/"thousand" ->
+    ×1,000), or return it unchanged if there's no suffix."""
+    value = float(number_str.replace(",", ""))
+    if suffix:
+        value *= _AMOUNT_MULTIPLIERS.get(suffix.strip().lower().rstrip("s"), 1)
+    return str(int(value)) if value.is_integer() else str(value)
 
 
 def extract_loan_fields_from_text(text: str) -> dict[str, str]:
@@ -188,11 +226,11 @@ def extract_loan_fields_from_text(text: str) -> dict[str, str]:
 
     income_match = _INCOME_HINT_RE.search(text)
     if income_match:
-        result["monthly_income"] = income_match.group(1).replace(",", "")
+        result["monthly_income"] = _apply_amount_suffix(income_match.group(1), income_match.group(2))
 
     amount_match = _AMOUNT_HINT_RE.search(text)
     if amount_match:
-        amount_value = amount_match.group(1).replace(",", "")
+        amount_value = _apply_amount_suffix(amount_match.group(1), amount_match.group(2))
         if amount_value != result.get("monthly_income"):
             result["requested_amount"] = amount_value
 
@@ -239,6 +277,16 @@ def _normalize_value(field: str, value: str) -> str:
             if unit.startswith(("year", "yr")):
                 number *= 12
             return str(int(number)) if number.is_integer() else str(number)
+    if field in {"monthly_income", "requested_amount"}:
+        # A customer answering "How much would you like to borrow?"
+        # directly with "5 lakh"/"50k" must not be truncated to its bare
+        # leading digits — same Indian-English shorthand handled for the
+        # free-text trigger message in extract_loan_fields_from_text.
+        match = re.fullmatch(
+            rf"(?:₹|rs\.?|inr)?\s*([0-9][0-9,]*(?:\.[0-9]{{1,2}})?){_AMOUNT_SUFFIX_RE}", value, re.I
+        )
+        if match:
+            return _apply_amount_suffix(match.group(1), match.group(2))
     if field == "account_number":
         return re.sub(r"\s", "", value).upper()
     return value
@@ -280,7 +328,18 @@ class LoanWorkflowHandler:
             )}
 
         pending_content = workflow.get("data", {}).get("pending_document_content")
-        update_workflow_data(phone_number, {"loan_type": loan_type})
+
+        # applicant_name and purpose are derived, never asked: the customer
+        # is already registered (their name is on file), and the loan type
+        # itself already says what the loan is for ("Home Loan" doesn't
+        # need a separate "what's this for?" question).
+        customer = get_customer_by_phone(phone_number)
+        derived_fields = {
+            "loan_type": loan_type,
+            "applicant_name": (customer or {}).get("full_name", ""),
+            "purpose": LOAN_LABELS.get(loan_type, loan_type),
+        }
+        update_workflow_data(phone_number, derived_fields)
         set_workflow_step(phone_number, STEP_UPLOAD_LOAN_FORM)
         logger.info(f"[{trace_id}] Loan type selected | phone={phone_number[-4:]} | loan_type={loan_type}")
 
@@ -290,9 +349,8 @@ class LoanWorkflowHandler:
             # apply it now instead of asking the customer to upload it
             # again.
             clear_workflow_data(phone_number, "pending_document_content")
-            data = dict(workflow.get("data", {}))
+            data = {**workflow.get("data", {}), **derived_fields}
             data.pop("pending_document_content", None)
-            data["loan_type"] = loan_type
             extracted = _extract(pending_content)
             data.update(extracted)
             update_workflow_data(phone_number, extracted)
@@ -308,8 +366,7 @@ class LoanWorkflowHandler:
         # recognizable so the wizard only asks for what's still missing.
         extracted = extract_loan_fields_from_text(query)
         if extracted:
-            data = dict(workflow.get("data", {}))
-            data["loan_type"] = loan_type
+            data = {**workflow.get("data", {}), **derived_fields}
             data.update(extracted)
             update_workflow_data(phone_number, extracted)
             logger.info(
@@ -367,7 +424,7 @@ class LoanWorkflowHandler:
                 update_workflow_data(phone_number, data)
                 return self._ask_next_or_confirm(phone_number, data, trace_id)
 
-        value, error = self._validate_field(current_field, text, phone_number)
+        value, error = self._validate_field(current_field, text, phone_number, data.get("loan_type"))
         if error:
             if current_field == "account_number":
                 return self._account_prompt(phone_number, error=error)
@@ -429,7 +486,7 @@ class LoanWorkflowHandler:
         )}
 
     @staticmethod
-    def _validate_field(field: str, text: str, phone_number: str) -> tuple[str, str | None]:
+    def _validate_field(field: str, text: str, phone_number: str, loan_type: str | None = None) -> tuple[str, str | None]:
         """Returns (normalized_value, error_message_or_None)."""
         if field == "account_number":
             resolved = _resolve_account_selection(phone_number, text)
@@ -450,6 +507,33 @@ class LoanWorkflowHandler:
                     return "", "That doesn't look like a valid number."
             except ValueError:
                 return "", "That doesn't look like a valid number."
+
+            # requested_amount/tenure_months must fall inside this loan
+            # type's published range (loan_products — the same table
+            # get_loan_product_info already quotes to the customer for
+            # "what's the interest rate" questions). monthly_income has no
+            # product-level range to check against.
+            if field in {"requested_amount", "tenure_months"} and loan_type:
+                product = get_loan_product(loan_type)
+                if product:
+                    value = float(numeric)
+                    label = LOAN_LABELS.get(loan_type, loan_type)
+                    if field == "requested_amount":
+                        min_amount, max_amount = float(product["min_amount"]), float(product["max_amount"])
+                        if value < min_amount or value > max_amount:
+                            currency = product.get("currency", "INR")
+                            return "", (
+                                f"For a {label}, the amount must be between "
+                                f"{format_currency(min_amount, currency)} and {format_currency(max_amount, currency)} "
+                                "— please enter a different amount."
+                            )
+                    else:
+                        min_tenure, max_tenure = int(product["min_tenure_months"]), int(product["max_tenure_months"])
+                        if value < min_tenure or value > max_tenure:
+                            return "", (
+                                f"For a {label}, the repayment tenure must be between "
+                                f"{min_tenure} and {max_tenure} months — please enter a different tenure."
+                            )
             return normalized, None
         return text.strip(), None
 

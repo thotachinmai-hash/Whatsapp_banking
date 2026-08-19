@@ -193,6 +193,14 @@ def tool_get_last_transactions(
             accounts = get_accounts_by_phone(phone_number)
             if not accounts:
                 return {"found": False, "message": "No active accounts are linked to this mobile number."}
+            if len(accounts) > 1:
+                # Same "ask which account" shape as tool_get_account_balance
+                # — silently picking accounts[0] here would show the wrong
+                # account's history to a customer with more than one.
+                return {"found": True, "multiple_accounts": True, "accounts": [
+                    {"account_number": item["account_number"], "account_type": item["account_type"]}
+                    for item in accounts
+                ]}
             account_number = accounts[0]["account_number"]
         account = get_account_by_number(account_number)
         if not account:
@@ -259,6 +267,11 @@ def tool_get_spend_summary(
             accounts = get_accounts_by_phone(phone_number)
             if not accounts:
                 return {"found": False, "message": "No active accounts are linked to this mobile number."}
+            if len(accounts) > 1:
+                return {"found": True, "multiple_accounts": True, "accounts": [
+                    {"account_number": item["account_number"], "account_type": item["account_type"]}
+                    for item in accounts
+                ]}
             account_number = accounts[0]["account_number"]
         account = get_account_by_number(account_number)
         if not account:

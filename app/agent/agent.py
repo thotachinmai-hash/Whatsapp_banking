@@ -410,7 +410,11 @@ Important: Keep responses short and suitable for WhatsApp messages.""")
         # generation glitch, not a real failure — a fresh attempt at the
         # same turn usually succeeds, so retry a couple of times before
         # giving up and failing the whole conversation turn.
-        attempts = 3
+        # Confirmed live: some turns still return empty content on all 3
+        # attempts (e.g. a plain "transfer to my landlord" trigger, no
+        # deeper reasoning than a simple lookup+tool-call). One extra
+        # attempt lowers — doesn't eliminate — how often that happens.
+        attempts = 4
         for attempt in range(1, attempts + 1):
             try:
                 response = llm_with_tools.invoke(messages)

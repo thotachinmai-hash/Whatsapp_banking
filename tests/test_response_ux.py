@@ -572,7 +572,7 @@ class InteractiveListConversionTests(unittest.IsolatedAsyncioTestCase):
         response = as_structured_response(result["response"])
         self.assertEqual(response.kind, ResponseKind.LIST)
         rows = [row for section in response.list_sections for row in section.rows]
-        self.assertEqual({row.id for row in rows}, {"1", "2", "3", "4"})
+        self.assertEqual({row.id for row in rows}, {"lt_personal", "lt_home", "lt_vehicle", "lt_education"})
         self.assertEqual({row.title for row in rows}, {"Personal Loan", "Home Loan", "Vehicle Loan", "Education Loan"})
 
     async def test_tapped_loan_type_row_id_advances_the_workflow(self):
@@ -580,7 +580,8 @@ class InteractiveListConversionTests(unittest.IsolatedAsyncioTestCase):
 
         fake_accounts = [{"account_number": "GB12FNCL00010001234567", "account_type": "current", "balance": "500.00", "currency": "INR"}]
         self.manager.start_requested(self.phone, "I want a loan", trace_id="t2")
-        with patch("app.workflows.processors.loan.get_accounts_by_phone", return_value=fake_accounts):
+        with patch("app.workflows.processors.loan.get_accounts_by_phone", return_value=fake_accounts), \
+             patch("app.workflows.processors.loan.get_customer_by_phone", return_value={"full_name": "Alex Doe"}):
             result = await self.manager.handle(self.phone, "2", trace_id="t3")
         self.assertTrue(result["handled"])
         from app.workflows.memory import get_workflow
@@ -603,7 +604,7 @@ class InteractiveListConversionTests(unittest.IsolatedAsyncioTestCase):
         response = as_structured_response(result["response"])
         self.assertEqual(response.kind, ResponseKind.LIST)
         rows = [row for section in response.list_sections for row in section.rows]
-        self.assertEqual([row.id for row in rows], ["1", "2", "new"])
+        self.assertEqual([row.id for row in rows], ["ben_1", "ben_2", "ben_new"])
 
     async def test_beneficiary_list_falls_back_to_text_beyond_ten_rows(self):
         beneficiaries = [
@@ -623,7 +624,7 @@ class InteractiveListConversionTests(unittest.IsolatedAsyncioTestCase):
     async def test_onboarding_account_type_list_row_ids_match_aliases(self):
         response = account_type_list_prompt("Which account?")
         rows = [row for section in response.list_sections for row in section.rows]
-        self.assertEqual([row.id for row in rows], ["1", "2", "3"])
+        self.assertEqual([row.id for row in rows], ["savings", "current", "salary"])
         self.assertEqual([row.title for row in rows], ["Savings Account", "Current Account", "Salary Account"])
 
 

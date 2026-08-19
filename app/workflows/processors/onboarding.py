@@ -42,7 +42,13 @@ PROFILE_FIELD_ALIASES = {
 }
 
 
-_ACCOUNT_TYPE_ROWS = [("1", "savings", "Savings Account"), ("2", "current", "Current Account"), ("3", "salary", "Salary Account")]
+# Row ids are the account-type key itself, not a bare digit — "1"/"2"/"3"
+# would collide with the main menu's own digit ids (see the loan-type-list
+# bug this mirrors: a stray reply with no active workflow falls through to
+# WorkflowManager.start_requested's unrelated menu_actions dispatch). The
+# `aliases` dict in _handle_select_account_type already accepts these exact
+# words too, so no parsing change was needed to make this safe.
+_ACCOUNT_TYPE_ROWS = [("savings", "savings", "Savings Account"), ("current", "current", "Current Account"), ("salary", "salary", "Salary Account")]
 ALL_ACCOUNT_TYPES = tuple(key for _digit, key, _title in _ACCOUNT_TYPE_ROWS)
 
 

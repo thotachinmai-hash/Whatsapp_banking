@@ -108,7 +108,7 @@ def _looks_like_numeric_value(query: str) -> bool:
     regular LLM/tool logic instead of being rejected as a generic banking
     question."""
     text = (query or "").strip()
-    return bool(text) and text not in {"1", "2", "3", "4", "5", "6", "7"} and bool(re.fullmatch(r"\d+(?:[.,]\d+)?", text))
+    return bool(text) and text not in {"1", "2", "3", "4", "5", "6", "7", "8"} and bool(re.fullmatch(r"\d+(?:[.,]\d+)?", text))
 
 # A plain-ASCII text message with at least this many words is treated as
 # an implicit "the customer is writing in English now" signal — see
@@ -287,7 +287,7 @@ class ConversationManager:
                 return guidance_response
 
             if action in ("OUT_OF_SCOPE", "CLARIFICATION_REQUIRED") and query.strip() in {
-                "1", "2", "3", "4", "5", "6", "7",
+                "1", "2", "3", "4", "5", "6", "7", "8",
             }:
                 # A tapped main-menu row (or a typed bare digit) carries no
                 # words for the intent classifier to work with, so it can

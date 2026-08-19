@@ -434,6 +434,22 @@ class WorkflowManager:
             if action == "create_account":
                 return start_add_account_workflow(phone_number, trace_id)
             return {"handled": False, "response": None, "reprocess_query": f"check my {action}"}
+        # A destructive verb ("delete my KYC request") must never fall
+        # through to a keyword-triggered workflow *start* just because the
+        # rest of the sentence contains "kyc"/"cheque"/"loan" — confirmed
+        # live: "Delete my KYC request." was silently force-starting a new
+        # KYC upload instead of saying this isn't something the app
+        # supports. None of these operations exist anywhere in this
+        # codebase (no delete/cancel-after-submit workflow for any
+        # request type), so this is never a false negative.
+        if any(word in normalized for word in ("delete", "remove", "erase")):
+            return {
+                "handled": True,
+                "response": (
+                    "I'm not able to delete or remove a submitted request through chat. "
+                    "Please contact support for that. Is there anything else I can help with?"
+                ),
+            }
         lookup_words = (
             "status", "list", "show", "my ", "all ", "details", "information",
             "progress", "submitted", "associated", "application", "applications",
