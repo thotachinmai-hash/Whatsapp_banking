@@ -448,10 +448,20 @@ Important: Keep responses short and suitable for WhatsApp messages.""")
                 logger.info(f"[{state['trace_id']}] LLM call successful | duration={duration:.2f}ms")
                 return {"messages": [response]}
             except Exception as e:
-                is_malformed_tool_call = "tool_use_failed" in str(e)
-                if is_malformed_tool_call and attempt < attempts:
+                error_text = str(e)
+                is_malformed_tool_call = "tool_use_failed" in error_text
+                # Sarvam's shared model capacity occasionally returns a 503
+                # "model_overloaded" — confirmed live, on both a text and a
+                # voice turn. That's a momentary, provider-wide condition,
+                # not something specific to this request, so a fresh
+                # attempt a moment later is worth trying the same way a
+                # malformed tool call already is, rather than failing the
+                # whole turn on the first hit.
+                is_overloaded = "model_overloaded" in error_text or "503" in error_text
+                if (is_malformed_tool_call or is_overloaded) and attempt < attempts:
                     logger.warning(
-                        f"[{state['trace_id']}] LLM emitted a malformed tool call, retrying "
+                        f"[{state['trace_id']}] LLM call failed "
+                        f"({'model overloaded' if is_overloaded else 'malformed tool call'}), retrying "
                         f"| attempt={attempt}/{attempts} | error={e}"
                     )
                     continue
