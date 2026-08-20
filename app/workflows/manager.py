@@ -34,7 +34,7 @@ from app.conversation.renderer import InteractiveButton, StructuredResponse
 from app.conversation.workflow_adapter import start_workflow_directly
 
 from app.workflows.processors.cheque import ChequeWorkflowProcessor
-from app.workflows.processors.loan import LoanWorkflowHandler, detect_loan_type_from_text, loan_type_list_prompt
+from app.workflows.processors.loan import LOAN_TYPES, LoanWorkflowHandler, detect_loan_type_from_text, loan_type_list_prompt
 from app.workflows.processors.kyc import KYCWorkflowHandler
 from app.workflows.processors.onboarding import OnboardingWorkflowHandler, start_add_account_workflow
 from app.workflows.processors.transfer import TransferWorkflowProcessor, has_transferable_balance, start_transfer_from_text
@@ -434,6 +434,25 @@ class WorkflowManager:
             if action == "create_account":
                 return start_add_account_workflow(phone_number, trace_id)
             return {"handled": False, "response": None, "reprocess_query": f"check my {action}"}
+        if normalized in LOAN_TYPES:
+            # A tap on the "Choose loan type" list row, arriving with no
+            # active workflow to interpret it. WhatsApp interactive
+            # messages stay tappable forever, so a customer naturally
+            # reuses this same list later — to try a different type after
+            # already picking one, or after already finishing that
+            # application entirely — and that reply has nowhere to land
+            # (confirmed live: it fell through to a generic "I'm here to
+            # help" message instead). The row id already fully states
+            # what was chosen, so treat it exactly like typing "I'd like a
+            # <type> loan" — start a fresh application with that type
+            # instead of dead-ending.
+            logger.info(
+                f"[{trace_id}] Loan-type tap with no active workflow, starting fresh | "
+                f"phone={phone_number[-4:]} | loan_type={LOAN_TYPES[normalized]}"
+            )
+            workflow = create_workflow_model(WORKFLOW_LOAN, STEP_SELECT_LOAN_TYPE)
+            create_workflow(phone_number, workflow)
+            return self.loan_handler._select_type(workflow, phone_number, normalized, trace_id)
         # A destructive verb ("delete my KYC request") must never fall
         # through to a keyword-triggered workflow *start* just because the
         # rest of the sentence contains "kyc"/"cheque"/"loan" — confirmed
