@@ -9,6 +9,7 @@ from app.workflows.constants import (
     WORKFLOW_KYC,
     WORKFLOW_ONBOARDING,
     WORKFLOW_TRANSFER,
+    WORKFLOW_VIEW_TRANSACTIONS,
     STEP_COLLECT_AADHAAR,
     STEP_SELECT_LOAN_TYPE,
     STEP_UPLOAD_KYC_FORM,
@@ -38,6 +39,7 @@ from app.workflows.processors.loan import LoanWorkflowHandler, detect_loan_type_
 from app.workflows.processors.kyc import KYCWorkflowHandler
 from app.workflows.processors.onboarding import OnboardingWorkflowHandler, start_add_account_workflow
 from app.workflows.processors.transfer import TransferWorkflowProcessor, has_transferable_balance, start_transfer_from_text
+from app.workflows.processors.transactions import ViewTransactionsWorkflowHandler, start_view_transactions
 
 logger = get_logger(__name__)
 
@@ -50,6 +52,7 @@ _WORKFLOW_LABELS = {
     WORKFLOW_LOAN: "Loan application",
     WORKFLOW_KYC: "KYC update",
     WORKFLOW_ADD_ACCOUNT: "Account creation",
+    WORKFLOW_VIEW_TRANSACTIONS: "View transactions",
 }
 
 
@@ -66,6 +69,7 @@ class WorkflowManager:
         self.kyc_handler = KYCWorkflowHandler()
         self.onboarding_handler = OnboardingWorkflowHandler()
         self.transfer_handler = TransferWorkflowProcessor()
+        self.transactions_handler = ViewTransactionsWorkflowHandler()
 
     async def handle(
         self,
@@ -381,6 +385,9 @@ class WorkflowManager:
         elif workflow_type == WORKFLOW_TRANSFER:
             return self.transfer_handler.handle(workflow, phone_number, query, trace_id=trace_id)
 
+        elif workflow_type == WORKFLOW_VIEW_TRANSACTIONS:
+            return await self.transactions_handler.handle(workflow, phone_number, query, trace_id=trace_id)
+
         logger.warning(
             f"Unknown workflow type: {workflow_type}"
         )
@@ -433,6 +440,8 @@ class WorkflowManager:
                 return {"handled": True, "response": render_kyc_update_started()}
             if action == "create_account":
                 return start_add_account_workflow(phone_number, trace_id)
+            if action == "transactions":
+                return start_view_transactions(phone_number, trace_id)
             return {"handled": False, "response": None, "reprocess_query": f"check my {action}"}
         # A destructive verb ("delete my KYC request") must never fall
         # through to a keyword-triggered workflow *start* just because the
