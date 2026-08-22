@@ -248,7 +248,7 @@ Or via curl:
 curl -X POST http://localhost:8001/api/test/message \
   -H "Content-Type: application/json" \
   -d '{
-    "phone_number": "447812345678",
+    "phone_number": "XXXXXXXXXXXX",
     "message": "What is my balance for account GB12HSBC00010001234567?"
   }'
 ```
@@ -281,7 +281,7 @@ I want to deposit a cheque
 Check status of CHQ-A1B2C3D4
 ```
 
-To test **registration/onboarding**, message from `447123456789` (unregistered) and follow the prompts:
+To test **registration/onboarding**, message from `XXXXXXXXXXXX` (unregistered) and follow the prompts:
 
 ```
 hi
