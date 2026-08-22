@@ -252,7 +252,7 @@ Or via curl:
 curl -X POST http://localhost:8001/api/test/message \
   -H "Content-Type: application/json" \
   -d '{
-    "phone_number": "447818658034",
+    "phone_number": "XXXXXXXXXXXX",
     "message": "What is my balance for account GB12FNCL00010001234567?"
   }'
 ```
@@ -286,7 +286,7 @@ I want to apply for a loan
 Transfer £50 to Priya Sharma
 ```
 
-To test **registration/onboarding**, message from `447123456789` (unregistered) and follow the prompts (Aadhaar/PAN are uploaded as document images, not typed):
+To test **registration/onboarding**, message from `XXXXXXXXXXXX` (unregistered) and follow the prompts (Aadhaar/PAN are uploaded as document images, not typed):
 
 ```
 hi
@@ -319,7 +319,7 @@ To test the **interrupt fix**, send `hi` (or `cancel`/`stop`) partway through an
 |---|---|---|
 | `accounts` | Bank accounts (number, holder, balance, currency, type). A customer can have more than one — tools that don't get an explicit account number look these up by phone. | 3 |
 | `transactions` | Per-account ledger, tagged with a `category` (groceries, bills, rent, salary, transport, entertainment, shopping, isa, bonus, interest, transfer, other) | 45 (15/account, 3 months) |
-| `customers` | Registered WhatsApp numbers → name, Aadhaar (unique), PAN (unique), date of birth, guardian name, address | 2 (John Smith, Sarah Johnson) — `447123456789` intentionally left unregistered to test onboarding |
+| `customers` | Registered WhatsApp numbers → name, Aadhaar (unique), PAN (unique), date of birth, guardian name, address | 2 (John Smith, Sarah Johnson) — `XXXXXXXXXXXX` intentionally left unregistered to test onboarding |
 | `cheque_requests` | Cheque deposit requests, keyed by a unique `request_id` (`CHQ-XXXXXXXX`), with status PENDING/COMPLETED/REJECTED | 3 |
 | `loan_requests` | Loan applications, keyed by `request_id` (`LOAN-XXXXXXXX`), details stored as JSONB | 0 |
 | `kyc_requests` | KYC update submissions, keyed by `request_id` (`KYC-XXXXXXXX`), details stored as JSONB | 0 |
