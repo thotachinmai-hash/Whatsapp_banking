@@ -248,7 +248,7 @@ Or via curl:
 curl -X POST http://localhost:8001/api/test/message \
   -H "Content-Type: application/json" \
   -d '{
-    "phone_number": "447812345678",
+    "phone_number": "XXXXXXXXXXXX",
     "message": "What is my balance for account GB12HSBC00010001234567?"
   }'
 ```
@@ -272,9 +272,9 @@ curl -X POST http://localhost:8001/api/test/message \
 
 | Account Number | Holder | Balance | Phone Number | Registered? |
 |---|---|---|---|---|
-| GB12HSBC00010001234567 | John Smith | £2,543.67 | 447812345678 | ✅ Yes |
-| GB12HSBC00010007654321 | Sarah Johnson | £15,750.00 | 447987654321 | ✅ Yes |
-| GB12HSBC00010009876543 | Michael Brown | £892.34 | 447123456789 | ❌ No — use this number to test onboarding |
+| GB12HSBC00010001234567 | John Smith | £2,543.67 | XXXXXXXXXXXX | ✅ Yes |
+| GB12HSBC00010007654321 | Sarah Johnson | £15,750.00 | XXXXXXXXXXXX | ✅ Yes |
+| GB12HSBC00010009876543 | Michael Brown | £892.34 | XXXXXXXXXXXX | ❌ No — use this number to test onboarding |
 
 Sample cheque requests seeded for testing `check_cheque_status` (all belong to John Smith / Sarah Johnson's numbers above):
 
@@ -299,7 +299,7 @@ I want to deposit a cheque
 Check status of CHQ-A1B2C3D4
 ```
 
-To test **registration/onboarding**, message from `447123456789` (unregistered) and follow the prompts:
+To test **registration/onboarding**, message from `XXXXXXXXXXXX` (unregistered) and follow the prompts:
 
 ```
 hi
