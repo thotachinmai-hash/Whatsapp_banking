@@ -3,19 +3,20 @@ import secrets
 from decimal import Decimal, InvalidOperation
 from typing import Any, Optional
 
-from app.database import create_beneficiary, create_transfer, get_accounts_by_phone, get_beneficiaries_by_phone, get_customer_by_phone
+from app.database import create_beneficiary, create_transfer, get_accounts_by_phone, get_beneficiaries_by_phone, get_customer_by_phone, get_frequently_used_account
 from app.logger import get_logger
 from app.workflows.constants import (
     STEP_COLLECT_AMOUNT,
     STEP_COLLECT_BENEFICIARY_ACCOUNT,
     STEP_COLLECT_BENEFICIARY_NAME,
+    STEP_CONFIRM_SOURCE_ACCOUNT,
     STEP_CONFIRM_TRANSFER,
     STEP_SELECT_AMOUNT,
     STEP_SELECT_BENEFICIARY,
     STEP_SELECT_SOURCE_ACCOUNT,
     WORKFLOW_TRANSFER,
 )
-from app.workflows.memory import complete_workflow, create_workflow, create_workflow_model, set_workflow_step, update_workflow_data
+from app.workflows.memory import clear_workflow_data, complete_workflow, create_workflow, create_workflow_model, set_workflow_step, update_workflow_data
 from app.workflows.nlu import PAY_VERB_PATTERN, SEND_VERB_PATTERN, interpret_confirmation, interpret_menu_choice
 from app.services.llm_understanding import interpret_choice_llm, is_llm_fallback_enabled
 from app.conversation.renderer import InteractiveButton, InteractiveListRow, InteractiveListSection, StructuredResponse
@@ -238,6 +239,8 @@ class TransferWorkflowProcessor:
             return self._amount(workflow, phone_number, text)
         if step == STEP_SELECT_SOURCE_ACCOUNT:
             return self._source_account(workflow, phone_number, text)
+        if step == STEP_CONFIRM_SOURCE_ACCOUNT:
+            return self._confirm_source_account(workflow, phone_number, text)
         if step == STEP_CONFIRM_TRANSFER:
             confirmation = interpret_confirmation(
                 text, llm_fallback=_llm_fallback(["yes", "no"], "Confirm or edit the transfer summary just shown.")
@@ -378,13 +381,6 @@ class TransferWorkflowProcessor:
 
     def _source_account(self, workflow: dict, phone_number: str, text: str) -> dict:
         accounts = workflow.get("data", {}).get("source_accounts") or get_accounts_by_phone(phone_number)
-        if len(accounts) == 1:
-            return self._finalize_source_account(
-                phone_number,
-                workflow.get("data", {}),
-                accounts[0],
-                auto_selected=True,
-            )
         choice = text.strip().lower()
         account = None
         if choice.isdigit() and 1 <= int(choice) <= len(accounts):
@@ -417,13 +413,13 @@ class TransferWorkflowProcessor:
         phone_number: str,
         data: dict,
         account: dict,
-        auto_selected: bool = False,
+        intro: str | None = None,
     ) -> dict:
         """Validate the chosen account has enough balance and, if so, move
         straight to the confirmation summary. Shared by the explicit
         source-account step (_source_account, above) and
-        resolve_source_account_or_prompt's auto-select path (no separate
-        question asked at all when there's only one account to choose)."""
+        _confirm_source_account's "yes" path (the frequently-used-account
+        confirmation, below)."""
         balance = Decimal(str(account["balance"]))
         amount_value = self._parse_amount(data.get("amount", "")) or Decimal("0")
 
@@ -450,30 +446,79 @@ class TransferWorkflowProcessor:
             amount_label=data.get("amount"),
             source_account_label=account["account_number"],
         )
-        if auto_selected:
-            ack = (
-                "You only have one account linked to this phone number — I’m proceeding with "
-                f"{account['account_number']} for this transfer."
-            )
-            return {"handled": True, "response": self._confirm_prompt(f"{ack}\n\n{summary}")}
+        if intro:
+            return {"handled": True, "response": self._confirm_prompt(f"{intro}\n\n{summary}")}
         return {"handled": True, "response": self._confirm_prompt(summary)}
 
+    @staticmethod
+    def _source_account_confirmation_prompt(account_number: str, intro: str | None = None) -> StructuredResponse:
+        body = f"{intro}\n\n" if intro else ""
+        body += f"{account_number} is your frequently used account. Would you like to proceed with it for this transfer?"
+        return StructuredResponse.buttons_of(
+            body,
+            [InteractiveButton(id="acct_yes", title="Yes, proceed"), InteractiveButton(id="acct_no", title="No, thanks")],
+        )
+
+    def _offer_source_account_confirmation(self, phone_number: str, data: dict, accounts: list[dict]) -> dict | None:
+        """Ask the customer to confirm their frequently used account before
+        assuming it, instead of silently picking it — only a declined
+        confirmation falls through to the full account-picker list
+        (_source_prompt)."""
+        account = get_frequently_used_account(phone_number, accounts=accounts)
+        if not account:
+            return None
+        update_workflow_data(phone_number, {"suggested_source_account": account["account_number"]})
+        set_workflow_step(phone_number, STEP_CONFIRM_SOURCE_ACCOUNT)
+        return {"handled": True, "response": self._source_account_confirmation_prompt(account["account_number"])}
+
+    def _confirm_source_account(self, workflow: dict, phone_number: str, text: str) -> dict:
+        data = dict(workflow.get("data", {}))
+        suggested = data.get("suggested_source_account")
+        command = text.strip().lower()
+        if command == "acct_yes":
+            answer = "yes"
+        elif command == "acct_no":
+            answer = "no"
+        else:
+            answer = interpret_confirmation(
+                text, llm_fallback=_llm_fallback(["yes", "no"], "Confirm the suggested source account, or reply no to choose a different one.")
+            )
+
+        if answer == "yes" and suggested:
+            accounts = data.get("source_accounts") or get_accounts_by_phone(phone_number)
+            account = next((a for a in accounts if a["account_number"] == suggested), None)
+            clear_workflow_data(phone_number, "suggested_source_account")
+            if not account:
+                return self._source_prompt(phone_number)
+            ack = f"✅ Continuing with {suggested}."
+            return self._finalize_source_account(phone_number, data, account, intro=ack)
+
+        if answer == "no":
+            clear_workflow_data(phone_number, "suggested_source_account")
+            set_workflow_step(phone_number, STEP_SELECT_SOURCE_ACCOUNT)
+            return self._source_prompt(phone_number)
+
+        return {
+            "handled": True,
+            "response": self._source_account_confirmation_prompt(suggested or "", intro="Sorry, I didn't quite catch that."),
+        }
+
     def resolve_source_account_or_prompt(self, phone_number: str, data: dict, source_hint: str | None = None) -> dict:
-        """Skip the "which account?" question entirely when there's nothing
-        genuinely ambiguous to ask: exactly one account on file, or the
-        customer already named a type (e.g. "from my savings account")
-        that matches exactly one. Otherwise falls back to the normal
-        source-account picker template (with 2+ real accounts to choose
-        between, that template is still the right UX — this only removes
-        the question when there's no real choice being made)."""
+        """Skip straight to the confirmation summary only when the customer
+        already named an account type (e.g. "from my savings account")
+        that matches exactly one account on file — that's a real, explicit
+        choice, not a suggestion. Otherwise, offer the frequently used
+        account for a Yes/No confirmation (see _offer_source_account_confirmation)
+        instead of silently picking it, falling back to the full picker
+        (_source_prompt) only if there are no accounts at all to suggest."""
         accounts = get_accounts_by_phone(phone_number)
-        candidates = accounts
         if source_hint:
             type_matches = [a for a in accounts if str(a["account_type"]).lower() == source_hint]
             if len(type_matches) == 1:
-                candidates = type_matches
-        if len(candidates) == 1:
-            return self._finalize_source_account(phone_number, data, candidates[0], auto_selected=True)
+                return self._finalize_source_account(phone_number, data, type_matches[0])
+        offer = self._offer_source_account_confirmation(phone_number, data, accounts)
+        if offer is not None:
+            return offer
         set_workflow_step(phone_number, STEP_SELECT_SOURCE_ACCOUNT)
         return self._source_prompt(phone_number)
 
@@ -484,6 +529,7 @@ class TransferWorkflowProcessor:
             STEP_SELECT_AMOUNT: STEP_SELECT_BENEFICIARY,
             STEP_COLLECT_AMOUNT: STEP_SELECT_AMOUNT,
             STEP_SELECT_SOURCE_ACCOUNT: STEP_SELECT_AMOUNT,
+            STEP_CONFIRM_SOURCE_ACCOUNT: STEP_SELECT_AMOUNT,
             STEP_CONFIRM_TRANSFER: STEP_SELECT_SOURCE_ACCOUNT,
         }.get(workflow["step"])
         if not previous:

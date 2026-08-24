@@ -310,8 +310,9 @@ class TransferButtonTests(ButtonWiringTestCase):
         self.assertEqual(stored["step"], STEP_CONFIRM_TRANSFER)
         self.assertEqual(stored["data"]["source_account"], "GB12FNCL00010001111111")
 
-    async def test_single_linked_account_auto_selects_and_acknowledges(self):
+    async def test_single_linked_account_offers_confirmation_then_proceeds(self):
         from app.conversation.renderer import as_structured_response
+        from app.workflows.constants import STEP_CONFIRM_SOURCE_ACCOUNT
         from app.workflows.processors.transfer import TransferWorkflowProcessor
 
         single_account = [{
@@ -326,17 +327,44 @@ class TransferButtonTests(ButtonWiringTestCase):
         })
         create_workflow(self.phone, workflow)
         with patch("app.workflows.processors.transfer.get_accounts_by_phone", return_value=single_account):
-            result = TransferWorkflowProcessor().resolve_source_account_or_prompt(self.phone, workflow["data"])
+            offer = TransferWorkflowProcessor().resolve_source_account_or_prompt(self.phone, workflow["data"])
+
+        self.assertTrue(offer["handled"])
+        stored = get_workflow(self.phone)
+        self.assertEqual(stored["step"], STEP_CONFIRM_SOURCE_ACCOUNT)
+        self.assertIsNone(stored["data"].get("source_account"))
+        offer_text = as_structured_response(offer["response"]).text.lower()
+        self.assertIn("frequently used account", offer_text)
+        self.assertIn("gb12fncl00010001111111", offer_text)
+
+        with patch("app.workflows.processors.transfer.get_accounts_by_phone", return_value=single_account):
+            result = await self.manager.handle(self.phone, "acct_yes", trace_id="tt2")
 
         self.assertTrue(result["handled"])
         stored = get_workflow(self.phone)
         self.assertEqual(stored["step"], STEP_CONFIRM_TRANSFER)
         self.assertEqual(stored["data"]["source_account"], "GB12FNCL00010001111111")
-        structured = as_structured_response(result["response"])
-        text = structured.text.lower()
-        self.assertIn("only one account", text)
-        self.assertIn("proceeding with", text)
-        self.assertIn("gb12fncl00010001111111", text)
+        confirm_text = as_structured_response(result["response"]).text.lower()
+        self.assertIn("continuing with", confirm_text)
+        self.assertIn("gb12fncl00010001111111", confirm_text)
+
+    async def test_declining_suggested_source_account_shows_full_list(self):
+        from app.workflows.constants import STEP_CONFIRM_SOURCE_ACCOUNT
+
+        workflow = create_workflow_model(WORKFLOW_TRANSFER, STEP_CONFIRM_SOURCE_ACCOUNT, data={
+            "beneficiary_name": "Priya",
+            "beneficiary_account": "GB12FNCL00010009999999",
+            "amount": "£25.00",
+            "suggested_source_account": "GB12FNCL00010001111111",
+        })
+        create_workflow(self.phone, workflow)
+        with patch("app.workflows.processors.transfer.get_accounts_by_phone", return_value=self._accounts()):
+            result = await self.manager.handle(self.phone, "acct_no", trace_id="tt3")
+
+        self.assertTrue(result["handled"])
+        stored = get_workflow(self.phone)
+        self.assertEqual(stored["step"], STEP_SELECT_SOURCE_ACCOUNT)
+        self.assertIsNone(stored["data"].get("source_account"))
 
     async def test_tapping_yes_send_it_creates_the_transfer(self):
         workflow = create_workflow_model(WORKFLOW_TRANSFER, STEP_CONFIRM_TRANSFER, data={

@@ -282,6 +282,7 @@ WORKFLOW_STEP_HINTS = {
     ("transfer", "SELECT_AMOUNT"): "Please tell me how much you'd like to send.",
     ("transfer", "COLLECT_AMOUNT"): "Please tell me how much you'd like to send.",
     ("transfer", "SELECT_SOURCE_ACCOUNT"): "Please choose which of your accounts to pay from.",
+    ("transfer", "CONFIRM_SOURCE_ACCOUNT"): "Please reply YES to pay from the suggested account, or NO to choose a different one.",
     ("transfer", "CONFIRM_TRANSFER"): "Please review the details above and reply YES to confirm or NO to cancel.",
     ("loan", "SELECT_LOAN_TYPE"): "Please choose the type of loan you'd like to apply for.",
     ("loan", "CONFIRM_LOAN_ACCOUNT"): "Please reply YES to proceed with the suggested account, or NO to choose a different one.",
