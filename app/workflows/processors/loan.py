@@ -447,7 +447,16 @@ class LoanWorkflowHandler:
                 data["account_number"] = accounts[0]["account_number"]
                 update_workflow_data(phone_number, {"account_number": data["account_number"]})
                 logger.info(f"[{trace_id}] Loan account auto-selected (only one on file) | phone={phone_number[-4:]}")
-                return self._ask_next_or_confirm(phone_number, data, trace_id, just_completed_field=just_completed_field)
+                ack = (
+                    "You only have one account linked to this phone number — I’m proceeding with "
+                    f"{data['account_number']} for this loan."
+                )
+                next_field_after_select = _next_missing_field(data)
+                if next_field_after_select:
+                    return {"handled": True, "response": with_nav_buttons(f"{ack}\n\n{templates.render_loan_field_prompt(next_field_after_select, just_completed_field)}")}
+                set_workflow_step(phone_number, STEP_CONFIRM_LOAN)
+                logger.info(f"[{trace_id}] Loan form complete after auto-select, awaiting confirmation | phone={phone_number[-4:]}")
+                return {"handled": True, "response": self._confirmation(data)}
             ack = templates.FIELD_ACKS.get(just_completed_field, "") if just_completed_field else ""
             return self._account_prompt(phone_number, intro=ack or None)
         if next_field:
