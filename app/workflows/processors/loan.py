@@ -4,10 +4,17 @@ from typing import Any
 
 import psycopg2
 
-from app.database import create_loan_request, get_accounts_by_phone, get_customer_by_phone, get_loan_product
+from app.database import (
+    create_loan_request,
+    get_accounts_by_phone,
+    get_customer_by_phone,
+    get_frequently_used_account,
+    get_loan_product,
+)
 from app.logger import get_logger
 from app.workflows.constants import (
     STEP_CONFIRM_LOAN,
+    STEP_CONFIRM_LOAN_ACCOUNT,
     STEP_SELECT_LOAN_TYPE,
     STEP_UPLOAD_LOAN_FORM,
 )
@@ -309,6 +316,8 @@ class LoanWorkflowHandler:
             return self._select_type(workflow, phone_number, query, trace_id)
         if step == STEP_UPLOAD_LOAN_FORM:
             return self._collect_field(workflow, phone_number, query, parsed_document, trace_id)
+        if step == STEP_CONFIRM_LOAN_ACCOUNT:
+            return self._confirm_account(workflow, phone_number, query, trace_id)
         if step == STEP_CONFIRM_LOAN:
             return self._confirm(workflow, phone_number, query, trace_id)
         return {"handled": True, "response": "The loan application is in an invalid state. Please start again."}
@@ -375,10 +384,11 @@ class LoanWorkflowHandler:
             )
             return self._ask_next_or_confirm(phone_number, data, trace_id)
 
-        auto = self._auto_select_single_account(phone_number, {**workflow.get("data", {}), **derived_fields}, trace_id)
-        if auto is not None:
-            return auto
-        return self._account_prompt(phone_number, intro=templates.render_loan_type_selected(loan_type))
+        intro = templates.render_loan_type_selected(loan_type)
+        offer = self._offer_account_confirmation(phone_number, {**workflow.get("data", {}), **derived_fields}, trace_id, intro=intro)
+        if offer is not None:
+            return offer
+        return self._account_prompt(phone_number, intro=intro)
 
     def _collect_field(self, workflow: dict[str, Any], phone_number: str, query: str, parsed_document: dict | None, trace_id: str = "") -> dict[str, Any]:
         data = dict(workflow.get("data", {}))
@@ -403,17 +413,11 @@ class LoanWorkflowHandler:
         text = query.strip()
         if not text:
             if current_field == "account_number":
-                auto = self._auto_select_single_account(phone_number, data, trace_id)
-                if auto is not None:
-                    return auto
                 return self._account_prompt(phone_number)
             return {"handled": True, "response": templates.render_loan_field_prompt(current_field)}
 
         if _is_acknowledgment(text):
             if current_field == "account_number":
-                auto = self._auto_select_single_account(phone_number, data, trace_id)
-                if auto is not None:
-                    return auto
                 return self._account_prompt(phone_number, intro="No problem!")
             return {"handled": True, "response": "No problem! " + templates.render_loan_field_prompt(current_field)}
 
@@ -444,37 +448,82 @@ class LoanWorkflowHandler:
         logger.info(f"[{trace_id}] Loan field collected | phone={phone_number[-4:]} | field={current_field}")
         return self._ask_next_or_confirm(phone_number, data, trace_id, just_completed_field=current_field)
 
-    def _auto_select_single_account(self, phone_number: str, data: dict, trace_id: str = "") -> dict[str, Any] | None:
+    @staticmethod
+    def _account_confirmation_prompt(account_number: str, intro: str | None = None) -> StructuredResponse:
+        body = f"{intro}\n\n" if intro else ""
+        body += f"{account_number} is your frequently used account. Would you like to proceed with it?"
+        return StructuredResponse.buttons_of(
+            body,
+            [InteractiveButton(id="acct_yes", title="Yes, proceed"), InteractiveButton(id="acct_no", title="No, thanks")],
+        )
+
+    def _offer_account_confirmation(self, phone_number: str, data: dict, trace_id: str = "", intro: str | None = None) -> dict[str, Any] | None:
+        """Ask the customer to confirm their frequently used account (see
+        app/database.py::get_frequently_used_account) before assuming it,
+        instead of silently picking it — only a declined confirmation
+        falls through to the full account-picker list (_account_prompt)."""
         if data.get("account_number"):
             return None
         accounts = get_accounts_by_phone(phone_number)
-        if len(accounts) != 1:
+        account = get_frequently_used_account(phone_number, accounts=accounts)
+        if not account:
             return None
 
-        data = dict(data)
-        data["account_number"] = accounts[0]["account_number"]
-        update_workflow_data(phone_number, {"account_number": data["account_number"]})
-        logger.info(f"[{trace_id}] Loan account auto-selected (only one on file) | phone={phone_number[-4:]}")
-
-        ack = (
-            "You only have one account linked to this phone number — I’m proceeding with "
-            f"{data['account_number']} for this loan."
+        update_workflow_data(phone_number, {"suggested_account_number": account["account_number"]})
+        set_workflow_step(phone_number, STEP_CONFIRM_LOAN_ACCOUNT)
+        logger.info(
+            f"[{trace_id}] Offering frequently used loan account | "
+            f"phone={phone_number[-4:]} | account={account['account_number']}"
         )
-        next_field_after_select = _next_missing_field(data)
-        if next_field_after_select:
-            return {"handled": True, "response": with_nav_buttons(f"{ack}\n\n{templates.render_loan_field_prompt(next_field_after_select)}")}
+        return {"handled": True, "response": self._account_confirmation_prompt(account["account_number"], intro=intro)}
 
-        set_workflow_step(phone_number, STEP_CONFIRM_LOAN)
-        logger.info(f"[{trace_id}] Loan form complete after auto-select, awaiting confirmation | phone={phone_number[-4:]}")
-        return {"handled": True, "response": self._confirmation(data, intro=ack)}
+    def _confirm_account(self, workflow: dict[str, Any], phone_number: str, query: str, trace_id: str = "") -> dict[str, Any]:
+        data = dict(workflow.get("data", {}))
+        suggested = data.get("suggested_account_number")
+        text = query.strip().lower()
+        if text == "acct_yes":
+            answer = "yes"
+        elif text == "acct_no":
+            answer = "no"
+        else:
+            answer = interpret_confirmation(query, llm_fallback=_llm_fallback(
+                ["yes", "no"], "Confirm the suggested account, or reply no to choose a different one."
+            ))
+
+        if answer == "yes" and suggested:
+            data.pop("suggested_account_number", None)
+            data["account_number"] = suggested
+            update_workflow_data(phone_number, {"account_number": suggested})
+            clear_workflow_data(phone_number, "suggested_account_number")
+            set_workflow_step(phone_number, STEP_UPLOAD_LOAN_FORM)
+            logger.info(f"[{trace_id}] Loan account confirmed | phone={phone_number[-4:]} | account={suggested}")
+            result = self._ask_next_or_confirm(phone_number, data, trace_id)
+            ack = f"✅ Continuing with {suggested}."
+            response = result["response"]
+            if isinstance(response, str):
+                result["response"] = f"{ack}\n\n{response}"
+            else:
+                response.text = f"{ack}\n\n{response.text}"
+            return result
+
+        if answer == "no":
+            clear_workflow_data(phone_number, "suggested_account_number")
+            set_workflow_step(phone_number, STEP_UPLOAD_LOAN_FORM)
+            logger.info(f"[{trace_id}] Loan account declined, showing full account list | phone={phone_number[-4:]}")
+            return self._account_prompt(phone_number)
+
+        return {
+            "handled": True,
+            "response": self._account_confirmation_prompt(suggested or "", intro="Sorry, I didn't quite catch that."),
+        }
 
     def _ask_next_or_confirm(self, phone_number: str, data: dict, trace_id: str = "", just_completed_field: str | None = None) -> dict[str, Any]:
         next_field = _next_missing_field(data)
         if next_field == "account_number":
-            auto = self._auto_select_single_account(phone_number, data, trace_id)
-            if auto is not None:
-                return auto
             ack = templates.FIELD_ACKS.get(just_completed_field, "") if just_completed_field else ""
+            offer = self._offer_account_confirmation(phone_number, data, trace_id, intro=ack or None)
+            if offer is not None:
+                return offer
             return self._account_prompt(phone_number, intro=ack or None)
         if next_field:
             return {"handled": True, "response": templates.render_loan_field_prompt(next_field, just_completed_field)}

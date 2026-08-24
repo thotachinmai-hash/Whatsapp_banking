@@ -889,6 +889,7 @@ def _handle_back_for_workflow(workflow: dict[str, Any], phone_number: str) -> di
         "CORRECT_CHEQUE": ("UPLOAD_CHEQUE", "🧾 Back to cheque upload. Please send a clear cheque image."),
         "UPLOAD_CHEQUE": (None, "🧾 You are already at the first cheque step. Please upload an image or reply *Cancel*."),
         "UPLOAD_LOAN_FORM": ("SELECT_LOAN_TYPE", "📝 Back to loan type. Reply 1 Personal, 2 Home, 3 Vehicle, or 4 Education."),
+        "CONFIRM_LOAN_ACCOUNT": ("SELECT_LOAN_TYPE", "📝 Back to loan type. Reply 1 Personal, 2 Home, 3 Vehicle, or 4 Education."),
         "CONFIRM_LOAN": ("UPLOAD_LOAN_FORM", "📝 Back to your loan form. Please upload it or reply with corrections."),
         "SELECT_LOAN_TYPE": (None, "📝 You are already at the first loan step. Reply *Cancel* to stop."),
         "CONFIRM_KYC": ("UPLOAD_KYC_FORM", "📄 Back to KYC details. Please upload the document or reply with corrections."),

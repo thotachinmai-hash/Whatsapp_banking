@@ -7,3 +7,7 @@ venv/
 *.egg-info/
 .pytest_cache/
 .claude/
+output.log/
+output2.log/
+output3.log/
+output4.log/

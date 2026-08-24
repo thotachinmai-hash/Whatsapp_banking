@@ -106,7 +106,7 @@ class LoanConfirmButtonTests(ButtonWiringTestCase):
         self.assertIsNone(get_workflow(self.phone))
 
     async def test_tapped_loan_type_row_id_advances_and_persists_type(self):
-        from app.workflows.constants import STEP_SELECT_LOAN_TYPE, STEP_UPLOAD_LOAN_FORM
+        from app.workflows.constants import STEP_CONFIRM_LOAN_ACCOUNT, STEP_SELECT_LOAN_TYPE
 
         workflow = create_workflow_model(WORKFLOW_LOAN, STEP_SELECT_LOAN_TYPE)
         create_workflow(self.phone, workflow)
@@ -116,11 +116,15 @@ class LoanConfirmButtonTests(ButtonWiringTestCase):
             result = await self.manager.handle(self.phone, "lt_vehicle", trace_id="lt3")  # row id for Vehicle Loan
         self.assertTrue(result["handled"])
         stored = get_workflow(self.phone)
-        self.assertEqual(stored["step"], STEP_UPLOAD_LOAN_FORM)
+        # With a single linked account, the customer is now asked to confirm
+        # it (frequently-used-account flow) before landing on UPLOAD_LOAN_FORM.
+        self.assertEqual(stored["step"], STEP_CONFIRM_LOAN_ACCOUNT)
         self.assertEqual(stored["data"]["loan_type"], "vehicle")
+        self.assertEqual(stored["data"]["suggested_account_number"], "GB12FNCL00010001234567")
 
-    async def test_single_linked_account_auto_selects_and_acknowledges_for_loan(self):
+    async def test_single_linked_account_offers_confirmation_then_proceeds_for_loan(self):
         from app.conversation.renderer import as_structured_response
+        from app.workflows.constants import STEP_CONFIRM_LOAN, STEP_CONFIRM_LOAN_ACCOUNT
         from app.workflows.processors.loan import LoanWorkflowHandler
 
         workflow = create_workflow_model(WORKFLOW_LOAN, STEP_UPLOAD_LOAN_FORM, data={
@@ -137,15 +141,52 @@ class LoanConfirmButtonTests(ButtonWiringTestCase):
         single_account = [{"account_number": "GB12FNCL00010001234567", "account_type": "current", "balance": "500.00"}]
 
         with patch("app.workflows.processors.loan.get_accounts_by_phone", return_value=single_account):
-            result = LoanWorkflowHandler()._ask_next_or_confirm(self.phone, workflow["data"], trace_id="lt4")
+            offer = LoanWorkflowHandler()._ask_next_or_confirm(self.phone, workflow["data"], trace_id="lt4")
+
+        self.assertTrue(offer["handled"])
+        stored = get_workflow(self.phone)
+        self.assertEqual(stored["step"], STEP_CONFIRM_LOAN_ACCOUNT)
+        self.assertIsNone(stored["data"].get("account_number"))
+        offer_text = as_structured_response(offer["response"]).text.lower()
+        self.assertIn("frequently used account", offer_text)
+        self.assertIn("gb12fncl00010001234567", offer_text)
+
+        with patch("app.workflows.processors.loan.get_accounts_by_phone", return_value=single_account):
+            result = await self.manager.handle(self.phone, "acct_yes", trace_id="lt5")
 
         self.assertTrue(result["handled"])
         stored = get_workflow(self.phone)
+        self.assertEqual(stored["step"], STEP_CONFIRM_LOAN)
         self.assertEqual(stored["data"]["account_number"], "GB12FNCL00010001234567")
-        text = as_structured_response(result["response"]).text.lower()
-        self.assertIn("only one account", text)
-        self.assertIn("proceeding with", text)
-        self.assertIn("gb12fncl00010001234567", text)
+        confirm_text = as_structured_response(result["response"]).text.lower()
+        self.assertIn("continuing with", confirm_text)
+        self.assertIn("gb12fncl00010001234567", confirm_text)
+
+    async def test_declining_suggested_loan_account_shows_full_list(self):
+        from app.workflows.constants import STEP_CONFIRM_LOAN_ACCOUNT, STEP_UPLOAD_LOAN_FORM
+
+        workflow = create_workflow_model(WORKFLOW_LOAN, STEP_CONFIRM_LOAN_ACCOUNT, data={
+            "loan_type": "personal",
+            "applicant_name": "Alex Doe",
+            "purpose": "Personal Loan",
+            "monthly_income": "3000",
+            "employment_type": "salaried",
+            "requested_amount": "10000",
+            "tenure_months": "24",
+            "suggested_account_number": "GB12FNCL00010001234567",
+        })
+        create_workflow(self.phone, workflow)
+        accounts = [
+            {"account_number": "GB12FNCL00010001234567", "account_type": "current", "balance": "500.00", "currency": "INR"},
+            {"account_number": "GB12FNCL00010009999999", "account_type": "savings", "balance": "1000.00", "currency": "INR"},
+        ]
+        with patch("app.workflows.processors.loan.get_accounts_by_phone", return_value=accounts):
+            result = await self.manager.handle(self.phone, "acct_no", trace_id="lt6")
+
+        self.assertTrue(result["handled"])
+        stored = get_workflow(self.phone)
+        self.assertEqual(stored["step"], STEP_UPLOAD_LOAN_FORM)
+        self.assertIsNone(stored["data"].get("account_number"))
 
 
 class KYCConfirmButtonTests(ButtonWiringTestCase):

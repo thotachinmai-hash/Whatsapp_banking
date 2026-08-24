@@ -576,7 +576,7 @@ class InteractiveListConversionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual({row.title for row in rows}, {"Personal Loan", "Home Loan", "Vehicle Loan", "Education Loan"})
 
     async def test_tapped_loan_type_row_id_advances_the_workflow(self):
-        from app.workflows.constants import STEP_UPLOAD_LOAN_FORM
+        from app.workflows.constants import STEP_CONFIRM_LOAN_ACCOUNT
 
         fake_accounts = [{"account_number": "GB12FNCL00010001234567", "account_type": "current", "balance": "500.00", "currency": "INR"}]
         self.manager.start_requested(self.phone, "I want a loan", trace_id="t2")
@@ -586,8 +586,11 @@ class InteractiveListConversionTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result["handled"])
         from app.workflows.memory import get_workflow
         workflow = get_workflow(self.phone)
-        self.assertEqual(workflow["step"], STEP_UPLOAD_LOAN_FORM)
+        # With a single linked account, the customer is asked to confirm it
+        # (frequently-used-account flow) before landing on UPLOAD_LOAN_FORM.
+        self.assertEqual(workflow["step"], STEP_CONFIRM_LOAN_ACCOUNT)
         self.assertEqual(workflow["data"]["loan_type"], "home")
+        self.assertEqual(workflow["data"]["suggested_account_number"], "GB12FNCL00010001234567")
 
     async def test_transfer_beneficiary_list_row_ids_are_digits_plus_new(self):
         from app.workflows.constants import STEP_SELECT_BENEFICIARY, WORKFLOW_TRANSFER

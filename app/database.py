@@ -119,6 +119,41 @@ def get_accounts_by_phone(phone_number: str) -> list[dict]:
     )
 
 
+def get_frequently_used_account(phone_number: str, accounts: list[dict] | None = None) -> dict | None:
+    """The account linked to this phone with the most transaction history,
+    used to suggest a default instead of always asking which account to
+    use (see app/workflows/processors/loan.py's account-confirmation
+    step). Ties (including the common "no transactions yet" case) fall
+    back to the first account on file, same ordering get_accounts_by_phone
+    already uses.
+
+    `accounts`, if given, is used instead of a fresh get_accounts_by_phone
+    lookup — callers that already fetched the list (or, in tests, that
+    monkeypatch their own import of get_accounts_by_phone rather than this
+    module's) get one consistent answer instead of two independent DB
+    calls that could disagree."""
+    if accounts is None:
+        accounts = get_accounts_by_phone(phone_number)
+    if not accounts:
+        return None
+    if len(accounts) == 1:
+        return accounts[0]
+    normalized = normalize_phone_number(phone_number)
+    rows = execute_query(
+        """SELECT a.account_number, COUNT(t.id) AS tx_count
+           FROM accounts a
+           LEFT JOIN transactions t ON t.account_id = a.id
+           WHERE a.phone_number = %s AND a.status = 'active'
+           GROUP BY a.account_number, a.id
+           ORDER BY tx_count DESC, a.id ASC""",
+        (normalized,),
+    )
+    if not rows:
+        return accounts[0]
+    top_account_number = rows[0]["account_number"]
+    return next((a for a in accounts if a["account_number"] == top_account_number), accounts[0])
+
+
 def get_transactions(
     account_id: int,
     limit: int = 5,
