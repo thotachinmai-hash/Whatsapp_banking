@@ -115,6 +115,15 @@ class StructuredResponse(BaseModel):
     pdf_bytes: Optional[bytes] = None
     pdf_filename: Optional[str] = None
 
+    # Names an existing plain-text menu template (see
+    # app/services/message_handler.py::send_voice_reply's _VOICE_QUERY_MENUS)
+    # that a voice-in customer should also see as its own follow-up
+    # message, since the voice note only speaks `text` — set only by the
+    # LLM+tools branch (app/agent/agent.py::_run_llm_agent) when an
+    # informational tool call has a matching menu already in code (e.g.
+    # asking about loan types). Ignored entirely for text-in customers.
+    voice_menu: Optional[str] = None
+
     @classmethod
     def template(cls, text: str, template_name: str) -> "StructuredResponse":
         return cls(kind=ResponseKind.TEMPLATE, text=text, template_name=template_name)

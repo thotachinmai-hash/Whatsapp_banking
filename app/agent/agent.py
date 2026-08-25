@@ -35,6 +35,7 @@ from app.workflows.manager import WorkflowManager
 from app.workflows.memory import get_workflow
 from app.conversation.context_store import ConversationContextStore
 from app.conversation.manager import ConversationManager
+from app.conversation.renderer import ResponseLike, StructuredResponse
 from app.conversation.responses.errors import render_agent_error
 load_dotenv()
 logger = get_logger(__name__)
@@ -490,7 +491,7 @@ async def _run_llm_agent(
     phone_number: str,
     trace_id: str,
     parsed_document: dict | None = None,
-) -> str:
+) -> ResponseLike:
     """The LLM+tools branch — unchanged from before Phase 5, only
     extracted into its own function so ConversationManager can call it as
     an injected `llm_fallback` without app/agent/agent.py importing (and
@@ -549,6 +550,15 @@ async def _run_llm_agent(
         # real answer, an empty bubble is not.
         logger.warning(f"[{trace_id}] Agent returned empty content after all retries — using fallback text")
         return "Sorry, I wasn't able to work that out just now. Could you try asking again?"
+
+    # A voice-in customer who asked an informational question that has a
+    # matching plain-text menu already in code (e.g. "what loan types do
+    # you have") still can't see it from spoken audio alone — flag it here
+    # so app/services/message_handler.py::send_voice_reply can send that
+    # existing menu as its own follow-up message. Text-in customers are
+    # unaffected — send_voice_reply is only called for voice turns.
+    if "get_loan_product_info" in tools_called:
+        return StructuredResponse(text=response_content, voice_menu="loan_type")
 
     return response_content
 

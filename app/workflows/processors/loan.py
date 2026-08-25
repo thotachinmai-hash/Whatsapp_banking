@@ -9,7 +9,6 @@ from app.database import (
     get_accounts_by_phone,
     get_customer_by_phone,
     get_frequently_used_account,
-    get_loan_product,
 )
 from app.logger import get_logger
 from app.workflows.constants import (
@@ -414,12 +413,12 @@ class LoanWorkflowHandler:
         if not text:
             if current_field == "account_number":
                 return self._account_prompt(phone_number)
-            return {"handled": True, "response": templates.render_loan_field_prompt(current_field)}
+            return {"handled": True, "response": templates.render_loan_field_prompt(current_field, loan_type=data.get("loan_type"))}
 
         if _is_acknowledgment(text):
             if current_field == "account_number":
                 return self._account_prompt(phone_number, intro="No problem!")
-            return {"handled": True, "response": "No problem! " + templates.render_loan_field_prompt(current_field)}
+            return {"handled": True, "response": "No problem! " + templates.render_loan_field_prompt(current_field, loan_type=data.get("loan_type"))}
 
         # Still accept "Field: value" for anyone who prefers to paste ahead,
         # but it no longer applies to just the current field.
@@ -526,7 +525,7 @@ class LoanWorkflowHandler:
                 return offer
             return self._account_prompt(phone_number, intro=ack or None)
         if next_field:
-            return {"handled": True, "response": templates.render_loan_field_prompt(next_field, just_completed_field)}
+            return {"handled": True, "response": templates.render_loan_field_prompt(next_field, just_completed_field, loan_type=data.get("loan_type"))}
         set_workflow_step(phone_number, STEP_CONFIRM_LOAN)
         logger.info(f"[{trace_id}] Loan form complete, awaiting confirmation | phone={phone_number[-4:]}")
         return {"handled": True, "response": self._confirmation(data)}
@@ -562,7 +561,13 @@ class LoanWorkflowHandler:
 
     @staticmethod
     def _validate_field(field: str, text: str, phone_number: str, loan_type: str | None = None) -> tuple[str, str | None]:
-        """Returns (normalized_value, error_message_or_None)."""
+        """Returns (normalized_value, error_message_or_None).
+
+        No range/numeric validation for monthly_income, requested_amount, or
+        tenure_months — whatever the customer enters for those is accepted
+        as-is (normalized only). account_number and applicant_name still
+        validate, since those aren't the checks that were asked to go.
+        """
         if field == "account_number":
             resolved = _resolve_account_selection(phone_number, text)
             if not resolved:
@@ -575,41 +580,7 @@ class LoanWorkflowHandler:
                 return "", "That doesn't look like a valid name."
             return text.strip(), None
         if field in {"monthly_income", "requested_amount", "tenure_months"}:
-            normalized = _normalize_value(field, text)
-            numeric = re.sub(r"[^0-9.\-]", "", normalized)
-            try:
-                if not numeric or float(numeric) <= 0:
-                    return "", "That doesn't look like a valid number."
-            except ValueError:
-                return "", "That doesn't look like a valid number."
-
-            # requested_amount/tenure_months must fall inside this loan
-            # type's published range (loan_products — the same table
-            # get_loan_product_info already quotes to the customer for
-            # "what's the interest rate" questions). monthly_income has no
-            # product-level range to check against.
-            if field in {"requested_amount", "tenure_months"} and loan_type:
-                product = get_loan_product(loan_type)
-                if product:
-                    value = float(numeric)
-                    label = LOAN_LABELS.get(loan_type, loan_type)
-                    if field == "requested_amount":
-                        min_amount, max_amount = float(product["min_amount"]), float(product["max_amount"])
-                        if value < min_amount or value > max_amount:
-                            currency = product.get("currency", "INR")
-                            return "", (
-                                f"For a {label}, the amount must be between "
-                                f"{format_currency(min_amount, currency)} and {format_currency(max_amount, currency)} "
-                                "— please enter a different amount."
-                            )
-                    else:
-                        min_tenure, max_tenure = int(product["min_tenure_months"]), int(product["max_tenure_months"])
-                        if value < min_tenure or value > max_tenure:
-                            return "", (
-                                f"For a {label}, the repayment tenure must be between "
-                                f"{min_tenure} and {max_tenure} months — please enter a different tenure."
-                            )
-            return normalized, None
+            return _normalize_value(field, text), None
         return text.strip(), None
 
     @staticmethod
@@ -638,7 +609,8 @@ class LoanWorkflowHandler:
             if word in text:
                 current = data.get(field)
                 return templates.render_loan_field_explanation(field, definitions[field], current)
-        return f"ℹ️ {FIELD_LABELS[current_field]} means {definitions[current_field]}. {FIELD_PROMPTS[current_field]}"
+        prompt = templates.render_loan_field_prompt(current_field, loan_type=data.get("loan_type"))
+        return f"ℹ️ {FIELD_LABELS[current_field]} means {definitions[current_field]}. {prompt}"
 
     def _confirmation(self, data: dict, intro: str | None = None) -> StructuredResponse:
         summary = templates.render_loan_summary(

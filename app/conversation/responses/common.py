@@ -173,7 +173,7 @@ def render_failure(message: str = "That didn't go through.") -> str:
 
 
 def render_service_unavailable() -> str:
-    return "I'm sorry, the service is temporarily busy. Please try again in a few minutes."
+    return "We are a bit overwhelmed with requests right now ,🙏 Please try again in a few minutes."
 
 
 def render_out_of_scope() -> str:

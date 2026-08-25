@@ -151,7 +151,7 @@ _INTERCEPT_GUIDANCE_TYPES = {
     GuidanceType.ACCOUNT_GUIDANCE,
 }
 
-LlmFallbackFn = Callable[[str, str, str, Optional[dict]], Awaitable[str]]
+LlmFallbackFn = Callable[[str, str, str, Optional[dict]], Awaitable[ResponseLike]]
 
 _UNSET = object()
 
@@ -394,7 +394,7 @@ class ConversationManager:
                 context.last_error = "turn_failed"
                 self._persist(context, phone_number, trace_id, None)
             error_str = str(e)
-            if "rate_limit_exceeded" in error_str or "429" in error_str:
+            if "rate_limit_exceeded" in error_str or "429" in error_str or "503" in error_str:
                 return render_service_unavailable()
             return render_agent_error()
 

@@ -26,6 +26,20 @@ FIELD_PROMPTS = {
     "purpose": "What is the purpose of this loan?",
 }
 
+# Typical repayment windows per loan type — surfaced when asking for tenure
+# so customers pick a realistic number instead of guessing blind.
+TENURE_HINTS = {
+    "personal": "typically 2 to 5 years",
+    "vehicle": "typically 4 to 5 years",
+    "home": "typically 15 to 20 years",
+    "education": "typically 5 to 15 years",
+}
+
+
+def _tenure_prompt(loan_type: Optional[str] = None) -> str:
+    hint = f" For a {LOAN_LABELS[loan_type]}, this is {TENURE_HINTS[loan_type]}." if loan_type in TENURE_HINTS else ""
+    return f"What repayment tenure would you like, in months?{hint} (e.g. 24)"
+
 
 FIELD_ACKS = {
     "account_number": "Got it, thanks!",
@@ -65,8 +79,10 @@ def render_loan_type_selected(loan_type: str) -> str:
     return f"✅ {label} it is! I'll just ask a few quick questions to get your application together."
 
 
-def render_loan_field_prompt(field: str, just_completed_field: Optional[str] = None) -> str:
+def render_loan_field_prompt(field: str, just_completed_field: Optional[str] = None, loan_type: Optional[str] = None) -> str:
     ack = f"{FIELD_ACKS[just_completed_field]} " if just_completed_field in FIELD_ACKS else ""
+    if field == "tenure_months":
+        return f"{ack}{_tenure_prompt(loan_type)}"
     return f"{ack}{FIELD_PROMPTS.get(field, 'And what about the next detail?')}"
 
 

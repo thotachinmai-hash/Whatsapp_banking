@@ -20,7 +20,8 @@ from app.services.whatsapp import (
     get_media_id,
     download_media,
 )
-from app.conversation.renderer import as_structured_response, render_and_send, spoken_choices_hint
+from app.conversation.renderer import ResponseKind, as_structured_response, render_and_send, spoken_choices_hint
+from app.conversation.responses.loan import render_loan_menu
 from app.services.language import translate_text
 from app.services.transcription import download_audio, transcribe_audio
 from app.services.tts import synthesize_voice_note
@@ -328,6 +329,16 @@ async def _send_receipt_if_any(response, chat_id: str, trace_id: str = "") -> No
         logger.error(f"[{trace_id}] Receipt PDF send error | error={e}")
 
 
+# Maps StructuredResponse.voice_menu markers (set by
+# app/agent/agent.py::_run_llm_agent) to the existing plain-text menu
+# template a voice-in customer should also see. Never builds new menu
+# text here — only reuses templates the corresponding text flow already
+# shows elsewhere.
+_VOICE_QUERY_MENUS = {
+    "loan_type": render_loan_menu,
+}
+
+
 async def send_voice_reply(response, chat_id: str, trace_id: str = "", language: str | None = None) -> bool:
     """The voice-out half of voice-to-voice: synthesize the response text
     and send it back as a voice note, mirroring how the customer reached
@@ -337,11 +348,14 @@ async def send_voice_reply(response, chat_id: str, trace_id: str = "", language:
 
     `response` may be a plain string or a StructuredResponse carrying
     WhatsApp interactive buttons/list metadata (see
-    app/conversation/renderer.py) — the button/row titles aren't shown as
-    tappable UI on this path, so spoken_choices_hint() folds them into the
-    spoken sentence instead (e.g. "You can say Yes, send it, or Edit
+    app/conversation/renderer.py). The voice note itself can't carry
+    tappable UI, so spoken_choices_hint() folds the button/row titles into
+    the spoken sentence too (e.g. "You can say Yes, send it, or Edit
     amount.") — otherwise a voice-in customer would hear the summary with
-    no indication of how to reply at all.
+    no indication of how to reply at all. The actual tappable
+    buttons/list — or a matching plain-text menu via `voice_menu` — is
+    then sent as a separate follow-up message once the voice note is out,
+    so the customer isn't limited to speaking/typing the choice back.
 
     `language` is a fallback ISO 639-1 code (e.g. Sarvam STT's per-turn
     detection — see transcribe_audio) used only when `response` carries no
@@ -366,16 +380,34 @@ async def send_voice_reply(response, chat_id: str, trace_id: str = "", language:
             choices_hint = translate_text(choices_hint, resolved_language, trace_id=trace_id)
         response_text = f"{response_text} {choices_hint}"
     synthesized = await synthesize_voice_note(response_text, trace_id=trace_id, language=resolved_language)
+    voice_sent = False
     if synthesized is None:
         logger.info(f"[{trace_id}] Voice reply unavailable — falling back to text")
-        return await render_and_send(response_text, chat_id, trace_id)
+        sent = await render_and_send(response, chat_id, trace_id)
+    else:
+        audio_bytes, mimetype = synthesized
+        voice_sent = await send_voice_message(chat_id, audio_bytes, mimetype, trace_id)
+        if not voice_sent:
+            logger.info(f"[{trace_id}] Voice send failed — falling back to text")
+            sent = await render_and_send(response, chat_id, trace_id)
+        else:
+            sent = True
 
-    audio_bytes, mimetype = synthesized
-    sent = await send_voice_message(chat_id, audio_bytes, mimetype, trace_id)
-    if not sent:
-        logger.info(f"[{trace_id}] Voice send failed — falling back to text")
-        return await render_and_send(response_text, chat_id, trace_id)
-    return True
+    # The voice note only speaks `response_text` — a customer can't tap or
+    # read a menu from audio alone. When audio actually went out, send any
+    # existing menu this reply carries as its own follow-up message: an
+    # interactive list/buttons (e.g. the main menu) as-is, or a matching
+    # plain-text menu (e.g. the loan type list) via voice_menu. The text
+    # fallback above already sent `response` — interactive kind and all —
+    # so it's skipped there to avoid sending the same menu twice.
+    if voice_sent:
+        if structured.kind in (ResponseKind.LIST, ResponseKind.BUTTONS):
+            await render_and_send(structured, chat_id, trace_id)
+        elif structured.voice_menu:
+            menu_render = _VOICE_QUERY_MENUS.get(structured.voice_menu)
+            if menu_render:
+                await render_and_send(menu_render(), chat_id, trace_id)
+    return sent
 
 
 async def handle_incoming_message(payload: dict) -> dict:
