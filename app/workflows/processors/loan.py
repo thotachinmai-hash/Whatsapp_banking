@@ -332,7 +332,7 @@ class LoanWorkflowHandler:
             loan_type = LOAN_TYPES.get(llm_choice, llm_choice) if llm_choice else None
         if not loan_type:
             return {"handled": True, "response": loan_type_list_prompt(
-                "\U0001F4DD Sorry, I didn't catch that — which of these?"
+                "\U0001F4DD Okay, which of these?"
             )}
 
         pending_content = workflow.get("data", {}).get("pending_document_content")

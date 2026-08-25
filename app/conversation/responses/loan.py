@@ -71,7 +71,7 @@ def render_loan_type_prompt() -> str:
     """The re-prompt shown when the customer's reply didn't match a loan
     type — distinct wording/footer from render_loan_menu() (the initial
     "loan application started" message), matching pre-Phase-4 behavior."""
-    return "\U0001F4DD Sorry, I didn't catch that — which of these?\n\n1. Personal\n2. Home\n3. Vehicle\n4. Education\n\n(*Back* or *Cancel* work anytime.)"
+    return "\U0001F4DD Which of these?\n\n1. Personal\n2. Home\n3. Vehicle\n4. Education\n\n(*Back* or *Cancel* work anytime.)"
 
 
 def render_loan_type_selected(loan_type: str) -> str:

@@ -514,7 +514,7 @@ class OnboardingWorkflowHandler:
             return {
                 "handled": True,
                 "response": account_type_list_prompt(
-                    "Sorry, I didn't catch that — which account type?", eligible_types=eligible_types,
+                    "which account type?", eligible_types=eligible_types,
                 ),
             }
 

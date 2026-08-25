@@ -132,6 +132,17 @@ _HELP_WORDS = {
     "help", "can you help", "can you help me", "assist me",
     "what should i do", "what should i do?", "what do i do", "what next",
 }
+# Substring, not exact-set, checks — "what are all the services available"
+# needs to match the same way "menu"/"main menu" already does, but the
+# open-ended phrasing here (services/capabilities questions) doesn't fit a
+# small exact-phrase set the way _MENU_WORDS does.
+_SERVICES_QUERY_PHRASES = (
+    "what services", "which services", "all the services", "services available",
+    "available services", "services do you offer", "services you offer",
+    "services can you", "what can you do", "what all can you do",
+    "what do you offer", "what can you help", "what all can you help",
+    "list of services", "list your services", "show me the services",
+)
 
 
 def classify_hard_navigation(text: str) -> Optional[IntentResult]:
@@ -161,6 +172,8 @@ def classify_soft_navigation(text: str) -> Optional[IntentResult]:
     more precise meaning. Checked only after workflow-context resolution
     has had a chance to reinterpret them as workflow_help."""
     normalized = _normalize(text)
+    if any(phrase in normalized for phrase in _SERVICES_QUERY_PHRASES):
+        return IntentResult(intent="main_menu", confidence=0.85, method="rule")
     if normalized in _HELP_WORDS or "can you help" in normalized:
         return IntentResult(intent="help", confidence=0.85, method="rule")
     return None
