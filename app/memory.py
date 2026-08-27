@@ -9,7 +9,18 @@ logger = get_logger(__name__)
 
 redis_client = redis.Redis.from_url(
     os.getenv("REDIS_URL", "redis://localhost:6379"),
-    decode_responses=True
+    decode_responses=True,
+    # Without an explicit timeout, redis-py falls back to the OS socket
+    # default -- confirmed live at ~4s per call when Redis is unreachable.
+    # Every caller across this app (session history, workflow state,
+    # conversation context, idempotency, the caching added in
+    # app/database.py and app/services/language.py) already treats a
+    # Redis error as non-fatal and falls through gracefully, but a 4s
+    # hang per call defeats that: several Redis calls happen per turn, so
+    # a brief Redis blip could otherwise stack into a many-second stall
+    # instead of a fast, graceful degradation.
+    socket_connect_timeout=2.0,
+    socket_timeout=2.0,
 )
 
 SESSION_TTL = 3600  # 1 hour

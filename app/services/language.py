@@ -15,19 +15,35 @@ here fail safe: any error, empty response, or unparseable output falls
 back to English/the original text rather than raising or guessing.
 """
 
+import hashlib
 import os
 import re
 import time
 from typing import Optional
 
+import redis
 from dotenv import load_dotenv
 from sarvamai import SarvamAI
 from app.services.sarvam_client import get_sarvam_client
+from app.memory import redis_client
 
 from app.logger import get_logger
 
 load_dotenv()
 logger = get_logger(__name__)
+
+# translate_text() is called on nearly every non-English reply, but the
+# vast majority of this app's responses are one of a small, fixed set of
+# template strings (menus, error messages, confirmation prompts) — see
+# app/conversation/responses/*. Translating "Please choose 1 to confirm
+# or 2 to edit" into Hindi always produces the same output, so caching by
+# the exact (text, language) pair is a pure win: it transparently skips
+# the LLM call for repeated template text while still translating fresh
+# for genuinely unique text (a balance/transaction reply with real
+# numbers in it) on every occurrence, since that text won't match a
+# previous cache key. A week-long TTL bounds Redis memory rather than
+# caching forever.
+_TRANSLATION_CACHE_TTL = 7 * 24 * 3600
 
 
 def _get_client() -> SarvamAI:
@@ -174,6 +190,11 @@ def detect_explicit_language_change(message: str) -> Optional[str]:
     return _LANGUAGE_NAME_TO_CODE.get(match.group(1).strip().lower())
 
 
+def _translation_cache_key(text: str, target_language: str) -> str:
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()[:32]
+    return f"cache:translation:{target_language}:{digest}"
+
+
 def translate_text(text: str, target_language: str, trace_id: str = "") -> str:
     """Translate `text` (assumed English — everything this app generates
     is authored in English) into `target_language`. Returns the original
@@ -182,6 +203,14 @@ def translate_text(text: str, target_language: str, trace_id: str = "") -> str:
     customer from getting a reply."""
     if not text or target_language not in SUPPORTED_LANGUAGES or target_language == DEFAULT_LANGUAGE:
         return text
+
+    cache_key = _translation_cache_key(text, target_language)
+    try:
+        cached = redis_client.get(cache_key)
+        if cached is not None:
+            return cached
+    except redis.RedisError as e:
+        logger.error(f"[{trace_id}] Translation cache read failed | error={e}")
 
     language_name = SUPPORTED_LANGUAGES[target_language]
     start = time.time()
@@ -210,6 +239,10 @@ def translate_text(text: str, target_language: str, trace_id: str = "") -> str:
         if not translated:
             return text
         logger.info(f"[{trace_id}] Response translated | language={target_language} | duration={duration:.2f}ms")
+        try:
+            redis_client.setex(cache_key, _TRANSLATION_CACHE_TTL, translated)
+        except redis.RedisError as e:
+            logger.error(f"[{trace_id}] Translation cache write failed | error={e}")
         return translated
     except Exception as e:
         logger.error(f"[{trace_id}] Translation failed | language={target_language} | error={e}")
