@@ -132,7 +132,7 @@ class KYCTemplateTests(unittest.TestCase):
 class OnboardingTemplateTests(unittest.TestCase):
     def test_14_onboarding_confirmation_no_digits(self):
         summary = onboarding.render_registration_summary(
-            phone_number="447000000000",
+            phone_number="441111111111",
             full_name="John Smith",
             date_of_birth="1990-01-01",
             guardian_name="Robert Smith",
@@ -193,7 +193,7 @@ class SensitiveDataProtectionTests(unittest.TestCase):
 
     def test_19_onboarding_summary_never_includes_aadhaar_or_pan_digits(self):
         text = onboarding.render_registration_summary(
-            phone_number="447000000000", full_name="John Smith",
+            phone_number="441111111111", full_name="John Smith",
         )
         # Mentioning that Aadhaar/PAN were received is fine (and expected);
         # what must never appear is the actual digits/value.

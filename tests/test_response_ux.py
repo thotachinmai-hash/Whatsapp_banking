@@ -73,20 +73,20 @@ class ResponseRendererTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_render_and_send_text(self):
         with patch("app.conversation.renderer.send_text_message", new=AsyncMock(return_value=True)) as mock_send:
-            result = await render_and_send("Hello", "447700900000", "trace-1")
+            result = await render_and_send("Hello", "441111111111", "trace-1")
         self.assertTrue(result)
-        mock_send.assert_awaited_once_with("447700900000", "Hello", "trace-1")
+        mock_send.assert_awaited_once_with("441111111111", "Hello", "trace-1")
 
     async def test_render_and_send_template(self):
         response = StructuredResponse.template("Hi Alex!", template_name="render_greeting")
         with patch("app.conversation.renderer.send_text_message", new=AsyncMock(return_value=True)) as mock_send:
-            result = await render_and_send(response, "447700900000", "trace-2")
+            result = await render_and_send(response, "441111111111", "trace-2")
         self.assertTrue(result)
-        mock_send.assert_awaited_once_with("447700900000", "Hi Alex!", "trace-2")
+        mock_send.assert_awaited_once_with("441111111111", "Hi Alex!", "trace-2")
 
     async def test_render_and_send_failure_returns_false_not_raise(self):
         with patch("app.conversation.renderer.send_text_message", new=AsyncMock(side_effect=RuntimeError("boom"))):
-            result = await render_and_send("Hello", "447700900000", "trace-3")
+            result = await render_and_send("Hello", "441111111111", "trace-3")
         self.assertFalse(result)
 
     async def test_render_and_send_buttons(self):
@@ -95,10 +95,10 @@ class ResponseRendererTests(unittest.IsolatedAsyncioTestCase):
             [InteractiveButton(id="1", title="Yes, send it"), InteractiveButton(id="2", title="Edit amount")],
         )
         with patch("app.conversation.renderer.send_button_message", new=AsyncMock(return_value=True)) as mock_send:
-            result = await render_and_send(response, "447700900000", "trace-5")
+            result = await render_and_send(response, "441111111111", "trace-5")
         self.assertTrue(result)
         mock_send.assert_awaited_once_with(
-            "447700900000", "Ready to send this?",
+            "441111111111", "Ready to send this?",
             [{"id": "1", "title": "Yes, send it"}, {"id": "2", "title": "Edit amount"}],
             "trace-5",
         )
@@ -110,11 +110,11 @@ class ResponseRendererTests(unittest.IsolatedAsyncioTestCase):
         ])
         response = StructuredResponse.list_of("Choose a loan type", "Choose", [section])
         with patch("app.conversation.renderer.send_list_message", new=AsyncMock(return_value=True)) as mock_send:
-            result = await render_and_send(response, "447700900000", "trace-6")
+            result = await render_and_send(response, "441111111111", "trace-6")
         self.assertTrue(result)
         mock_send.assert_awaited_once()
         args = mock_send.call_args.args
-        self.assertEqual(args[0], "447700900000")
+        self.assertEqual(args[0], "441111111111")
         self.assertEqual(args[1], "Choose a loan type")
         self.assertEqual(args[2], "Choose")
 
@@ -125,7 +125,7 @@ class ResponseRendererTests(unittest.IsolatedAsyncioTestCase):
         )
         with patch("app.conversation.renderer.send_button_message", new=AsyncMock(return_value=True)) as mock_buttons, \
              patch("app.conversation.renderer.send_text_message", new=AsyncMock(return_value=True)) as mock_text:
-            result = await render_and_send(response, "447700900000", "trace-7")
+            result = await render_and_send(response, "441111111111", "trace-7")
         self.assertTrue(result)
         mock_buttons.assert_not_called()
         mock_text.assert_awaited_once()
@@ -140,7 +140,7 @@ class ResponseRendererTests(unittest.IsolatedAsyncioTestCase):
         response = StructuredResponse.list_of("Choose an account", "Choose", [section])
         with patch("app.conversation.renderer.send_list_message", new=AsyncMock(return_value=True)) as mock_list, \
              patch("app.conversation.renderer.send_text_message", new=AsyncMock(return_value=True)) as mock_text:
-            result = await render_and_send(response, "447700900000", "trace-8")
+            result = await render_and_send(response, "441111111111", "trace-8")
         self.assertTrue(result)
         mock_list.assert_not_called()
         mock_text.assert_awaited_once()
@@ -151,13 +151,13 @@ class ResponseRendererTests(unittest.IsolatedAsyncioTestCase):
         )
         with patch("app.conversation.renderer.send_button_message", new=AsyncMock(side_effect=RuntimeError("boom"))), \
              patch("app.conversation.renderer.send_text_message", new=AsyncMock(return_value=True)) as mock_text:
-            result = await render_and_send(response, "447700900000", "trace-9")
+            result = await render_and_send(response, "441111111111", "trace-9")
         self.assertTrue(result)
         mock_text.assert_awaited_once()
 
     async def test_render_and_send_delivery_declined(self):
         with patch("app.conversation.renderer.send_text_message", new=AsyncMock(return_value=False)):
-            result = await render_and_send("Hello", "447700900000", "trace-4")
+            result = await render_and_send("Hello", "441111111111", "trace-4")
         self.assertFalse(result)
 
     def test_renderer_hides_openwa_details(self):
@@ -220,7 +220,7 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self):
         self.manager = WorkflowManager()
-        self.phone = "447700900099"
+        self.phone = "441111111111"
         self.fake_redis = FakeRedis()
         patcher = patch("app.workflows.memory.redis_client", self.fake_redis)
         patcher.start()
@@ -360,7 +360,7 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self):
         self.manager = WorkflowManager()
-        self.phone = "447700900097"
+        self.phone = "441111111111"
         self.fake_redis = FakeRedis()
         patcher = patch("app.workflows.memory.redis_client", self.fake_redis)
         patcher.start()
@@ -560,7 +560,7 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
 class InteractiveListConversionTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.manager = WorkflowManager()
-        self.phone = "447700900096"
+        self.phone = "441111111111"
         self.fake_redis = FakeRedis()
         patcher = patch("app.workflows.memory.redis_client", self.fake_redis)
         patcher.start()
@@ -632,7 +632,7 @@ class InteractiveListConversionTests(unittest.IsolatedAsyncioTestCase):
 class NavigationTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.manager = WorkflowManager()
-        self.phone = "447700900098"
+        self.phone = "441111111111"
         self.fake_redis = FakeRedis()
         patcher = patch("app.workflows.memory.redis_client", self.fake_redis)
         patcher.start()
