@@ -15,6 +15,7 @@ here fail safe: any error, empty response, or unparseable output falls
 back to English/the original text rather than raising or guessing.
 """
 
+import asyncio
 import hashlib
 import os
 import re
@@ -108,7 +109,7 @@ def should_attempt_detection(text: str) -> bool:
     return any(ord(char) > 127 for char in stripped)
 
 
-def detect_language(text: str, trace_id: str = "") -> str:
+async def detect_language(text: str, trace_id: str = "") -> str:
     """Return an ISO 639-1 code from SUPPORTED_LANGUAGES, defaulting to
     "en" for anything unclear, unsupported, or on any failure."""
     if not should_attempt_detection(text):
@@ -121,7 +122,12 @@ def detect_language(text: str, trace_id: str = "") -> str:
         # real headroom (the old Groq-era value of 5 here would cut the
         # response off mid-reasoning with content=None). reasoning_effort
         # ="low" keeps that overhead down.
-        response = _get_client().chat.completions(
+        #
+        # The Sarvam SDK call itself is synchronous — run it in a thread
+        # (same pattern as app/services/tts.py and transcription.py)
+        # instead of blocking the event loop for the round-trip.
+        response = await asyncio.to_thread(
+            _get_client().chat.completions,
             model=_model(),
             temperature=0,
             max_tokens=800,
@@ -195,7 +201,7 @@ def _translation_cache_key(text: str, target_language: str) -> str:
     return f"cache:translation:{target_language}:{digest}"
 
 
-def translate_text(text: str, target_language: str, trace_id: str = "") -> str:
+async def translate_text(text: str, target_language: str, trace_id: str = "") -> str:
     """Translate `text` (assumed English — everything this app generates
     is authored in English) into `target_language`. Returns the original
     text unchanged if target_language is English/unsupported, or on any
@@ -215,7 +221,9 @@ def translate_text(text: str, target_language: str, trace_id: str = "") -> str:
     language_name = SUPPORTED_LANGUAGES[target_language]
     start = time.time()
     try:
-        response = _get_client().chat.completions(
+        # Sync SDK call — run off-thread, same reasoning as detect_language().
+        response = await asyncio.to_thread(
+            _get_client().chat.completions,
             model=_model(),
             temperature=0,
             max_tokens=2000,

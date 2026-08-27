@@ -27,8 +27,8 @@ from app.conversation.manager import ConversationManager
 from app.workflows.constants import STEP_UPLOAD_CHEQUE, WORKFLOW_CHEQUE
 
 
-def _render(text, context=None):
-    intent_result = classify_intent(text, context=context)
+async def _render(text, context=None):
+    intent_result = await classify_intent(text, context=context)
     guidance = build_guidance(text, intent_result, context)
     rendered = render_guidance(guidance, context) if guidance else None
     return intent_result, guidance, rendered
@@ -36,9 +36,9 @@ def _render(text, context=None):
 
 # ─── 1-8: rendering ──────────────────────────────────────────────────────
 
-class GuidanceRenderingTests(unittest.TestCase):
-    def test_01_loan_eligibility_guidance_text(self):
-        _, guidance, rendered = _render("I earn 50000 a month and want a personal loan")
+class GuidanceRenderingTests(unittest.IsolatedAsyncioTestCase):
+    async def test_01_loan_eligibility_guidance_text(self):
+        _, guidance, rendered = await _render("I earn 50000 a month and want a personal loan")
 
         self.assertEqual(guidance.guidance_type, GuidanceType.LOAN_ELIGIBILITY_GUIDANCE)
         self.assertIn("50,000", rendered.text)
@@ -50,8 +50,8 @@ class GuidanceRenderingTests(unittest.TestCase):
         self.assertNotIn("you're eligible", lowered)
         self.assertNotIn("approved", lowered)
 
-    def test_02_loan_document_question_guidance_not_workflow_start(self):
-        intent_result, guidance, rendered = _render("What documents do I need for a personal loan?")
+    async def test_02_loan_document_question_guidance_not_workflow_start(self):
+        intent_result, guidance, rendered = await _render("What documents do I need for a personal loan?")
 
         # A question-phrased loan message now classifies directly as
         # loan_question (the classifier itself gained a question-guard —
@@ -63,43 +63,43 @@ class GuidanceRenderingTests(unittest.TestCase):
         self.assertEqual(guidance.guidance_type, GuidanceType.LOAN_DOCUMENT_GUIDANCE)
         self.assertIn(GuidanceAction.START_LOAN_APPLICATION, rendered.actions)
 
-    def test_03_transfer_guidance_how_do_i(self):
-        _, guidance, rendered = _render("How do I transfer money?")
+    async def test_03_transfer_guidance_how_do_i(self):
+        _, guidance, rendered = await _render("How do I transfer money?")
 
         self.assertEqual(guidance.guidance_type, GuidanceType.TRANSFER_GUIDANCE)
         self.assertIn(GuidanceAction.START_TRANSFER, rendered.actions)
         self.assertIn("confirm", rendered.text.lower())
 
-    def test_04_cheque_deposit_guidance_how_do_i(self):
-        _, guidance, rendered = _render("How do I deposit a cheque?")
+    async def test_04_cheque_deposit_guidance_how_do_i(self):
+        _, guidance, rendered = await _render("How do I deposit a cheque?")
 
         self.assertEqual(guidance.guidance_type, GuidanceType.CHEQUE_GUIDANCE)
         self.assertIn(GuidanceAction.START_CHEQUE_DEPOSIT, rendered.actions)
 
-    def test_05_kyc_guidance(self):
-        _, guidance, rendered = _render("What is KYC?")
+    async def test_05_kyc_guidance(self):
+        _, guidance, rendered = await _render("What is KYC?")
 
         self.assertEqual(guidance.guidance_type, GuidanceType.KYC_GUIDANCE)
         self.assertIn("know your customer", rendered.text.lower())
 
-    def test_06_account_guidance(self):
-        _, guidance, rendered = _render("What is a savings account?")
+    async def test_06_account_guidance(self):
+        _, guidance, rendered = await _render("What is a savings account?")
 
         self.assertEqual(guidance.guidance_type, GuidanceType.ACCOUNT_GUIDANCE)
         self.assertIn("savings", rendered.text.lower())
 
-    def test_07_cheque_status_guidance_pending(self):
-        intent_result, guidance, rendered = _render("My cheque is pending")
+    async def test_07_cheque_status_guidance_pending(self):
+        intent_result, guidance, rendered = await _render("My cheque is pending")
 
         self.assertEqual(intent_result.intent, "unknown")
         self.assertEqual(guidance.guidance_type, GuidanceType.CHEQUE_STATUS_GUIDANCE)
         self.assertIn("pending", rendered.text.lower())
         self.assertEqual(rendered.actions, [])  # no numbered menu — just asks for the reference id
 
-    def test_08_transaction_insight_not_intercepted_stays_on_llm_path(self):
+    async def test_08_transaction_insight_not_intercepted_stays_on_llm_path(self):
         from app.conversation.manager import _INTERCEPT_GUIDANCE_TYPES
 
-        _, guidance, _rendered = _render("Where am I spending most of my money?")
+        _, guidance, _rendered = await _render("Where am I spending most of my money?")
 
         # A guidance mapping DOES exist (for standalone testability, per
         # Task 9.1/9.2 section 2), but the manager's interception
@@ -345,7 +345,7 @@ class ConversationManagerGuidanceIntegrationTests(unittest.IsolatedAsyncioTestCa
 
 # ─── 15/16: safety ──────────────────────────────────────────────────────
 
-class GuidanceSafetyTests(unittest.TestCase):
+class GuidanceSafetyTests(unittest.IsolatedAsyncioTestCase):
     _CASES = [
         "I earn 50000 a month and want a personal loan",
         "What documents do I need for a personal loan?",
@@ -362,18 +362,18 @@ class GuidanceSafetyTests(unittest.TestCase):
         "you can get", "you qualify for", "guaranteed approval",
     )
 
-    def test_15_no_sensitive_data_in_any_guidance_response(self):
+    async def test_15_no_sensitive_data_in_any_guidance_response(self):
         for text in self._CASES:
-            _, guidance, rendered = _render(text)
+            _, guidance, rendered = await _render(text)
             if not rendered:
                 continue
             lowered = rendered.text.lower()
             for term in self._SENSITIVE_TERMS:
                 self.assertNotIn(term, lowered, f"{term!r} leaked for {text!r}")
 
-    def test_16_no_unsupported_eligibility_or_approval_claims(self):
+    async def test_16_no_unsupported_eligibility_or_approval_claims(self):
         for text in self._CASES:
-            _, guidance, rendered = _render(text)
+            _, guidance, rendered = await _render(text)
             if not rendered:
                 continue
             lowered = rendered.text.lower()

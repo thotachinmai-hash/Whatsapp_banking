@@ -15,14 +15,14 @@ from app.conversation.guidance.models import GuidanceType, ResponseMode
 from app.conversation.guidance.policy import build_guidance
 
 
-def _guidance(text):
-    intent_result = classify_intent(text)
+async def _guidance(text):
+    intent_result = await classify_intent(text)
     return intent_result, build_guidance(text, intent_result)
 
 
-class GuidancePolicyTests(unittest.TestCase):
-    def test_01_loan_eligibility_guidance(self):
-        intent_result, guidance = _guidance("I earn 50000 a month and want a personal loan")
+class GuidancePolicyTests(unittest.IsolatedAsyncioTestCase):
+    async def test_01_loan_eligibility_guidance(self):
+        intent_result, guidance = await _guidance("I earn 50000 a month and want a personal loan")
 
         self.assertIsNotNone(guidance)
         self.assertEqual(guidance.guidance_type, GuidanceType.LOAN_ELIGIBILITY_GUIDANCE)
@@ -34,74 +34,74 @@ class GuidancePolicyTests(unittest.TestCase):
         self.assertIn("start_application", action_values)
         self.assertIn("required_documents", action_values)
 
-    def test_02_loan_application_request_remains_an_action(self):
-        intent_result, guidance = _guidance("I want to apply for a personal loan")
+    async def test_02_loan_application_request_remains_an_action(self):
+        intent_result, guidance = await _guidance("I want to apply for a personal loan")
 
         self.assertEqual(intent_result.intent, "loan_application_request")
         self.assertIsNone(guidance, "a direct loan application request must not become guidance")
 
-    def test_03_kyc_guidance(self):
-        intent_result, guidance = _guidance("What documents do I need for KYC?")
+    async def test_03_kyc_guidance(self):
+        intent_result, guidance = await _guidance("What documents do I need for KYC?")
 
         self.assertIsNotNone(guidance)
         self.assertEqual(guidance.guidance_type, GuidanceType.KYC_GUIDANCE)
         self.assertEqual(guidance.response_mode, ResponseMode.EXPLAIN)
 
-    def test_04_transfer_guidance(self):
-        intent_result, guidance = _guidance("I don't know how to transfer money")
+    async def test_04_transfer_guidance(self):
+        intent_result, guidance = await _guidance("I don't know how to transfer money")
 
         self.assertIsNotNone(guidance)
         self.assertEqual(guidance.guidance_type, GuidanceType.TRANSFER_GUIDANCE)
         self.assertEqual(guidance.response_mode, ResponseMode.OFFER_ACTIONS)
 
-    def test_05_cheque_guidance(self):
-        intent_result, guidance = _guidance("Why is my cheque rejected?")
+    async def test_05_cheque_guidance(self):
+        intent_result, guidance = await _guidance("Why is my cheque rejected?")
 
         self.assertIsNotNone(guidance)
         self.assertEqual(guidance.guidance_type, GuidanceType.CHEQUE_GUIDANCE)
         self.assertEqual(guidance.response_mode, ResponseMode.EXPLAIN)
 
-    def test_06_cheque_status_guidance(self):
-        intent_result, guidance = _guidance("My cheque is still pending")
+    async def test_06_cheque_status_guidance(self):
+        intent_result, guidance = await _guidance("My cheque is still pending")
 
         self.assertIsNotNone(guidance)
         self.assertEqual(guidance.guidance_type, GuidanceType.CHEQUE_STATUS_GUIDANCE)
         self.assertEqual(guidance.response_mode, ResponseMode.REDIRECT_TO_WORKFLOW)
 
-    def test_07_account_guidance(self):
-        intent_result, guidance = _guidance("What is the difference between savings and current account?")
+    async def test_07_account_guidance(self):
+        intent_result, guidance = await _guidance("What is the difference between savings and current account?")
 
         self.assertIsNotNone(guidance)
         self.assertEqual(guidance.guidance_type, GuidanceType.ACCOUNT_GUIDANCE)
         self.assertEqual(guidance.response_mode, ResponseMode.EXPLAIN)
 
-    def test_08_transaction_guidance(self):
-        intent_result, guidance = _guidance("How much did I spend on groceries?")
+    async def test_08_transaction_guidance(self):
+        intent_result, guidance = await _guidance("How much did I spend on groceries?")
 
         self.assertIsNotNone(guidance)
         self.assertEqual(guidance.guidance_type, GuidanceType.TRANSACTION_GUIDANCE)
         self.assertEqual(guidance.entities.get("category"), "groceries")
 
-    def test_09_direct_balance_request_remains_unchanged(self):
-        intent_result, guidance = _guidance("Show my balance")
+    async def test_09_direct_balance_request_remains_unchanged(self):
+        intent_result, guidance = await _guidance("Show my balance")
 
         self.assertEqual(intent_result.intent, "balance_request")
         self.assertIsNone(guidance, "balance is a status lookup, not guidance")
 
-    def test_10_direct_transfer_request_remains_unchanged(self):
-        intent_result, guidance = _guidance("Transfer 500 GBP to Priya")
+    async def test_10_direct_transfer_request_remains_unchanged(self):
+        intent_result, guidance = await _guidance("Transfer 500 GBP to Priya")
 
         self.assertEqual(intent_result.intent, "transfer_request")
         self.assertIsNone(guidance, "a concrete transfer request must continue to the transfer workflow")
 
-    def test_11_direct_loan_application_remains_unchanged(self):
-        intent_result, guidance = _guidance("I want a personal loan")
+    async def test_11_direct_loan_application_remains_unchanged(self):
+        intent_result, guidance = await _guidance("I want a personal loan")
 
         self.assertEqual(intent_result.intent, "loan_application_request")
         self.assertIsNone(guidance)
 
-    def test_12_unknown_input(self):
-        intent_result, guidance = _guidance("qwerty asdf zzz")
+    async def test_12_unknown_input(self):
+        intent_result, guidance = await _guidance("qwerty asdf zzz")
 
         # Pure gibberish carries no banking keyword, so the classifier
         # itself resolves it to out_of_scope — guidance must stay silent,
@@ -113,7 +113,7 @@ class GuidancePolicyTests(unittest.TestCase):
             self.assertEqual(guidance.guidance_type, GuidanceType.UNKNOWN)
             self.assertEqual(guidance.response_mode, ResponseMode.ASK_CLARIFICATION)
 
-    def test_13_no_banking_policy_hallucination(self):
+    async def test_13_no_banking_policy_hallucination(self):
         forbidden_keys = {
             "interest_rate", "approved", "eligible", "eligibility_result",
             "fee", "fees", "credit_limit", "loan_limit", "approval_status",
@@ -127,7 +127,7 @@ class GuidancePolicyTests(unittest.TestCase):
             "What is the difference between savings and current account?",
         ]
         for text in cases:
-            _, guidance = _guidance(text)
+            _, guidance = await _guidance(text)
             if guidance is None:
                 continue
             # The model schema itself has no field for a banking fact/decision —
@@ -139,18 +139,18 @@ class GuidancePolicyTests(unittest.TestCase):
             leaked = forbidden_keys & set(guidance.entities.keys())
             self.assertFalse(leaked, f"hallucinated banking-policy keys {leaked} for {text!r}")
 
-    def test_14_entities_only_extracted_when_explicitly_present(self):
+    async def test_14_entities_only_extracted_when_explicitly_present(self):
         # No income mentioned at all -> no monthly_income key, not a guessed default.
-        _, guidance_no_income = _guidance("Can I get a loan?")
+        _, guidance_no_income = await _guidance("Can I get a loan?")
         self.assertIsNotNone(guidance_no_income)
         self.assertNotIn("monthly_income", guidance_no_income.entities)
 
         # Income explicitly present -> extracted verbatim, nothing else invented.
-        _, guidance_with_income = _guidance("My income is 3000 and I want a loan")
+        _, guidance_with_income = await _guidance("My income is 3000 and I want a loan")
         self.assertEqual(guidance_with_income.entities.get("monthly_income"), 3000)
 
 
-class GuidancePolicyBoundaryTests(unittest.TestCase):
+class GuidancePolicyBoundaryTests(unittest.IsolatedAsyncioTestCase):
     """Structural checks that this layer cannot reach into banking execution."""
 
     def test_module_has_no_database_or_tool_imports(self):
@@ -183,13 +183,13 @@ class GuidancePolicyBoundaryTests(unittest.TestCase):
         for forbidden_attr in ("execute", "commit", "run", "call", "approve", "create_workflow"):
             self.assertFalse(hasattr(result, forbidden_attr))
 
-    def test_out_of_scope_never_becomes_guidance(self):
-        intent_result, guidance = _guidance("Why is the sky blue?")
+    async def test_out_of_scope_never_becomes_guidance(self):
+        intent_result, guidance = await _guidance("Why is the sky blue?")
         self.assertEqual(intent_result.intent, "out_of_scope")
         self.assertIsNone(guidance)
 
-    def test_navigation_never_becomes_guidance(self):
-        intent_result, guidance = _guidance("cancel")
+    async def test_navigation_never_becomes_guidance(self):
+        intent_result, guidance = await _guidance("cancel")
         self.assertEqual(intent_result.intent, "cancel")
         self.assertIsNone(guidance)
 

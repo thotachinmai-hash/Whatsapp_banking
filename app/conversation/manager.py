@@ -207,9 +207,9 @@ class ConversationManager:
         context = self._load_context(phone_number, trace_id)
         if context is not None:
             context.last_user_message = message[:500]
-            self._update_language(context, message, detected_language, is_voice, trace_id)
+            await self._update_language(context, message, detected_language, is_voice, trace_id)
 
-        intent_result = self._classify_intent(context, message, trace_id)
+        intent_result = await self._classify_intent(context, message, trace_id)
         query = message
         reprocess_query = None
 
@@ -218,9 +218,9 @@ class ConversationManager:
                 phone_number=phone_number, query=query, trace_id=trace_id
             )
             if gate_result and gate_result["handled"]:
-                return self._finish(context, phone_number, query, gate_result["response"], trace_id)
+                return await self._finish(context, phone_number, query, gate_result["response"], trace_id)
 
-            handoff_result = self._try_pending_action_handoff(context, phone_number, query, trace_id)
+            handoff_result = await self._try_pending_action_handoff(context, phone_number, query, trace_id)
             if handoff_result is not None:
                 return handoff_result
 
@@ -237,13 +237,13 @@ class ConversationManager:
             if workflow_result["handled"]:
                 logger.info(f"[{trace_id}] conversation.workflow.handled | phone={phone_number[-4:]}")
                 self._register_progress(context)
-                return self._finish(context, phone_number, query, workflow_result["response"], trace_id)
+                return await self._finish(context, phone_number, query, workflow_result["response"], trace_id)
 
             routing_decision = None
             if intent_result is not None:
                 if intent_result.intent == "main_menu":
                     self._register_progress(context)
-                    return self._finish(
+                    return await self._finish(
                         context, phone_number, query, render_main_menu_list(), trace_id, pending_action=None
                     )
                 routing_decision = route_intent(intent_result, context=context)
@@ -261,7 +261,7 @@ class ConversationManager:
                 deterministic = self.workflow_manager.start_requested(phone_number, query, trace_id=trace_id)
                 if deterministic["handled"]:
                     self._register_progress(context)
-                    return self._finish(
+                    return await self._finish(
                         context, phone_number, query, deterministic["response"], trace_id, pending_action=None
                     )
                 logger.info(
@@ -280,7 +280,7 @@ class ConversationManager:
                 logger.info(f"[{trace_id}] conversation.route.compound_or_conditional | phone={phone_number[-4:]}")
                 action = "BANKING_LLM"
 
-            guidance_response = None if is_compound else self._try_guidance(
+            guidance_response = None if is_compound else await self._try_guidance(
                 intent_result, context, phone_number, query, trace_id
             )
             if guidance_response is not None:
@@ -306,7 +306,7 @@ class ConversationManager:
                 deterministic = self.workflow_manager.start_requested(phone_number, query, trace_id=trace_id)
                 if deterministic["handled"]:
                     self._register_progress(context)
-                    return self._finish(
+                    return await self._finish(
                         context, phone_number, query, deterministic["response"], trace_id, pending_action=None
                     )
                 if deterministic.get("reprocess_query"):
@@ -322,7 +322,7 @@ class ConversationManager:
                 action = "BANKING_LLM"
 
             if action == "OUT_OF_SCOPE":
-                return self._finish(
+                return await self._finish(
                     context, phone_number, query, render_out_of_scope(), trace_id, pending_action=None
                 )
 
@@ -330,7 +330,7 @@ class ConversationManager:
                 reason = routing_decision.reason or "unknown"
                 response = render_low_confidence() if reason == "unknown" else render_clarification(reason)
                 self._register_clarification(context)
-                return self._finish(
+                return await self._finish(
                     context, phone_number, query, response, trace_id, pending_action=f"clarify:{reason}"
                 )
 
@@ -363,7 +363,7 @@ class ConversationManager:
                     ) or requested_workflow
                 if requested_workflow["handled"]:
                     self._register_progress(context)
-                    return self._finish(
+                    return await self._finish(
                         context, phone_number, query, requested_workflow["response"], trace_id, pending_action=None
                     )
                 # Router expected a workflow start (or had no opinion) but
@@ -382,7 +382,7 @@ class ConversationManager:
                 f"[{trace_id}] conversation.response.generated | phone={phone_number[-4:]} | "
                 f"source=llm | duration={duration:.2f}ms"
             )
-            return self._finish(context, phone_number, query, response, trace_id, pending_action=None)
+            return await self._finish(context, phone_number, query, response, trace_id, pending_action=None)
 
         except Exception as e:
             duration = (time.time() - start) * 1000
@@ -407,7 +407,7 @@ class ConversationManager:
             logger.error(f"[{trace_id}] conversation.context.build_failed | phone={phone_number[-4:]} | error={e}")
             return None
 
-    def _update_language(
+    async def _update_language(
         self,
         context: ConversationContext,
         message: str,
@@ -468,7 +468,7 @@ class ConversationManager:
             context.detected_language = context.text_language
             return
         if should_attempt_detection(message):
-            context.text_language = detect_language(message, trace_id=trace_id)
+            context.text_language = await detect_language(message, trace_id=trace_id)
             context.detected_language = context.text_language
             return
         if context.text_language and context.text_language != DEFAULT_LANGUAGE:
@@ -482,12 +482,12 @@ class ConversationManager:
             context.text_language = DEFAULT_LANGUAGE
         context.detected_language = context.text_language
 
-    def _classify_intent(self, context: Optional[ConversationContext], message: str, trace_id: str):
+    async def _classify_intent(self, context: Optional[ConversationContext], message: str, trace_id: str):
         if context is None:
             return None
         try:
             llm_classify = default_llm_classify if is_llm_fallback_enabled() else None
-            result = classify_intent(message, context=context, trace_id=trace_id, llm_classify=llm_classify)
+            result = await classify_intent(message, context=context, trace_id=trace_id, llm_classify=llm_classify)
             context.last_intent = result.intent
             context.intent_confidence = result.confidence
             logger.info(
@@ -502,7 +502,7 @@ class ConversationManager:
             )
             return None
 
-    def _try_pending_action_handoff(
+    async def _try_pending_action_handoff(
         self,
         context: Optional[ConversationContext],
         phone_number: str,
@@ -544,14 +544,14 @@ class ConversationManager:
         if selected == GuidanceAction.CANCEL:
             context.allowed_actions = []
             self._register_progress(context)
-            return self._finish(
+            return await self._finish(
                 context, phone_number, query, render_cancelled(), trace_id, pending_action=None
             )
 
         if selected == GuidanceAction.BACK:
             context.allowed_actions = []
             self._register_progress(context)
-            return self._finish(
+            return await self._finish(
                 context, phone_number, query, render_main_menu_list(), trace_id, pending_action=None
             )
 
@@ -568,7 +568,7 @@ class ConversationManager:
                 )
                 context.allowed_actions = []
                 self._register_progress(context)
-                return self._finish(
+                return await self._finish(
                     context, phone_number, query, started["response"], trace_id, pending_action=None
                 )
             # Adapter declined (e.g. transfer with no transferable
@@ -577,7 +577,7 @@ class ConversationManager:
             # silently doing nothing.
             context.pending_action = None
             context.allowed_actions = []
-            return self._finish(
+            return await self._finish(
                 context, phone_number, query, render_agent_error(), trace_id, pending_action=None
             )
 
@@ -589,9 +589,9 @@ class ConversationManager:
             f"[{trace_id}] conversation.guidance.action_selected | phone={phone_number[-4:]} | "
             f"action={selected.value} | workflow=none"
         )
-        return self._finish(context, phone_number, query, info_text, trace_id, pending_action=_UNSET)
+        return await self._finish(context, phone_number, query, info_text, trace_id, pending_action=_UNSET)
 
-    def _try_guidance(
+    async def _try_guidance(
         self,
         intent_result,
         context: Optional[ConversationContext],
@@ -626,7 +626,7 @@ class ConversationManager:
             context.allowed_actions = [a.value for a in rendered.actions]
         pending = f"guidance:{rendered.primary_action.value}" if rendered.primary_action else None
         self._register_progress(context)
-        return self._finish(context, phone_number, query, rendered.text, trace_id, pending_action=pending)
+        return await self._finish(context, phone_number, query, rendered.text, trace_id, pending_action=pending)
 
     def _register_clarification(self, context: Optional[ConversationContext]) -> None:
         """A clarification was needed this turn — track it without
@@ -669,7 +669,7 @@ class ConversationManager:
         except Exception as e:
             logger.error(f"[{trace_id}] conversation.context.save_failed | phone={phone_number[-4:]} | error={e}")
 
-    def _finish(
+    async def _finish(
         self,
         context: Optional[ConversationContext],
         phone_number: str,
@@ -699,7 +699,7 @@ class ConversationManager:
         # above. See app/services/language.py; never blocks the turn on
         # failure — it falls back to the original English text.
         if context is not None and context.detected_language != DEFAULT_LANGUAGE:
-            structured.text = translate_text(structured.text, context.detected_language, trace_id=trace_id)
+            structured.text = await translate_text(structured.text, context.detected_language, trace_id=trace_id)
 
         # Record the language `text` actually ends up in (English included)
         # so a voice reply can be spoken in the same language it was

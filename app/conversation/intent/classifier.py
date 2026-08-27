@@ -26,9 +26,10 @@ Steps 5 and 6 are ordered guidance-before-request deliberately: "I earn
 silently become a loan_application_request.
 """
 
+import asyncio
 import json
 import os
-from typing import Any, Callable, Optional
+from typing import Any, Awaitable, Callable, Optional
 
 from app.conversation.context import ConversationContext
 from app.conversation.intent import rules
@@ -37,10 +38,10 @@ from app.logger import get_logger
 
 logger = get_logger(__name__)
 
-LlmClassifyFn = Callable[[str, Optional[ConversationContext], str], Optional[IntentResult]]
+LlmClassifyFn = Callable[[str, Optional[ConversationContext], str], Awaitable[Optional[IntentResult]]]
 
 
-def classify_intent(
+async def classify_intent(
     text: str,
     context: Optional[ConversationContext] = None,
     trace_id: str = "",
@@ -57,7 +58,7 @@ def classify_intent(
     for messages none of the rules recognize.
     """
     try:
-        result = _classify(text, context, trace_id, llm_classify)
+        result = await _classify(text, context, trace_id, llm_classify)
     except Exception as e:
         logger.error(f"[{trace_id}] Intent classification raised | error={e}")
         result = IntentResult(intent="unknown", confidence=0.0, method="rule")
@@ -67,7 +68,7 @@ def classify_intent(
     return result
 
 
-def _classify(
+async def _classify(
     text: str,
     context: Optional[ConversationContext],
     trace_id: str,
@@ -129,7 +130,7 @@ def _classify(
     # 9. Optional LLM fallback for whatever the rules above couldn't place.
     if llm_classify is not None:
         try:
-            llm_result = llm_classify(stripped, context, trace_id)
+            llm_result = await llm_classify(stripped, context, trace_id)
             if llm_result is not None:
                 return llm_result
         except Exception as e:
@@ -203,7 +204,7 @@ def _parse_json_object(text: str) -> Optional[dict]:
         return None
 
 
-def default_llm_classify(
+async def default_llm_classify(
     text: str, context: Optional[ConversationContext], trace_id: str = ""
 ) -> Optional[IntentResult]:
     """Strict, structured-output-only Sarvam classification call. No tools
@@ -221,7 +222,9 @@ def default_llm_classify(
         # reasoning_content before the actual answer, so max_tokens needs
         # real headroom or the response gets cut off mid-reasoning with
         # content=None. reasoning_effort="low" keeps that overhead down.
-        response = client.chat.completions(
+        # Sync SDK call — run off-thread, same reasoning as language.py.
+        response = await asyncio.to_thread(
+            client.chat.completions,
             model=model,
             temperature=0,
             max_tokens=800,

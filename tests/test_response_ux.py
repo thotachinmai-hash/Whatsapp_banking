@@ -679,43 +679,43 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
 
 # ─── Part 4: natural language must remain primary ──────────────────────
 
-class NaturalLanguageTests(unittest.TestCase):
+class NaturalLanguageTests(unittest.IsolatedAsyncioTestCase):
     """These exact phrasings, from Task 10 Part 4, must resolve to the
     right intent/workflow without forcing a menu reply."""
 
-    def test_transfer_request(self):
+    async def test_transfer_request(self):
         from app.conversation.intent.classifier import classify_intent
-        result = classify_intent("I want to transfer money.")
+        result = await classify_intent("I want to transfer money.")
         self.assertEqual(result.intent, "transfer_request")
 
-    def test_transfer_with_amount_and_beneficiary(self):
+    async def test_transfer_with_amount_and_beneficiary(self):
         from app.conversation.intent.classifier import classify_intent
-        result = classify_intent("Transfer 500 to Priya.")
+        result = await classify_intent("Transfer 500 to Priya.")
         self.assertEqual(result.intent, "transfer_request")
 
-    def test_balance_request(self):
+    async def test_balance_request(self):
         from app.conversation.intent.classifier import classify_intent
-        result = classify_intent("Show my balance.")
+        result = await classify_intent("Show my balance.")
         self.assertEqual(result.intent, "balance_request")
 
-    def test_transaction_insight_request(self):
+    async def test_transaction_insight_request(self):
         from app.conversation.intent.classifier import classify_intent
-        result = classify_intent("What did I spend this month?")
+        result = await classify_intent("What did I spend this month?")
         self.assertEqual(result.intent, "transaction_insight_question")
 
-    def test_spend_question_is_not_misread_as_cancel(self):
+    async def test_spend_question_is_not_misread_as_cancel(self):
         # Regression: "spend" contains "end", and "this" is a common word —
         # workflows/manager.py's cancel-detection used to substring-match
         # both and treat this ordinary question as a cancel command.
         from app.workflows.manager import _is_cancel_command
         self.assertFalse(_is_cancel_command("What did I spend this month?"))
 
-    def test_cheque_deposit_request(self):
+    async def test_cheque_deposit_request(self):
         from app.conversation.intent.classifier import classify_intent
-        result = classify_intent("I want to deposit a cheque.")
+        result = await classify_intent("I want to deposit a cheque.")
         self.assertEqual(result.intent, "cheque_deposit_request")
 
-    def test_loan_interest_question_never_starts_a_loan_application(self):
+    async def test_loan_interest_question_never_starts_a_loan_application(self):
         # Regression: a real user asked "What's the loan intrest amount
         # charged" and the classifier's loan branch (unlike its sibling
         # kyc_update_request) had no question-guard, so it was classified
@@ -724,92 +724,92 @@ class NaturalLanguageTests(unittest.TestCase):
         from app.conversation.intent.classifier import classify_intent
         from app.conversation.router import route_intent
 
-        result = classify_intent("What's the loan intrest amount charged")
+        result = await classify_intent("What's the loan intrest amount charged")
         self.assertNotEqual(result.intent, "loan_application_request")
         decision = route_intent(result)
         self.assertNotEqual(decision.action, "START_WORKFLOW")
 
-    def test_transfer_limit_question_never_starts_a_transfer(self):
+    async def test_transfer_limit_question_never_starts_a_transfer(self):
         from app.conversation.intent.classifier import classify_intent
         from app.conversation.router import route_intent
 
-        result = classify_intent("What is the transfer limit?")
+        result = await classify_intent("What is the transfer limit?")
         self.assertNotEqual(result.intent, "transfer_request")
         decision = route_intent(result)
         self.assertNotEqual(decision.action, "START_WORKFLOW")
 
-    def test_cheque_deposit_question_never_starts_a_cheque_workflow(self):
+    async def test_cheque_deposit_question_never_starts_a_cheque_workflow(self):
         from app.conversation.intent.classifier import classify_intent
         from app.conversation.router import route_intent
 
-        result = classify_intent("Can I deposit a cheque online?")
+        result = await classify_intent("Can I deposit a cheque online?")
         self.assertNotEqual(result.intent, "cheque_deposit_request")
         decision = route_intent(result)
         self.assertNotEqual(decision.action, "START_WORKFLOW")
 
-    def test_genuine_loan_request_still_starts_workflow(self):
+    async def test_genuine_loan_request_still_starts_workflow(self):
         # The question-guard fix above must not affect real, non-question
         # action requests.
         from app.conversation.intent.classifier import classify_intent
         from app.conversation.router import route_intent
 
-        result = classify_intent("I want a personal loan")
+        result = await classify_intent("I want a personal loan")
         self.assertEqual(result.intent, "loan_application_request")
         decision = route_intent(result)
         self.assertEqual(decision.action, "START_WORKFLOW")
 
-    def test_genuine_transfer_request_still_starts_workflow(self):
+    async def test_genuine_transfer_request_still_starts_workflow(self):
         from app.conversation.intent.classifier import classify_intent
         from app.conversation.router import route_intent
 
-        result = classify_intent("Transfer 500 to Priya")
+        result = await classify_intent("Transfer 500 to Priya")
         self.assertEqual(result.intent, "transfer_request")
         decision = route_intent(result)
         self.assertEqual(decision.action, "START_WORKFLOW")
 
-    def test_cheque_status_request(self):
+    async def test_cheque_status_request(self):
         from app.conversation.intent.classifier import classify_intent
-        result = classify_intent("Check my cheque.")
+        result = await classify_intent("Check my cheque.")
         self.assertEqual(result.intent, "cheque_status_request")
 
-    def test_loan_eligibility_natural_language(self):
+    async def test_loan_eligibility_natural_language(self):
         from app.conversation.intent.classifier import classify_intent
         from app.conversation.guidance.policy import build_guidance
 
         text = "I earn 50000 per month and want a personal loan."
-        result = classify_intent(text)
+        result = await classify_intent(text)
         self.assertEqual(result.intent, "loan_eligibility_question")
         guidance = build_guidance(text, result)
         self.assertEqual(guidance.entities.get("monthly_income"), 50000)
         self.assertEqual(guidance.entities.get("loan_type"), "personal")
 
-    def test_kyc_update_request(self):
+    async def test_kyc_update_request(self):
         from app.conversation.intent.classifier import classify_intent
-        result = classify_intent("I want to update my KYC.")
+        result = await classify_intent("I want to update my KYC.")
         self.assertEqual(result.intent, "kyc_update_request")
 
-    def test_kyc_question(self):
+    async def test_kyc_question(self):
         from app.conversation.intent.classifier import classify_intent
-        result = classify_intent("What is KYC?")
+        result = await classify_intent("What is KYC?")
         self.assertEqual(result.intent, "kyc_question")
 
-    def test_cancel_natural_language(self):
+    async def test_cancel_natural_language(self):
         from app.conversation.intent.classifier import classify_intent
-        result = classify_intent("Cancel.")
+        result = await classify_intent("Cancel.")
         self.assertEqual(result.intent, "cancel")
 
-    def test_back_natural_language(self):
+    async def test_back_natural_language(self):
         from app.conversation.intent.classifier import classify_intent
-        result = classify_intent("Go back.")
+        result = await classify_intent("Go back.")
         self.assertEqual(result.intent, "back")
 
-    def test_no_eligibility_or_approval_claim_in_loan_guidance(self):
+    async def test_no_eligibility_or_approval_claim_in_loan_guidance(self):
         from app.conversation.intent.classifier import classify_intent
         from app.conversation.guidance.policy import build_guidance
         from app.conversation.guidance.responses import render_guidance
 
         text = "I earn 50000 per month and want a personal loan."
-        intent_result = classify_intent(text)
+        intent_result = await classify_intent(text)
         guidance = build_guidance(text, intent_result)
         rendered = render_guidance(guidance)
         lowered = rendered.text.lower()

@@ -349,7 +349,7 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("123456", joined)
 
 
-class LanguageStickinessTests(unittest.TestCase):
+class LanguageStickinessTests(unittest.IsolatedAsyncioTestCase):
     """Language changes only on a real non-ASCII detection or an explicit
     meta-request — a later plain-ASCII message (a bare "yes", a number)
     must NOT silently reset the conversation back to English. See
@@ -358,40 +358,40 @@ class LanguageStickinessTests(unittest.TestCase):
     def setUp(self):
         self.manager, _ = _manager_with()
 
-    def test_hindi_stays_sticky_through_a_bare_ascii_reply(self):
+    async def test_hindi_stays_sticky_through_a_bare_ascii_reply(self):
         context = _fresh_context()
         with patch("app.conversation.manager.detect_language", return_value="hi"):
-            self.manager._update_language(context, "मेरा बैलेंस क्या है", None, False, "t")
+            await self.manager._update_language(context, "मेरा बैलेंस क्या है", None, False, "t")
         self.assertEqual(context.detected_language, "hi")
 
         # A later plain-ASCII, non-trivial-length message must not reset it.
         with patch("app.conversation.manager.detect_language") as mock_detect:
-            self.manager._update_language(context, "5000", None, False, "t")
+            await self.manager._update_language(context, "5000", None, False, "t")
         mock_detect.assert_not_called()
         self.assertEqual(context.detected_language, "hi")
 
-    def test_explicit_request_switches_language(self):
+    async def test_explicit_request_switches_language(self):
         context = _fresh_context()
         context.text_language = "hi"
-        self.manager._update_language(context, "reply in English please", None, False, "t")
+        await self.manager._update_language(context, "reply in English please", None, False, "t")
         self.assertEqual(context.detected_language, "en")
         self.assertEqual(context.text_language, "en")
 
-    def test_plain_english_conversation_never_calls_detection(self):
+    async def test_plain_english_conversation_never_calls_detection(self):
         context = _fresh_context()
         with patch("app.conversation.manager.detect_language") as mock_detect:
-            self.manager._update_language(context, "check my balance please", None, False, "t")
+            await self.manager._update_language(context, "check my balance please", None, False, "t")
         mock_detect.assert_not_called()
         self.assertEqual(context.detected_language, "en")
 
-    def test_voice_hint_always_wins_on_a_voice_turn(self):
+    async def test_voice_hint_always_wins_on_a_voice_turn(self):
         context = _fresh_context()
         context.voice_language = "hi"
-        self.manager._update_language(context, "5000", "es", True, "t")
+        await self.manager._update_language(context, "5000", "es", True, "t")
         self.assertEqual(context.detected_language, "es")
         self.assertEqual(context.voice_language, "es")
 
-    def test_short_voice_reply_with_no_own_signal_stays_on_voice_language(self):
+    async def test_short_voice_reply_with_no_own_signal_stays_on_voice_language(self):
         # Sarvam drops its own per-utterance tag for very short audio (see
         # transcribe_audio) — detected_language arrives as None even
         # though this is still a voice turn. It must stay on the voice
@@ -399,33 +399,33 @@ class LanguageStickinessTests(unittest.TestCase):
         context = _fresh_context()
         context.voice_language = "hi"
         context.text_language = "en"
-        self.manager._update_language(context, "yes", None, True, "t")
+        await self.manager._update_language(context, "yes", None, True, "t")
         self.assertEqual(context.detected_language, "hi")
         self.assertEqual(context.voice_language, "hi")
         self.assertEqual(context.text_language, "en")
 
-    def test_voice_language_never_leaks_into_a_later_text_reply(self):
+    async def test_voice_language_never_leaks_into_a_later_text_reply(self):
         # Requirement: "Language Separation" — a language established on
         # a voice call must not carry over to a text message, even a
         # short one that carries no signal of its own.
         context = _fresh_context()
-        self.manager._update_language(context, "मेरा बैलेंस बताओ", "hi", True, "t")
+        await self.manager._update_language(context, "मेरा बैलेंस बताओ", "hi", True, "t")
         self.assertEqual(context.detected_language, "hi")
 
-        self.manager._update_language(context, "ok", None, False, "t")
+        await self.manager._update_language(context, "ok", None, False, "t")
         self.assertEqual(context.detected_language, "en")
         self.assertEqual(context.text_language, "en")
         self.assertEqual(context.voice_language, "hi")  # untouched
 
-    def test_text_language_never_leaks_into_a_later_voice_reply(self):
+    async def test_text_language_never_leaks_into_a_later_voice_reply(self):
         context = _fresh_context()
         with patch("app.conversation.manager.detect_language", return_value="ta"):
-            self.manager._update_language(context, "என் இருப்பு என்ன", None, False, "t")
+            await self.manager._update_language(context, "என் இருப்பு என்ன", None, False, "t")
         self.assertEqual(context.detected_language, "ta")
 
         # A voice turn with its own STT-detected language must win
         # immediately, ignoring the text channel's Tamil entirely.
-        self.manager._update_language(context, "how much do I have", "en", True, "t")
+        await self.manager._update_language(context, "how much do I have", "en", True, "t")
         self.assertEqual(context.detected_language, "en")
         self.assertEqual(context.voice_language, "en")
         self.assertEqual(context.text_language, "ta")  # untouched

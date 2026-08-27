@@ -377,7 +377,7 @@ async def send_voice_reply(response, chat_id: str, trace_id: str = "", language:
         # needs the same translation pass `.text` already went through,
         # or a Hindi/etc. reply would end with a jarring English sentence.
         if resolved_language:
-            choices_hint = translate_text(choices_hint, resolved_language, trace_id=trace_id)
+            choices_hint = await translate_text(choices_hint, resolved_language, trace_id=trace_id)
         response_text = f"{response_text} {choices_hint}"
     synthesized = await synthesize_voice_note(response_text, trace_id=trace_id, language=resolved_language)
     voice_sent = False
