@@ -156,26 +156,26 @@ class ConversationLockTests(unittest.TestCase):
         self.addCleanup(self.patcher.stop)
 
     def test_lock_acquire_and_release_roundtrip(self):
-        token = idempotency.acquire_conversation_lock("447700900000")
+        token = idempotency.acquire_conversation_lock("441111111111")
         self.assertIsNotNone(token)
-        idempotency.release_conversation_lock("447700900000", token)
+        idempotency.release_conversation_lock("441111111111", token)
         # Released — a fresh acquisition must succeed immediately.
-        token2 = idempotency.acquire_conversation_lock("447700900000")
+        token2 = idempotency.acquire_conversation_lock("441111111111")
         self.assertIsNotNone(token2)
 
     def test_lock_release_only_releases_own_token(self):
-        token = idempotency.acquire_conversation_lock("447700900001")
+        token = idempotency.acquire_conversation_lock("441111111111")
         # A stale/foreign token must not release someone else's lock.
-        idempotency.release_conversation_lock("447700900001", "not-the-real-token")
-        self.assertIsNotNone(self.fake.get(idempotency._lock_key("447700900001")))
-        idempotency.release_conversation_lock("447700900001", token)
-        self.assertIsNone(self.fake.get(idempotency._lock_key("447700900001")))
+        idempotency.release_conversation_lock("441111111111", "not-the-real-token")
+        self.assertIsNotNone(self.fake.get(idempotency._lock_key("441111111111")))
+        idempotency.release_conversation_lock("441111111111", token)
+        self.assertIsNone(self.fake.get(idempotency._lock_key("441111111111")))
 
     def test_lock_acquire_bounded_wait_gives_up_and_returns_none(self):
-        idempotency.acquire_conversation_lock("447700900002")  # held, never released
+        idempotency.acquire_conversation_lock("441111111111")  # held, never released
         with patch.object(idempotency, "LOCK_WAIT_TIMEOUT", 0.3), \
              patch.object(idempotency, "LOCK_WAIT_STEP", 0.05):
-            result = idempotency.acquire_conversation_lock("447700900002")
+            result = idempotency.acquire_conversation_lock("441111111111")
         self.assertIsNone(result)
 
 

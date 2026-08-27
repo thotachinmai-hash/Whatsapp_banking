@@ -66,7 +66,7 @@ class FakeRedis:
 class ButtonWiringTestCase(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.manager = WorkflowManager()
-        self.phone = "447700900099"
+        self.phone = "441111111111"
         self.fake_redis = FakeRedis()
         patcher = patch("app.workflows.memory.redis_client", self.fake_redis)
         patcher.start()
