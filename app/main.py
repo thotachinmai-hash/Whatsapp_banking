@@ -180,7 +180,7 @@ async def whatsapp_webhook(request: Request):
             logger.info("message ignored | status update")
             return {"status": "ignored", "reason": "status_update"}
 
-        lock_token = idempotency.acquire_conversation_lock(sender_phone)
+        lock_token = await idempotency.acquire_conversation_lock(sender_phone)
         try:
             logger.info(f"[{webhook_trace_id}] message.processing.started | external_message_id={external_message_id}")
             result = await handle_incoming_message(message_data)

@@ -148,34 +148,34 @@ class IdempotencyClaimTests(unittest.TestCase):
         self.assertEqual(idempotency.claim(""), ClaimResult.CLAIMED)
 
 
-class ConversationLockTests(unittest.TestCase):
+class ConversationLockTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.fake = FakeRedis()
         self.patcher = patch.object(idempotency, "redis_client", self.fake)
         self.patcher.start()
         self.addCleanup(self.patcher.stop)
 
-    def test_lock_acquire_and_release_roundtrip(self):
-        token = idempotency.acquire_conversation_lock("441111111111")
+    async def test_lock_acquire_and_release_roundtrip(self):
+        token = await idempotency.acquire_conversation_lock("441111111111")
         self.assertIsNotNone(token)
         idempotency.release_conversation_lock("441111111111", token)
         # Released — a fresh acquisition must succeed immediately.
-        token2 = idempotency.acquire_conversation_lock("441111111111")
+        token2 = await idempotency.acquire_conversation_lock("441111111111")
         self.assertIsNotNone(token2)
 
-    def test_lock_release_only_releases_own_token(self):
-        token = idempotency.acquire_conversation_lock("441111111111")
+    async def test_lock_release_only_releases_own_token(self):
+        token = await idempotency.acquire_conversation_lock("441111111111")
         # A stale/foreign token must not release someone else's lock.
         idempotency.release_conversation_lock("441111111111", "not-the-real-token")
         self.assertIsNotNone(self.fake.get(idempotency._lock_key("441111111111")))
         idempotency.release_conversation_lock("441111111111", token)
         self.assertIsNone(self.fake.get(idempotency._lock_key("441111111111")))
 
-    def test_lock_acquire_bounded_wait_gives_up_and_returns_none(self):
-        idempotency.acquire_conversation_lock("441111111111")  # held, never released
+    async def test_lock_acquire_bounded_wait_gives_up_and_returns_none(self):
+        await idempotency.acquire_conversation_lock("441111111111")  # held, never released
         with patch.object(idempotency, "LOCK_WAIT_TIMEOUT", 0.3), \
              patch.object(idempotency, "LOCK_WAIT_STEP", 0.05):
-            result = idempotency.acquire_conversation_lock("441111111111")
+            result = await idempotency.acquire_conversation_lock("441111111111")
         self.assertIsNone(result)
 
 

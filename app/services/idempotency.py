@@ -44,6 +44,7 @@ Idempotency — Phase 6" for the full writeup):
   intentionally NOT implemented here.
 """
 
+import asyncio
 import json
 import time
 import uuid
@@ -146,7 +147,7 @@ def _lock_key(phone_number: str) -> str:
     return f"conversation-lock:{phone_number}"
 
 
-def acquire_conversation_lock(phone_number: str) -> Optional[str]:
+async def acquire_conversation_lock(phone_number: str) -> Optional[str]:
     """Best-effort per-phone-number processing lock.
 
     Bounded wait (LOCK_WAIT_TIMEOUT) so a stuck lock can never freeze a
@@ -154,6 +155,11 @@ def acquire_conversation_lock(phone_number: str) -> Optional[str]:
     returns None and the caller proceeds WITHOUT the lock (logged) rather
     than dropping the message — a rare serialization race is preferable
     to silently discarding a customer's message.
+
+    Uses asyncio.sleep() for the poll wait — a blocking time.sleep() here
+    would freeze the whole event loop (every other concurrent customer's
+    request, not just this one) for up to LOCK_WAIT_TIMEOUT seconds on
+    lock contention.
     """
     token = str(uuid.uuid4())
     deadline = time.monotonic() + LOCK_WAIT_TIMEOUT
@@ -167,7 +173,7 @@ def acquire_conversation_lock(phone_number: str) -> Optional[str]:
             return token
         if time.monotonic() >= deadline:
             return None
-        time.sleep(LOCK_WAIT_STEP)
+        await asyncio.sleep(LOCK_WAIT_STEP)
 
 
 def release_conversation_lock(phone_number: str, token: Optional[str]) -> None:
