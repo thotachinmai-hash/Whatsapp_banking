@@ -35,6 +35,7 @@ def check_registration_gate(
     phone_number: str,
     query: str,
     trace_id: str = "",
+    has_active_workflow: bool | None = None,
 ) -> dict[str, Any] | None:
     """
     Runs before workflow handling and before the LLM agent.
@@ -42,11 +43,18 @@ def check_registration_gate(
     Returns None if the caller should proceed as normal (workflow manager,
     then LLM agent). Returns {"handled": True, "response": "..."} if this
     turn is fully handled by the gate.
+
+    `has_active_workflow`, if given, skips this function's own get_workflow()
+    lookup -- the caller (ConversationManager) already fetched the same
+    workflow state a moment earlier building the conversation context, so
+    this avoids a second identical Redis round-trip on every single
+    message. Defaults to None (fetch it here) so any other caller keeps
+    working exactly as before.
     """
 
     query = str(query or "")
 
-    if get_workflow(phone_number):
+    if has_active_workflow if has_active_workflow is not None else get_workflow(phone_number):
         # A workflow (onboarding, cheque, etc.) already owns this turn.
         return None
 

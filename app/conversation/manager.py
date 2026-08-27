@@ -216,7 +216,11 @@ class ConversationManager:
 
         try:
             gate_result = await asyncio.to_thread(
-                check_registration_gate, phone_number=phone_number, query=query, trace_id=trace_id
+                check_registration_gate,
+                phone_number=phone_number,
+                query=query,
+                trace_id=trace_id,
+                has_active_workflow=(context.current_workflow is not None) if context is not None else None,
             )
             if gate_result and gate_result["handled"]:
                 return await self._finish(context, phone_number, query, gate_result["response"], trace_id)
