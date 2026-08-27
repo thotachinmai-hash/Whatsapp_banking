@@ -62,7 +62,7 @@ class StartAddAccountWorkflowTests(unittest.IsolatedAsyncioTestCase):
         patcher = patch("app.workflows.memory.redis_client", self.fake_redis)
         patcher.start()
         self.addCleanup(patcher.stop)
-        self.phone = "447700900200"
+        self.phone = "441111111111"
 
     async def test_starts_workflow_when_customer_has_no_accounts(self):
         with patch("app.workflows.processors.onboarding.get_accounts_by_phone", return_value=[]):
@@ -104,7 +104,7 @@ class AddAccountIdentityChecksTests(unittest.IsolatedAsyncioTestCase):
         patcher = patch("app.workflows.memory.redis_client", self.fake_redis)
         patcher.start()
         self.addCleanup(patcher.stop)
-        self.phone = "447700900201"
+        self.phone = "441111111111"
         self.handler = OnboardingWorkflowHandler()
 
     async def test_mismatched_aadhaar_is_rejected(self):
@@ -162,7 +162,7 @@ class AddAccountConfirmSkipsCreateCustomerTests(unittest.IsolatedAsyncioTestCase
         patcher = patch("app.workflows.memory.redis_client", self.fake_redis)
         patcher.start()
         self.addCleanup(patcher.stop)
-        self.phone = "447700900202"
+        self.phone = "441111111111"
         self.handler = OnboardingWorkflowHandler()
 
     async def test_confirm_yes_does_not_create_a_new_customer(self):
@@ -208,7 +208,7 @@ class AddAccountSelectTypeTests(unittest.IsolatedAsyncioTestCase):
         patcher = patch("app.workflows.memory.redis_client", self.fake_redis)
         patcher.start()
         self.addCleanup(patcher.stop)
-        self.phone = "447700900203"
+        self.phone = "441111111111"
         self.handler = OnboardingWorkflowHandler()
 
     async def test_choosing_an_already_held_type_is_rejected(self):
@@ -253,9 +253,9 @@ class MenuAndAdapterWiringTests(unittest.TestCase):
         with patch("app.workflows.memory.redis_client", fake_redis), \
              patch("app.workflows.processors.onboarding.get_accounts_by_phone", return_value=[]):
             manager = WorkflowManager()
-            result = manager.start_requested("447700900204", "8", trace_id="t1")
+            result = manager.start_requested("441111111111", "8", trace_id="t1")
             self.assertTrue(result["handled"])
-            workflow = get_workflow("447700900204")
+            workflow = get_workflow("441111111111")
             self.assertEqual(workflow["type"], WORKFLOW_ADD_ACCOUNT)
 
     def test_natural_language_trigger_reaches_add_account_via_adapter(self):
@@ -264,10 +264,10 @@ class MenuAndAdapterWiringTests(unittest.TestCase):
         fake_redis = FakeRedis()
         with patch("app.workflows.memory.redis_client", fake_redis), \
              patch("app.workflows.processors.onboarding.get_accounts_by_phone", return_value=[]):
-            result = start_workflow_directly(WORKFLOW_ONBOARDING, "447700900205", query="I'd like to open another account", trace_id="t2")
+            result = start_workflow_directly(WORKFLOW_ONBOARDING, "441111111111", query="I'd like to open another account", trace_id="t2")
             self.assertIsNotNone(result)
             self.assertTrue(result["handled"])
-            workflow = get_workflow("447700900205")
+            workflow = get_workflow("441111111111")
             self.assertEqual(workflow["type"], WORKFLOW_ADD_ACCOUNT)
 
 

@@ -6,189 +6,189 @@
 2026-08-17 11:06:26 | INFO | app.services.tts | [] TTS synthesis complete | bytes=135520 | duration=1618.95ms
 2026-08-17 11:06:28 | INFO | app.services.tts | [] TTS synthesis complete | bytes=120466 | duration=1535.49ms
 2026-08-17 11:25:26 | INFO | app.workflows.manager | [] Checking for deterministic workflow start | phone=0123 | query='I want to deposit a cheque'
-2026-08-17 11:25:26 | INFO | app.workflows.memory | Workflow created | phone=447700900123 | type=cheque
+2026-08-17 11:25:26 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:25:36 | INFO | app.workflows.manager | [] Checking for deterministic workflow start | phone=0123 | query='I want to deposit a cheque'
-2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow created | phone=447700900123 | type=cheque
+2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:25:36 | INFO | app.workflows.manager | [] Active workflow found | type=cheque | step=UPLOAD_CHEQUE | phone=0123
 2026-08-17 11:25:36 | INFO | app.workflows.processors.cheque | [] Cheque workflow step | phone=0123 | step=UPLOAD_CHEQUE
 2026-08-17 11:25:36 | INFO | app.workflows.processors.cheque | [] Cheque validation | phone=0123 | missing_or_invalid=['amount_in_figures']
-2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow updated | phone=447700900123
-2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow updated | phone=447700900123
-2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow deleted | phone=447700900123
+2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:25:36 | INFO | app.workflows.manager | [] Workflow interrupted | type=cheque | phone=0123 | trigger='menu'
 2026-08-17 11:25:36 | INFO | app.workflows.manager | [] No active workflow found | phone=0123
 2026-08-17 11:25:36 | INFO | app.workflows.manager | [] No active workflow found | phone=0123
 2026-08-17 11:25:36 | INFO | app.workflows.manager | [] Exit acknowledged | phone=0123 | trigger='cancel'
 2026-08-17 11:25:36 | INFO | app.workflows.manager | [] Checking for deterministic workflow start | phone=0123 | query='deposit a cheque'
-2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow created | phone=447700900123 | type=cheque
+2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:25:36 | INFO | app.workflows.manager | [] Active workflow found | type=cheque | step=UPLOAD_CHEQUE | phone=0123
 2026-08-17 11:25:36 | INFO | app.workflows.processors.cheque | [] Cheque workflow step | phone=0123 | step=UPLOAD_CHEQUE
 2026-08-17 11:25:36 | INFO | app.workflows.processors.cheque | [] Cheque validation | phone=0123 | missing_or_invalid=[]
-2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow deleted | phone=447700900123
+2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:25:36 | INFO | app.workflows.processors.cheque | [] Cheque request created | phone=0123 | request_id=CHQ-F719F4A3
 2026-08-17 11:25:36 | INFO | app.workflows.manager | [] No active workflow found | phone=0123
 2026-08-17 11:25:36 | INFO | app.workflows.manager | [] Checking for deterministic workflow start | phone=0123 | query='I want a personal loan'
-2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow created | phone=447700900123 | type=loan
-2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow updated | phone=447700900123
-2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow updated | phone=447700900123
+2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
+2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:25:36 | INFO | app.workflows.processors.loan | [] Loan type selected | phone=0123 | loan_type=personal
-2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow deleted | phone=447700900123
+2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:25:36 | INFO | app.workflows.manager | [] Workflow interrupted | type=loan | phone=0123 | trigger='menu'
 2026-08-17 11:25:36 | INFO | app.workflows.manager | [] No active workflow found | phone=0123
 2026-08-17 11:25:36 | INFO | app.workflows.manager | [] Checking for deterministic workflow start | phone=0123 | query='update my kyc'
-2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow created | phone=447700900123 | type=kyc
-2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow deleted | phone=447700900123
+2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=kyc
+2026-08-17 11:25:36 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:25:36 | INFO | app.workflows.manager | [] Workflow interrupted | type=kyc | phone=0123 | trigger='menu'
 2026-08-17 11:26:54 | INFO | app.workflows.manager | [] Checking for deterministic workflow start | phone=0001 | query='I want to deposit a cheque'
-2026-08-17 11:26:54 | INFO | app.workflows.memory | Workflow created | phone=447700900001 | type=cheque
+2026-08-17 11:26:54 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:26:54 | INFO | app.workflows.manager | [] Active workflow found | type=cheque | step=UPLOAD_CHEQUE | phone=0001
 2026-08-17 11:26:54 | INFO | app.workflows.processors.cheque | [] Cheque workflow step | phone=0001 | step=UPLOAD_CHEQUE
 2026-08-17 11:26:54 | INFO | app.workflows.processors.cheque | [] Cheque validation | phone=0001 | missing_or_invalid=['amount_in_figures']
-2026-08-17 11:26:54 | INFO | app.workflows.memory | Workflow updated | phone=447700900001
-2026-08-17 11:26:54 | INFO | app.workflows.memory | Workflow updated | phone=447700900001
+2026-08-17 11:26:54 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:26:54 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:26:54 | INFO | app.workflows.manager | [] Active workflow found | type=cheque | step=CORRECT_CHEQUE | phone=0001
 2026-08-17 11:26:54 | INFO | app.workflows.processors.cheque | [] Cheque workflow step | phone=0001 | step=CORRECT_CHEQUE
 2026-08-17 11:26:54 | INFO | app.workflows.manager | [] Checking for deterministic workflow start | phone=0002 | query='I want a personal loan'
-2026-08-17 11:26:54 | INFO | app.workflows.memory | Workflow created | phone=447700900002 | type=loan
-2026-08-17 11:26:54 | INFO | app.workflows.memory | Workflow updated | phone=447700900002
-2026-08-17 11:26:54 | INFO | app.workflows.memory | Workflow updated | phone=447700900002
+2026-08-17 11:26:54 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
+2026-08-17 11:26:54 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:26:54 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:26:54 | INFO | app.workflows.processors.loan | [] Loan type selected | phone=0002 | loan_type=personal
 2026-08-17 11:26:54 | INFO | app.workflows.manager | [] Active workflow found | type=loan | step=UPLOAD_LOAN_FORM | phone=0002
 2026-08-17 11:26:54 | INFO | app.workflows.processors.loan | [] Loan workflow step | phone=0002 | step=UPLOAD_LOAN_FORM
 2026-08-17 11:26:54 | ERROR | app.database | Query failed: connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "banking_user"
 
 2026-08-17 11:27:25 | INFO | app.workflows.manager | [] Checking for deterministic workflow start | phone=0001 | query='I want to deposit a cheque'
-2026-08-17 11:27:25 | INFO | app.workflows.memory | Workflow created | phone=447700900001 | type=cheque
+2026-08-17 11:27:25 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:27:25 | INFO | app.workflows.manager | [] Active workflow found | type=cheque | step=UPLOAD_CHEQUE | phone=0001
 2026-08-17 11:27:25 | INFO | app.workflows.processors.cheque | [] Cheque workflow step | phone=0001 | step=UPLOAD_CHEQUE
 2026-08-17 11:27:25 | INFO | app.workflows.processors.cheque | [] Cheque validation | phone=0001 | missing_or_invalid=['amount_in_figures']
-2026-08-17 11:27:25 | INFO | app.workflows.memory | Workflow updated | phone=447700900001
-2026-08-17 11:27:25 | INFO | app.workflows.memory | Workflow updated | phone=447700900001
+2026-08-17 11:27:25 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:27:25 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:27:25 | INFO | app.workflows.manager | [] Active workflow found | type=cheque | step=CORRECT_CHEQUE | phone=0001
 2026-08-17 11:27:25 | INFO | app.workflows.processors.cheque | [] Cheque workflow step | phone=0001 | step=CORRECT_CHEQUE
 2026-08-17 11:27:25 | INFO | app.workflows.manager | [] Checking for deterministic workflow start | phone=0002 | query='I want a personal loan'
-2026-08-17 11:27:25 | INFO | app.workflows.memory | Workflow created | phone=447700900002 | type=loan
-2026-08-17 11:27:25 | INFO | app.workflows.memory | Workflow updated | phone=447700900002
-2026-08-17 11:27:25 | INFO | app.workflows.memory | Workflow updated | phone=447700900002
+2026-08-17 11:27:25 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
+2026-08-17 11:27:25 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:27:25 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:27:25 | INFO | app.workflows.processors.loan | [] Loan type selected | phone=0002 | loan_type=personal
 2026-08-17 11:27:25 | INFO | app.workflows.manager | [] Active workflow found | type=loan | step=UPLOAD_LOAN_FORM | phone=0002
 2026-08-17 11:27:25 | INFO | app.workflows.processors.loan | [] Loan workflow step | phone=0002 | step=UPLOAD_LOAN_FORM
 2026-08-17 11:27:25 | INFO | app.workflows.manager | [] Checking for deterministic workflow start | phone=0003 | query='update my kyc'
-2026-08-17 11:27:25 | INFO | app.workflows.memory | Workflow created | phone=447700900003 | type=kyc
+2026-08-17 11:27:25 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=kyc
 2026-08-17 11:27:25 | INFO | app.workflows.manager | [] Active workflow found | type=kyc | step=UPLOAD_KYC_FORM | phone=0003
 2026-08-17 11:27:25 | INFO | app.workflows.processors.kyc | [] KYC workflow step | phone=0003 | step=UPLOAD_KYC_FORM
 2026-08-17 11:27:25 | INFO | app.workflows.manager | [] Checking for deterministic workflow start | phone=0004 | query='send money to someone'
 2026-08-17 11:27:56 | INFO | app.workflows.manager | [] Checking for deterministic workflow start | phone=0001 | query='I want to deposit a cheque'
-2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow created | phone=447700900001 | type=cheque
+2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:27:56 | INFO | app.workflows.manager | [] Active workflow found | type=cheque | step=UPLOAD_CHEQUE | phone=0001
 2026-08-17 11:27:56 | INFO | app.workflows.processors.cheque | [] Cheque workflow step | phone=0001 | step=UPLOAD_CHEQUE
 2026-08-17 11:27:56 | INFO | app.workflows.processors.cheque | [] Cheque validation | phone=0001 | missing_or_invalid=['amount_in_figures']
-2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow updated | phone=447700900001
-2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow updated | phone=447700900001
+2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:27:56 | INFO | app.workflows.manager | [] Active workflow found | type=cheque | step=CORRECT_CHEQUE | phone=0001
 2026-08-17 11:27:56 | INFO | app.workflows.processors.cheque | [] Cheque workflow step | phone=0001 | step=CORRECT_CHEQUE
 2026-08-17 11:27:56 | INFO | app.workflows.manager | [] Checking for deterministic workflow start | phone=0002 | query='I want a personal loan'
-2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow created | phone=447700900002 | type=loan
-2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow updated | phone=447700900002
-2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow updated | phone=447700900002
+2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
+2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:27:56 | INFO | app.workflows.processors.loan | [] Loan type selected | phone=0002 | loan_type=personal
 2026-08-17 11:27:56 | INFO | app.workflows.manager | [] Active workflow found | type=loan | step=UPLOAD_LOAN_FORM | phone=0002
 2026-08-17 11:27:56 | INFO | app.workflows.processors.loan | [] Loan workflow step | phone=0002 | step=UPLOAD_LOAN_FORM
 2026-08-17 11:27:56 | INFO | app.workflows.manager | [] Checking for deterministic workflow start | phone=0003 | query='update my kyc'
-2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow created | phone=447700900003 | type=kyc
+2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=kyc
 2026-08-17 11:27:56 | INFO | app.workflows.manager | [] Active workflow found | type=kyc | step=UPLOAD_KYC_FORM | phone=0003
 2026-08-17 11:27:56 | INFO | app.workflows.processors.kyc | [] KYC workflow step | phone=0003 | step=UPLOAD_KYC_FORM
 2026-08-17 11:27:56 | INFO | app.workflows.manager | [] Checking for deterministic workflow start | phone=0004 | query='send money to alice'
-2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow created | phone=447700900004 | type=transfer
+2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:27:56 | INFO | app.workflows.processors.transfer | [] Transfer started from free text | phone=0004 | beneficiary=saved | amount=none
 2026-08-17 11:27:56 | INFO | app.workflows.manager | [] Active workflow found | type=transfer | step=SELECT_AMOUNT | phone=0004
 2026-08-17 11:27:56 | INFO | app.workflows.processors.transfer | [] Transfer workflow step | phone=0004 | step=SELECT_AMOUNT
 2026-08-17 11:27:56 | INFO | app.workflows.manager | [] Checking for deterministic workflow start | phone=0005 | query='I want to deposit a cheque'
-2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow created | phone=447700900005 | type=cheque
+2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:27:56 | INFO | app.workflows.manager | [] Active workflow found | type=cheque | step=UPLOAD_CHEQUE | phone=0005
 2026-08-17 11:27:56 | INFO | app.workflows.processors.cheque | [] Cheque workflow step | phone=0005 | step=UPLOAD_CHEQUE
 2026-08-17 11:27:56 | INFO | app.workflows.processors.cheque | [] Cheque validation | phone=0005 | missing_or_invalid=['amount_in_figures']
-2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow updated | phone=447700900005
-2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow updated | phone=447700900005
+2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:27:56 | INFO | app.workflows.manager | [] Active workflow found | type=cheque | step=CORRECT_CHEQUE | phone=0005
 2026-08-17 11:27:56 | INFO | app.workflows.processors.cheque | [] Cheque workflow step | phone=0005 | step=CORRECT_CHEQUE
-2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow updated | phone=447700900005
+2026-08-17 11:27:56 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:27:56 | INFO | app.workflows.manager | [] Workflow stop requested, confirming | type=cheque | phone=0005 | trigger='not now'
-2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=loan
+2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:35:32 | INFO | app.workflows.manager | [lt3] Active workflow found | type=loan | step=SELECT_LOAN_TYPE | phone=0099
 2026-08-17 11:35:32 | INFO | app.workflows.processors.loan | [lt3] Loan workflow step | phone=0099 | step=SELECT_LOAN_TYPE
-2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:35:32 | INFO | app.workflows.processors.loan | [lt3] Loan type selected | phone=0099 | loan_type=vehicle
-2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=loan
+2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:35:32 | INFO | app.workflows.manager | [lt2] Active workflow found | type=loan | step=CONFIRM_LOAN | phone=0099
 2026-08-17 11:35:32 | INFO | app.workflows.processors.loan | [lt2] Loan workflow step | phone=0099 | step=CONFIRM_LOAN
-2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:35:32 | INFO | app.workflows.processors.loan | [lt2] Loan application declined at confirmation | phone=0099
-2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=loan
+2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:35:32 | INFO | app.workflows.manager | [lt1] Active workflow found | type=loan | step=CONFIRM_LOAN | phone=0099
 2026-08-17 11:35:32 | INFO | app.workflows.processors.loan | [lt1] Loan workflow step | phone=0099 | step=CONFIRM_LOAN
-2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:35:32 | INFO | app.workflows.processors.loan | [lt1] Loan request created | phone=0099 | request_id=LOAN-781605C3
-2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=kyc
+2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=kyc
 2026-08-17 11:35:32 | INFO | app.workflows.manager | [kt2] Active workflow found | type=kyc | step=CONFIRM_KYC | phone=0099
 2026-08-17 11:35:32 | INFO | app.workflows.processors.kyc | [kt2] KYC workflow step | phone=0099 | step=CONFIRM_KYC
-2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:35:32 | INFO | app.workflows.processors.kyc | [kt2] KYC update declined at confirmation | phone=0099
-2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=kyc
+2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=kyc
 2026-08-17 11:35:32 | INFO | app.workflows.manager | [kt1] Active workflow found | type=kyc | step=CONFIRM_KYC | phone=0099
 2026-08-17 11:35:32 | INFO | app.workflows.processors.kyc | [kt1] KYC workflow step | phone=0099 | step=CONFIRM_KYC
-2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:35:32 | INFO | app.workflows.processors.kyc | [kt1] KYC request created | phone=0099 | request_id=KYC-E9043B7F
-2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
+2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:35:32 | INFO | app.workflows.manager | [ot3] Active workflow found | type=onboarding | step=SELECT_ACCOUNT_TYPE | phone=0099
 2026-08-17 11:35:32 | INFO | app.workflows.processors.onboarding | [ot3] Onboarding workflow step | phone=0099 | step=SELECT_ACCOUNT_TYPE
 2026-08-17 11:35:32 | INFO | app.workflows.processors.onboarding | [ot3] Account opened | phone=0099 | account_number=GB12FNCL00010009999999 | type=current
-2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
-2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
+2026-08-17 11:35:32 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
+2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:35:33 | INFO | app.workflows.manager | [ot2] Active workflow found | type=onboarding | step=CONFIRM_REGISTRATION | phone=0099
 2026-08-17 11:35:33 | INFO | app.workflows.processors.onboarding | [ot2] Onboarding workflow step | phone=0099 | step=CONFIRM_REGISTRATION
-2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:35:33 | INFO | app.workflows.processors.onboarding | [ot2] Registration declined at confirmation step | phone=0099
-2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
+2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:35:33 | INFO | app.workflows.manager | [ot1] Active workflow found | type=onboarding | step=CONFIRM_REGISTRATION | phone=0099
 2026-08-17 11:35:33 | INFO | app.workflows.processors.onboarding | [ot1] Onboarding workflow step | phone=0099 | step=CONFIRM_REGISTRATION
-2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:35:33 | INFO | app.workflows.processors.onboarding | [ot1] Customer record created | phone=0099 | customer_id=1
-2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:35:33 | INFO | app.workflows.manager | [tt4] Active workflow found | type=transfer | step=SELECT_AMOUNT | phone=0099
 2026-08-17 11:35:33 | INFO | app.workflows.processors.transfer | [tt4] Transfer workflow step | phone=0099 | step=SELECT_AMOUNT
-2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:35:33 | INFO | app.workflows.manager | [tt1] Active workflow found | type=transfer | step=SELECT_SOURCE_ACCOUNT | phone=0099
 2026-08-17 11:35:33 | INFO | app.workflows.processors.transfer | [tt1] Transfer workflow step | phone=0099 | step=SELECT_SOURCE_ACCOUNT
-2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:35:33 | INFO | app.workflows.manager | [tt3] Active workflow found | type=transfer | step=CONFIRM_TRANSFER | phone=0099
 2026-08-17 11:35:33 | INFO | app.workflows.processors.transfer | [tt3] Transfer workflow step | phone=0099 | step=CONFIRM_TRANSFER
-2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:35:33 | INFO | app.workflows.manager | [tt2] Active workflow found | type=transfer | step=CONFIRM_TRANSFER | phone=0099
 2026-08-17 11:35:33 | INFO | app.workflows.processors.transfer | [tt2] Transfer workflow step | phone=0099 | step=CONFIRM_TRANSFER
-2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:35:33 | INFO | app.workflows.processors.transfer | [tt2] Transfer initiated | phone=0099 | reference=TRF-11D122DA | amount=£25.00
-2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
-2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:35:33 | INFO | app.workflows.manager | [cs3] Workflow stop requested, confirming | type=cheque | phone=0099 | trigger='Cancel'
-2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:35:33 | INFO | app.workflows.manager | [cs4] Workflow stop declined, resuming | type=cheque | phone=0099
-2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
-2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:35:33 | INFO | app.workflows.manager | [cs1] Workflow stop requested, confirming | type=cheque | phone=0099 | trigger='Cancel'
-2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:35:33 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:35:33 | INFO | app.workflows.manager | [cs2] Workflow stop confirmed | type=cheque | phone=0099 | closing=False | jump_to=none
 2026-08-17 11:35:33 | INFO | app.workflows.processors.cheque | [] Cheque validation | phone=0000 | missing_or_invalid=[]
 2026-08-17 11:35:33 | INFO | app.workflows.processors.cheque | [] Cheque request created | phone=0000 | request_id=CHQ-F474D8ED
 2026-08-17 11:35:33 | INFO | app.workflows.processors.cheque | [] Cheque validation | phone=0000 | missing_or_invalid=['payee']
-2026-08-17 11:35:33 | WARNING | app.conversation.context_store | [] Conversation context update skipped | no existing context | phone=447000000099
-2026-08-17 11:35:33 | ERROR | app.conversation.builder | [] Customer lookup failed while building conversation context | phone=447000000008 | error=connection reset
+2026-08-17 11:35:33 | WARNING | app.conversation.context_store | [] Conversation context update skipped | no existing context | phone=441111111111
+2026-08-17 11:35:33 | ERROR | app.conversation.builder | [] Customer lookup failed while building conversation context | phone=441111111111 | error=connection reset
 2026-08-17 11:35:33 | INFO | app.conversation.manager | [t1] conversation.turn.started | phone=8034
 2026-08-17 11:35:33 | INFO | app.conversation.intent.classifier | [t1] Intent classified | phone=8034 | intent=banking_question | confidence=0.70 | workflow=none | step=none | method=rule
 2026-08-17 11:35:33 | INFO | app.conversation.manager | [t1] conversation.intent.classified | phone=8034 | intent=banking_question | confidence=0.70
@@ -587,45 +587,45 @@
 2026-08-17 11:35:37 | INFO | app.services.llm_understanding | [] LLM side-question answered | workflow=cheque | duration=0.11ms
 2026-08-17 11:35:37 | ERROR | app.services.llm_understanding | [] LLM jump detection call failed | error=boom
 2026-08-17 11:35:37 | INFO | app.services.llm_understanding | [] LLM workflow jump detected | from=transfer | to=loan | confidence=0.90 | duration=0.07ms
-2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow created | phone=447700900200 | type=loan
+2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:35:37 | INFO | app.workflows.processors.loan | [t1] Loan workflow step | phone=0200 | step=SELECT_LOAN_TYPE
-2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
-2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
+2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:35:37 | INFO | app.workflows.processors.loan | [t1] Loan type selected | phone=0200 | loan_type=home
-2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
-2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
+2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:35:37 | INFO | app.workflows.processors.loan | [t1] Applied pending loan form after type selection | phone=0200 | fields=['applicant_name', 'monthly_income', 'employment_type']
-2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow created | phone=447700900201 | type=loan
+2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:35:37 | INFO | app.workflows.processors.loan | [t2] Loan workflow step | phone=0201 | step=SELECT_LOAN_TYPE
-2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow updated | phone=447700900201
-2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow updated | phone=447700900201
+2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:35:37 | INFO | app.workflows.processors.loan | [t2] Loan type selected | phone=0201 | loan_type=vehicle
 2026-08-17 11:35:37 | INFO | app.workflows.processors.onboarding | [] Onboarding workflow step | phone=0000 | step=COLLECT_AADHAAR
 2026-08-17 11:35:37 | INFO | app.workflows.processors.onboarding | [] Registration cancelled at Aadhaar step | phone=0000
-2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow created | phone=447700900120 | type=onboarding
+2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:35:37 | INFO | app.workflows.processors.onboarding | [t1] Onboarding workflow step | phone=0120 | step=COLLECT_AADHAAR
-2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow updated | phone=447700900120
-2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow updated | phone=447700900120
+2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:35:37 | INFO | app.workflows.processors.onboarding | [t1] Registration Aadhaar collected | phone=0120
-2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow created | phone=447700900120 | type=onboarding
+2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:35:37 | INFO | app.workflows.processors.onboarding | [t3] Onboarding workflow step | phone=0120 | step=COLLECT_AADHAAR
 2026-08-17 11:35:37 | INFO | app.workflows.processors.onboarding | [t3] Registration declined at Aadhaar prompt | phone=0120
-2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow created | phone=447700900120 | type=onboarding
+2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:35:37 | INFO | app.workflows.processors.onboarding | [t2] Onboarding workflow step | phone=0120 | step=COLLECT_AADHAAR
 2026-08-17 11:35:37 | INFO | app.rag.retriever | RAG index built | chunks=16 | files=4
 2026-08-17 11:35:37 | INFO | app.services.registration_gate | [t3] Registration gate | unregistered | phone=0113
-2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow created | phone=447700900113 | type=onboarding
+2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:35:37 | INFO | app.services.registration_gate | [t1] Registration gate | unregistered, question — deferring registration | phone=0111
 2026-08-17 11:35:37 | INFO | app.services.registration_gate | [t2] Registration gate | unregistered | phone=0112
-2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow created | phone=447700900112 | type=onboarding
-2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow created | phone=447700900115 | type=onboarding
+2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
+2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:35:37 | INFO | app.workflows.manager | [t5] Active workflow found | type=onboarding | step=COLLECT_AADHAAR | phone=0115
-2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow deleted | phone=447700900115
-2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow created | phone=447700900114 | type=onboarding
+2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
+2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:35:37 | INFO | app.workflows.manager | [t4] Active workflow found | type=onboarding | step=COLLECT_AADHAAR | phone=0114
-2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow deleted | phone=447700900114
+2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:35:37 | INFO | app.workflows.manager | [t4] Checking for deterministic workflow start | phone=0114 | query='I want to deposit a cheque'
-2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow created | phone=447700900114 | type=cheque
+2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:35:37 | INFO | app.workflows.manager | [t4] Resumed pending service after registration | phone=0114
 2026-08-17 11:35:37 | ERROR | app.conversation.renderer | [trace-9] response.render.send_failed | phone=0000 | kind=buttons | error=boom
 2026-08-17 11:35:37 | INFO | app.conversation.renderer | [trace-9] response.render.sent | phone=0000 | kind=buttons | success=True
@@ -639,56 +639,56 @@
 2026-08-17 11:35:37 | INFO | app.conversation.renderer | [trace-7] response.render.sent | phone=0000 | kind=buttons | success=True
 2026-08-17 11:35:37 | WARNING | app.conversation.renderer | [trace-8] response.render.interactive_limits_exceeded | phone=0000 | kind=list — falling back to text
 2026-08-17 11:35:37 | INFO | app.conversation.renderer | [trace-8] response.render.sent | phone=0000 | kind=list | success=True
-2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:35:37 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:35:38 | INFO | app.workflows.manager | Workflow-related question | workflow=transfer | phone=0099
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:35:38 | INFO | app.workflows.manager | Workflow-related question | workflow=transfer | phone=0099
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:35:38 | INFO | app.workflows.manager | [t6] Active workflow found | type=transfer | step=SELECT_BENEFICIARY | phone=0099
 2026-08-17 11:35:38 | INFO | app.workflows.processors.transfer | [t6] Transfer workflow step | phone=0099 | step=SELECT_BENEFICIARY
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:35:38 | INFO | app.workflows.manager | [t4] Workflow jump requested, confirming | from=cheque | to=loan | phone=0097
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:35:38 | INFO | app.workflows.manager | [t5] Workflow jump requested, confirming | from=cheque | to=loan | phone=0097
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow deleted | phone=447700900097
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:35:38 | INFO | app.workflows.manager | [t6] Workflow stop confirmed | type=cheque | phone=0097 | closing=False | jump_to=loan
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=loan
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:35:38 | INFO | app.workflows.manager | [t7] Workflow jump requested, confirming | from=cheque | to=loan | phone=0097
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:35:38 | INFO | app.workflows.manager | [t8] Workflow stop declined, resuming | type=cheque | phone=0097
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:35:38 | INFO | app.workflows.manager | Workflow-related question | workflow=cheque | phone=0097
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:35:38 | INFO | app.workflows.manager | Workflow-related question | workflow=cheque | phone=0097
 2026-08-17 11:35:38 | INFO | app.workflows.manager | [t1] Side question answered mid-workflow, resuming step | workflow=cheque | phone=0097
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:35:38 | INFO | app.workflows.manager | Workflow-related question | workflow=cheque | phone=0097
 2026-08-17 11:35:38 | INFO | app.workflows.manager | [t2] Side question answered mid-workflow, resuming step | workflow=cheque | phone=0097
 2026-08-17 11:35:38 | INFO | app.workflows.manager | [t1] Checking for deterministic workflow start | phone=0096 | query='I want a loan'
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=447700900096 | type=loan
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:35:38 | INFO | app.workflows.manager | [t2] Checking for deterministic workflow start | phone=0096 | query='I want a loan'
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=447700900096 | type=loan
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:35:38 | INFO | app.workflows.manager | [t3] Active workflow found | type=loan | step=SELECT_LOAN_TYPE | phone=0096
 2026-08-17 11:35:38 | INFO | app.workflows.processors.loan | [t3] Loan workflow step | phone=0096 | step=SELECT_LOAN_TYPE
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow updated | phone=447700900096
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow updated | phone=447700900096
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:35:38 | INFO | app.workflows.processors.loan | [t3] Loan type selected | phone=0096 | loan_type=home
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=447700900096 | type=transfer
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=447700900098 | type=loan
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow updated | phone=447700900098
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=447700900098 | type=cheque
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow updated | phone=447700900098
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:35:38 | INFO | app.workflows.manager | [t2] Workflow stop requested, confirming | type=cheque | phone=0098 | trigger='Cancel'
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=447700900098 | type=cheque
-2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow updated | phone=447700900098
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:35:38 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:35:38 | INFO | app.workflows.manager | [t1] Workflow stop requested, confirming | type=cheque | phone=0098 | trigger='Cancel'
 2026-08-17 11:35:38 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=back | confidence=0.98 | workflow=none | step=none | method=rule
 2026-08-17 11:35:38 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=balance_request | confidence=0.92 | workflow=none | step=none | method=rule
@@ -724,17 +724,17 @@
 2026-08-17 11:35:39 | ERROR | app.services.whatsapp | [trace-4] WhatsApp button send failed | status=500 | body=server error
 2026-08-17 11:35:39 | INFO | app.services.whatsapp | [trace-3] WhatsApp list message sent | phone=5760
 2026-08-17 11:35:39 | INFO | app.services.whatsapp | [trace-1] WhatsApp message sent | phone=5760
-2026-08-17 11:35:51 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
-2026-08-17 11:35:51 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:35:51 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:35:51 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:35:51 | INFO | app.workflows.manager | Workflow-related question | workflow=transfer | phone=0099
-2026-08-17 11:35:51 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:35:51 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:35:51 | INFO | app.workflows.manager | Workflow-related question | workflow=transfer | phone=0099
-2026-08-17 11:35:51 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
-2026-08-17 11:35:51 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:35:51 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
+2026-08-17 11:35:51 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:35:51 | INFO | app.workflows.manager | [t6] Active workflow found | type=transfer | step=SELECT_BENEFICIARY | phone=0099
 2026-08-17 11:35:51 | INFO | app.workflows.processors.transfer | [t6] Transfer workflow step | phone=0099 | step=SELECT_BENEFICIARY
-2026-08-17 11:35:51 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:35:51 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
+2026-08-17 11:35:51 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:35:51 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:36:26 | ERROR | app.conversation.renderer | [trace-9] response.render.send_failed | phone=0000 | kind=buttons | error=boom
 2026-08-17 11:36:26 | INFO | app.conversation.renderer | [trace-9] response.render.sent | phone=0000 | kind=buttons | success=True
 2026-08-17 11:36:26 | INFO | app.conversation.renderer | [trace-5] response.render.sent | phone=0000 | kind=buttons | success=True
@@ -747,56 +747,56 @@
 2026-08-17 11:36:27 | INFO | app.conversation.renderer | [trace-7] response.render.sent | phone=0000 | kind=buttons | success=True
 2026-08-17 11:36:27 | WARNING | app.conversation.renderer | [trace-8] response.render.interactive_limits_exceeded | phone=0000 | kind=list — falling back to text
 2026-08-17 11:36:27 | INFO | app.conversation.renderer | [trace-8] response.render.sent | phone=0000 | kind=list | success=True
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:36:27 | INFO | app.workflows.manager | Workflow-related question | workflow=transfer | phone=0099
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:36:27 | INFO | app.workflows.manager | Workflow-related question | workflow=transfer | phone=0099
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:36:27 | INFO | app.workflows.manager | [t6] Active workflow found | type=transfer | step=SELECT_BENEFICIARY | phone=0099
 2026-08-17 11:36:27 | INFO | app.workflows.processors.transfer | [t6] Transfer workflow step | phone=0099 | step=SELECT_BENEFICIARY
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:27 | INFO | app.workflows.manager | [t4] Workflow jump requested, confirming | from=cheque | to=loan | phone=0097
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:27 | INFO | app.workflows.manager | [t5] Workflow jump requested, confirming | from=cheque | to=loan | phone=0097
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow deleted | phone=447700900097
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:36:27 | INFO | app.workflows.manager | [t6] Workflow stop confirmed | type=cheque | phone=0097 | closing=False | jump_to=loan
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=loan
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:27 | INFO | app.workflows.manager | [t7] Workflow jump requested, confirming | from=cheque | to=loan | phone=0097
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:27 | INFO | app.workflows.manager | [t8] Workflow stop declined, resuming | type=cheque | phone=0097
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:36:27 | INFO | app.workflows.manager | Workflow-related question | workflow=cheque | phone=0097
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:36:27 | INFO | app.workflows.manager | Workflow-related question | workflow=cheque | phone=0097
 2026-08-17 11:36:27 | INFO | app.workflows.manager | [t1] Side question answered mid-workflow, resuming step | workflow=cheque | phone=0097
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:36:27 | INFO | app.workflows.manager | Workflow-related question | workflow=cheque | phone=0097
 2026-08-17 11:36:27 | INFO | app.workflows.manager | [t2] Side question answered mid-workflow, resuming step | workflow=cheque | phone=0097
 2026-08-17 11:36:27 | INFO | app.workflows.manager | [t1] Checking for deterministic workflow start | phone=0096 | query='I want a loan'
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=447700900096 | type=loan
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:36:27 | INFO | app.workflows.manager | [t2] Checking for deterministic workflow start | phone=0096 | query='I want a loan'
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=447700900096 | type=loan
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:36:27 | INFO | app.workflows.manager | [t3] Active workflow found | type=loan | step=SELECT_LOAN_TYPE | phone=0096
 2026-08-17 11:36:27 | INFO | app.workflows.processors.loan | [t3] Loan workflow step | phone=0096 | step=SELECT_LOAN_TYPE
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow updated | phone=447700900096
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow updated | phone=447700900096
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:27 | INFO | app.workflows.processors.loan | [t3] Loan type selected | phone=0096 | loan_type=home
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=447700900096 | type=transfer
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=447700900098 | type=loan
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow updated | phone=447700900098
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=447700900098 | type=cheque
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow updated | phone=447700900098
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:27 | INFO | app.workflows.manager | [t2] Workflow stop requested, confirming | type=cheque | phone=0098 | trigger='Cancel'
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=447700900098 | type=cheque
-2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow updated | phone=447700900098
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:36:27 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:27 | INFO | app.workflows.manager | [t1] Workflow stop requested, confirming | type=cheque | phone=0098 | trigger='Cancel'
 2026-08-17 11:36:27 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=back | confidence=0.98 | workflow=none | step=none | method=rule
 2026-08-17 11:36:27 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=balance_request | confidence=0.92 | workflow=none | step=none | method=rule
@@ -815,81 +815,81 @@
 2026-08-17 11:36:27 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_question | confidence=0.80 | workflow=none | step=none | method=rule
 2026-08-17 11:36:27 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
 2026-08-17 11:36:27 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=transfer_request | confidence=0.90 | workflow=none | step=none | method=rule
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=loan
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:36:35 | INFO | app.workflows.manager | [lt3] Active workflow found | type=loan | step=SELECT_LOAN_TYPE | phone=0099
 2026-08-17 11:36:35 | INFO | app.workflows.processors.loan | [lt3] Loan workflow step | phone=0099 | step=SELECT_LOAN_TYPE
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:35 | INFO | app.workflows.processors.loan | [lt3] Loan type selected | phone=0099 | loan_type=vehicle
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=loan
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:36:35 | INFO | app.workflows.manager | [lt2] Active workflow found | type=loan | step=CONFIRM_LOAN | phone=0099
 2026-08-17 11:36:35 | INFO | app.workflows.processors.loan | [lt2] Loan workflow step | phone=0099 | step=CONFIRM_LOAN
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:36:35 | INFO | app.workflows.processors.loan | [lt2] Loan application declined at confirmation | phone=0099
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=loan
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:36:35 | INFO | app.workflows.manager | [lt1] Active workflow found | type=loan | step=CONFIRM_LOAN | phone=0099
 2026-08-17 11:36:35 | INFO | app.workflows.processors.loan | [lt1] Loan workflow step | phone=0099 | step=CONFIRM_LOAN
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:36:35 | INFO | app.workflows.processors.loan | [lt1] Loan request created | phone=0099 | request_id=LOAN-07774869
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=kyc
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=kyc
 2026-08-17 11:36:35 | INFO | app.workflows.manager | [kt2] Active workflow found | type=kyc | step=CONFIRM_KYC | phone=0099
 2026-08-17 11:36:35 | INFO | app.workflows.processors.kyc | [kt2] KYC workflow step | phone=0099 | step=CONFIRM_KYC
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:36:35 | INFO | app.workflows.processors.kyc | [kt2] KYC update declined at confirmation | phone=0099
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=kyc
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=kyc
 2026-08-17 11:36:35 | INFO | app.workflows.manager | [kt1] Active workflow found | type=kyc | step=CONFIRM_KYC | phone=0099
 2026-08-17 11:36:35 | INFO | app.workflows.processors.kyc | [kt1] KYC workflow step | phone=0099 | step=CONFIRM_KYC
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:36:35 | INFO | app.workflows.processors.kyc | [kt1] KYC request created | phone=0099 | request_id=KYC-FBFF0294
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:36:35 | INFO | app.workflows.manager | [ot3] Active workflow found | type=onboarding | step=SELECT_ACCOUNT_TYPE | phone=0099
 2026-08-17 11:36:35 | INFO | app.workflows.processors.onboarding | [ot3] Onboarding workflow step | phone=0099 | step=SELECT_ACCOUNT_TYPE
 2026-08-17 11:36:35 | INFO | app.workflows.processors.onboarding | [ot3] Account opened | phone=0099 | account_number=GB12FNCL00010009999999 | type=current
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:36:35 | INFO | app.workflows.manager | [ot2] Active workflow found | type=onboarding | step=CONFIRM_REGISTRATION | phone=0099
 2026-08-17 11:36:35 | INFO | app.workflows.processors.onboarding | [ot2] Onboarding workflow step | phone=0099 | step=CONFIRM_REGISTRATION
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:36:35 | INFO | app.workflows.processors.onboarding | [ot2] Registration declined at confirmation step | phone=0099
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:36:35 | INFO | app.workflows.manager | [ot1] Active workflow found | type=onboarding | step=CONFIRM_REGISTRATION | phone=0099
 2026-08-17 11:36:35 | INFO | app.workflows.processors.onboarding | [ot1] Onboarding workflow step | phone=0099 | step=CONFIRM_REGISTRATION
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:35 | INFO | app.workflows.processors.onboarding | [ot1] Customer record created | phone=0099 | customer_id=1
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:36:35 | INFO | app.workflows.manager | [tt4] Active workflow found | type=transfer | step=SELECT_AMOUNT | phone=0099
 2026-08-17 11:36:35 | INFO | app.workflows.processors.transfer | [tt4] Transfer workflow step | phone=0099 | step=SELECT_AMOUNT
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:36:35 | INFO | app.workflows.manager | [tt1] Active workflow found | type=transfer | step=SELECT_SOURCE_ACCOUNT | phone=0099
 2026-08-17 11:36:35 | INFO | app.workflows.processors.transfer | [tt1] Transfer workflow step | phone=0099 | step=SELECT_SOURCE_ACCOUNT
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:36:35 | INFO | app.workflows.manager | [tt3] Active workflow found | type=transfer | step=CONFIRM_TRANSFER | phone=0099
 2026-08-17 11:36:35 | INFO | app.workflows.processors.transfer | [tt3] Transfer workflow step | phone=0099 | step=CONFIRM_TRANSFER
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:36:35 | INFO | app.workflows.manager | [tt2] Active workflow found | type=transfer | step=CONFIRM_TRANSFER | phone=0099
 2026-08-17 11:36:35 | INFO | app.workflows.processors.transfer | [tt2] Transfer workflow step | phone=0099 | step=CONFIRM_TRANSFER
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:36:35 | INFO | app.workflows.processors.transfer | [tt2] Transfer initiated | phone=0099 | reference=TRF-FE913A00 | amount=£25.00
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:35 | INFO | app.workflows.manager | [cs3] Workflow stop requested, confirming | type=cheque | phone=0099 | trigger='Cancel'
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:35 | INFO | app.workflows.manager | [cs4] Workflow stop declined, resuming | type=cheque | phone=0099
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:35 | INFO | app.workflows.manager | [cs1] Workflow stop requested, confirming | type=cheque | phone=0099 | trigger='Cancel'
-2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:36:35 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:36:35 | INFO | app.workflows.manager | [cs2] Workflow stop confirmed | type=cheque | phone=0099 | closing=False | jump_to=none
 2026-08-17 11:36:35 | INFO | app.workflows.processors.cheque | [] Cheque validation | phone=0000 | missing_or_invalid=[]
 2026-08-17 11:36:35 | INFO | app.workflows.processors.cheque | [] Cheque request created | phone=0000 | request_id=CHQ-06F061E8
 2026-08-17 11:36:35 | INFO | app.workflows.processors.cheque | [] Cheque validation | phone=0000 | missing_or_invalid=['payee']
-2026-08-17 11:36:35 | WARNING | app.conversation.context_store | [] Conversation context update skipped | no existing context | phone=447000000099
-2026-08-17 11:36:35 | ERROR | app.conversation.builder | [] Customer lookup failed while building conversation context | phone=447000000008 | error=connection reset
+2026-08-17 11:36:35 | WARNING | app.conversation.context_store | [] Conversation context update skipped | no existing context | phone=441111111111
+2026-08-17 11:36:35 | ERROR | app.conversation.builder | [] Customer lookup failed while building conversation context | phone=441111111111 | error=connection reset
 2026-08-17 11:36:35 | INFO | app.conversation.manager | [t1] conversation.turn.started | phone=8034
 2026-08-17 11:36:35 | INFO | app.conversation.intent.classifier | [t1] Intent classified | phone=8034 | intent=banking_question | confidence=0.70 | workflow=none | step=none | method=rule
 2026-08-17 11:36:35 | INFO | app.conversation.manager | [t1] conversation.intent.classified | phone=8034 | intent=banking_question | confidence=0.70
@@ -1288,45 +1288,45 @@
 2026-08-17 11:36:39 | INFO | app.services.llm_understanding | [] LLM side-question answered | workflow=cheque | duration=0.05ms
 2026-08-17 11:36:39 | ERROR | app.services.llm_understanding | [] LLM jump detection call failed | error=boom
 2026-08-17 11:36:39 | INFO | app.services.llm_understanding | [] LLM workflow jump detected | from=transfer | to=loan | confidence=0.90 | duration=0.07ms
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900200 | type=loan
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:36:39 | INFO | app.workflows.processors.loan | [t1] Loan workflow step | phone=0200 | step=SELECT_LOAN_TYPE
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:39 | INFO | app.workflows.processors.loan | [t1] Loan type selected | phone=0200 | loan_type=home
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:39 | INFO | app.workflows.processors.loan | [t1] Applied pending loan form after type selection | phone=0200 | fields=['applicant_name', 'monthly_income', 'employment_type']
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900201 | type=loan
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:36:39 | INFO | app.workflows.processors.loan | [t2] Loan workflow step | phone=0201 | step=SELECT_LOAN_TYPE
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=447700900201
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=447700900201
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:39 | INFO | app.workflows.processors.loan | [t2] Loan type selected | phone=0201 | loan_type=vehicle
 2026-08-17 11:36:39 | INFO | app.workflows.processors.onboarding | [] Onboarding workflow step | phone=0000 | step=COLLECT_AADHAAR
 2026-08-17 11:36:39 | INFO | app.workflows.processors.onboarding | [] Registration cancelled at Aadhaar step | phone=0000
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900120 | type=onboarding
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:36:39 | INFO | app.workflows.processors.onboarding | [t1] Onboarding workflow step | phone=0120 | step=COLLECT_AADHAAR
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=447700900120
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=447700900120
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:39 | INFO | app.workflows.processors.onboarding | [t1] Registration Aadhaar collected | phone=0120
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900120 | type=onboarding
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:36:39 | INFO | app.workflows.processors.onboarding | [t3] Onboarding workflow step | phone=0120 | step=COLLECT_AADHAAR
 2026-08-17 11:36:39 | INFO | app.workflows.processors.onboarding | [t3] Registration declined at Aadhaar prompt | phone=0120
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900120 | type=onboarding
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:36:39 | INFO | app.workflows.processors.onboarding | [t2] Onboarding workflow step | phone=0120 | step=COLLECT_AADHAAR
 2026-08-17 11:36:39 | INFO | app.rag.retriever | RAG index built | chunks=16 | files=4
 2026-08-17 11:36:39 | INFO | app.services.registration_gate | [t3] Registration gate | unregistered | phone=0113
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900113 | type=onboarding
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:36:39 | INFO | app.services.registration_gate | [t1] Registration gate | unregistered, question — deferring registration | phone=0111
 2026-08-17 11:36:39 | INFO | app.services.registration_gate | [t2] Registration gate | unregistered | phone=0112
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900112 | type=onboarding
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900115 | type=onboarding
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:36:39 | INFO | app.workflows.manager | [t5] Active workflow found | type=onboarding | step=COLLECT_AADHAAR | phone=0115
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow deleted | phone=447700900115
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900114 | type=onboarding
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:36:39 | INFO | app.workflows.manager | [t4] Active workflow found | type=onboarding | step=COLLECT_AADHAAR | phone=0114
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow deleted | phone=447700900114
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:36:39 | INFO | app.workflows.manager | [t4] Checking for deterministic workflow start | phone=0114 | query='I want to deposit a cheque'
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900114 | type=cheque
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:36:39 | INFO | app.workflows.manager | [t4] Resumed pending service after registration | phone=0114
 2026-08-17 11:36:39 | ERROR | app.conversation.renderer | [trace-9] response.render.send_failed | phone=0000 | kind=buttons | error=boom
 2026-08-17 11:36:39 | INFO | app.conversation.renderer | [trace-9] response.render.sent | phone=0000 | kind=buttons | success=True
@@ -1340,56 +1340,56 @@
 2026-08-17 11:36:39 | INFO | app.conversation.renderer | [trace-7] response.render.sent | phone=0000 | kind=buttons | success=True
 2026-08-17 11:36:39 | WARNING | app.conversation.renderer | [trace-8] response.render.interactive_limits_exceeded | phone=0000 | kind=list — falling back to text
 2026-08-17 11:36:39 | INFO | app.conversation.renderer | [trace-8] response.render.sent | phone=0000 | kind=list | success=True
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:36:39 | INFO | app.workflows.manager | Workflow-related question | workflow=transfer | phone=0099
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:36:39 | INFO | app.workflows.manager | Workflow-related question | workflow=transfer | phone=0099
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:36:39 | INFO | app.workflows.manager | [t6] Active workflow found | type=transfer | step=SELECT_BENEFICIARY | phone=0099
 2026-08-17 11:36:39 | INFO | app.workflows.processors.transfer | [t6] Transfer workflow step | phone=0099 | step=SELECT_BENEFICIARY
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:39 | INFO | app.workflows.manager | [t4] Workflow jump requested, confirming | from=cheque | to=loan | phone=0097
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:39 | INFO | app.workflows.manager | [t5] Workflow jump requested, confirming | from=cheque | to=loan | phone=0097
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow deleted | phone=447700900097
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:36:39 | INFO | app.workflows.manager | [t6] Workflow stop confirmed | type=cheque | phone=0097 | closing=False | jump_to=loan
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=loan
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:39 | INFO | app.workflows.manager | [t7] Workflow jump requested, confirming | from=cheque | to=loan | phone=0097
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:39 | INFO | app.workflows.manager | [t8] Workflow stop declined, resuming | type=cheque | phone=0097
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:36:39 | INFO | app.workflows.manager | Workflow-related question | workflow=cheque | phone=0097
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:36:39 | INFO | app.workflows.manager | Workflow-related question | workflow=cheque | phone=0097
 2026-08-17 11:36:39 | INFO | app.workflows.manager | [t1] Side question answered mid-workflow, resuming step | workflow=cheque | phone=0097
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:36:39 | INFO | app.workflows.manager | Workflow-related question | workflow=cheque | phone=0097
 2026-08-17 11:36:39 | INFO | app.workflows.manager | [t2] Side question answered mid-workflow, resuming step | workflow=cheque | phone=0097
 2026-08-17 11:36:39 | INFO | app.workflows.manager | [t1] Checking for deterministic workflow start | phone=0096 | query='I want a loan'
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900096 | type=loan
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:36:39 | INFO | app.workflows.manager | [t2] Checking for deterministic workflow start | phone=0096 | query='I want a loan'
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900096 | type=loan
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:36:39 | INFO | app.workflows.manager | [t3] Active workflow found | type=loan | step=SELECT_LOAN_TYPE | phone=0096
 2026-08-17 11:36:39 | INFO | app.workflows.processors.loan | [t3] Loan workflow step | phone=0096 | step=SELECT_LOAN_TYPE
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=447700900096
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=447700900096
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:39 | INFO | app.workflows.processors.loan | [t3] Loan type selected | phone=0096 | loan_type=home
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900096 | type=transfer
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900098 | type=loan
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=447700900098
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900098 | type=cheque
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=447700900098
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:39 | INFO | app.workflows.manager | [t2] Workflow stop requested, confirming | type=cheque | phone=0098 | trigger='Cancel'
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=447700900098 | type=cheque
-2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=447700900098
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:36:39 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:39 | INFO | app.workflows.manager | [t1] Workflow stop requested, confirming | type=cheque | phone=0098 | trigger='Cancel'
 2026-08-17 11:36:39 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=back | confidence=0.98 | workflow=none | step=none | method=rule
 2026-08-17 11:36:39 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=balance_request | confidence=0.92 | workflow=none | step=none | method=rule
@@ -1426,91 +1426,91 @@
 2026-08-17 11:36:40 | INFO | app.services.whatsapp | [trace-3] WhatsApp list message sent | phone=5760
 2026-08-17 11:36:40 | INFO | app.services.whatsapp | [trace-1] WhatsApp message sent | phone=5760
 2026-08-17 11:36:59 | INFO | app.workflows.manager | [] Checking for deterministic workflow start | phone=0001 | query='I want to deposit a cheque'
-2026-08-17 11:36:59 | INFO | app.workflows.memory | Workflow created | phone=447700900001 | type=cheque
+2026-08-17 11:36:59 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:36:59 | INFO | app.workflows.manager | [] Active workflow found | type=cheque | step=UPLOAD_CHEQUE | phone=0001
 2026-08-17 11:36:59 | INFO | app.workflows.processors.cheque | [] Cheque workflow step | phone=0001 | step=UPLOAD_CHEQUE
 2026-08-17 11:36:59 | INFO | app.workflows.processors.cheque | [] Cheque validation | phone=0001 | missing_or_invalid=['amount_in_figures']
-2026-08-17 11:36:59 | INFO | app.workflows.memory | Workflow updated | phone=447700900001
-2026-08-17 11:36:59 | INFO | app.workflows.memory | Workflow updated | phone=447700900001
+2026-08-17 11:36:59 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:36:59 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:36:59 | INFO | app.workflows.manager | [] Active workflow found | type=cheque | step=CORRECT_CHEQUE | phone=0001
 2026-08-17 11:36:59 | INFO | app.workflows.processors.cheque | [] Cheque workflow step | phone=0001 | step=CORRECT_CHEQUE
-2026-08-17 11:36:59 | INFO | app.workflows.memory | Workflow deleted | phone=447700900001
+2026-08-17 11:36:59 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:36:59 | INFO | app.workflows.manager | [] Workflow interrupted | type=cheque | phone=0001 | trigger='menu'
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=loan
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:37:53 | INFO | app.workflows.manager | [lt3] Active workflow found | type=loan | step=SELECT_LOAN_TYPE | phone=0099
 2026-08-17 11:37:53 | INFO | app.workflows.processors.loan | [lt3] Loan workflow step | phone=0099 | step=SELECT_LOAN_TYPE
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:37:53 | INFO | app.workflows.processors.loan | [lt3] Loan type selected | phone=0099 | loan_type=vehicle
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=loan
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:37:53 | INFO | app.workflows.manager | [lt2] Active workflow found | type=loan | step=CONFIRM_LOAN | phone=0099
 2026-08-17 11:37:53 | INFO | app.workflows.processors.loan | [lt2] Loan workflow step | phone=0099 | step=CONFIRM_LOAN
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:37:53 | INFO | app.workflows.processors.loan | [lt2] Loan application declined at confirmation | phone=0099
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=loan
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:37:53 | INFO | app.workflows.manager | [lt1] Active workflow found | type=loan | step=CONFIRM_LOAN | phone=0099
 2026-08-17 11:37:53 | INFO | app.workflows.processors.loan | [lt1] Loan workflow step | phone=0099 | step=CONFIRM_LOAN
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:37:53 | INFO | app.workflows.processors.loan | [lt1] Loan request created | phone=0099 | request_id=LOAN-5E4CE6BC
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=kyc
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=kyc
 2026-08-17 11:37:53 | INFO | app.workflows.manager | [kt2] Active workflow found | type=kyc | step=CONFIRM_KYC | phone=0099
 2026-08-17 11:37:53 | INFO | app.workflows.processors.kyc | [kt2] KYC workflow step | phone=0099 | step=CONFIRM_KYC
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:37:53 | INFO | app.workflows.processors.kyc | [kt2] KYC update declined at confirmation | phone=0099
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=kyc
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=kyc
 2026-08-17 11:37:53 | INFO | app.workflows.manager | [kt1] Active workflow found | type=kyc | step=CONFIRM_KYC | phone=0099
 2026-08-17 11:37:53 | INFO | app.workflows.processors.kyc | [kt1] KYC workflow step | phone=0099 | step=CONFIRM_KYC
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:37:53 | INFO | app.workflows.processors.kyc | [kt1] KYC request created | phone=0099 | request_id=KYC-DA9F5B31
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:37:53 | INFO | app.workflows.manager | [ot3] Active workflow found | type=onboarding | step=SELECT_ACCOUNT_TYPE | phone=0099
 2026-08-17 11:37:53 | INFO | app.workflows.processors.onboarding | [ot3] Onboarding workflow step | phone=0099 | step=SELECT_ACCOUNT_TYPE
 2026-08-17 11:37:53 | INFO | app.workflows.processors.onboarding | [ot3] Account opened | phone=0099 | account_number=GB12FNCL00010009999999 | type=current
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:37:53 | INFO | app.workflows.manager | [ot2] Active workflow found | type=onboarding | step=CONFIRM_REGISTRATION | phone=0099
 2026-08-17 11:37:53 | INFO | app.workflows.processors.onboarding | [ot2] Onboarding workflow step | phone=0099 | step=CONFIRM_REGISTRATION
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:37:53 | INFO | app.workflows.processors.onboarding | [ot2] Registration declined at confirmation step | phone=0099
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:37:53 | INFO | app.workflows.manager | [ot1] Active workflow found | type=onboarding | step=CONFIRM_REGISTRATION | phone=0099
 2026-08-17 11:37:53 | INFO | app.workflows.processors.onboarding | [ot1] Onboarding workflow step | phone=0099 | step=CONFIRM_REGISTRATION
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:37:53 | INFO | app.workflows.processors.onboarding | [ot1] Customer record created | phone=0099 | customer_id=1
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:37:53 | INFO | app.workflows.manager | [tt4] Active workflow found | type=transfer | step=SELECT_AMOUNT | phone=0099
 2026-08-17 11:37:53 | INFO | app.workflows.processors.transfer | [tt4] Transfer workflow step | phone=0099 | step=SELECT_AMOUNT
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:37:53 | INFO | app.workflows.manager | [tt1] Active workflow found | type=transfer | step=SELECT_SOURCE_ACCOUNT | phone=0099
 2026-08-17 11:37:53 | INFO | app.workflows.processors.transfer | [tt1] Transfer workflow step | phone=0099 | step=SELECT_SOURCE_ACCOUNT
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:37:53 | INFO | app.workflows.manager | [tt3] Active workflow found | type=transfer | step=CONFIRM_TRANSFER | phone=0099
 2026-08-17 11:37:53 | INFO | app.workflows.processors.transfer | [tt3] Transfer workflow step | phone=0099 | step=CONFIRM_TRANSFER
-2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:37:54 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:37:53 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:37:54 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:37:54 | INFO | app.workflows.manager | [tt2] Active workflow found | type=transfer | step=CONFIRM_TRANSFER | phone=0099
 2026-08-17 11:37:54 | INFO | app.workflows.processors.transfer | [tt2] Transfer workflow step | phone=0099 | step=CONFIRM_TRANSFER
-2026-08-17 11:37:54 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:37:54 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:37:54 | INFO | app.workflows.processors.transfer | [tt2] Transfer initiated | phone=0099 | reference=TRF-44B49E8B | amount=£25.00
-2026-08-17 11:37:54 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
-2026-08-17 11:37:54 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-17 11:37:54 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:37:54 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:37:54 | INFO | app.workflows.manager | [cs3] Workflow stop requested, confirming | type=cheque | phone=0099 | trigger='Cancel'
-2026-08-17 11:37:54 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-17 11:37:54 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:37:54 | INFO | app.workflows.manager | [cs4] Workflow stop declined, resuming | type=cheque | phone=0099
-2026-08-17 11:37:54 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
-2026-08-17 11:37:54 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-17 11:37:54 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:37:54 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:37:54 | INFO | app.workflows.manager | [cs1] Workflow stop requested, confirming | type=cheque | phone=0099 | trigger='Cancel'
-2026-08-17 11:37:54 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:37:54 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:37:54 | INFO | app.workflows.manager | [cs2] Workflow stop confirmed | type=cheque | phone=0099 | closing=False | jump_to=none
 2026-08-17 11:37:54 | INFO | app.workflows.processors.cheque | [] Cheque validation | phone=0000 | missing_or_invalid=[]
 2026-08-17 11:37:54 | INFO | app.workflows.processors.cheque | [] Cheque request created | phone=0000 | request_id=CHQ-40913733
 2026-08-17 11:37:54 | INFO | app.workflows.processors.cheque | [] Cheque validation | phone=0000 | missing_or_invalid=['payee']
-2026-08-17 11:37:54 | WARNING | app.conversation.context_store | [] Conversation context update skipped | no existing context | phone=447000000099
-2026-08-17 11:37:54 | ERROR | app.conversation.builder | [] Customer lookup failed while building conversation context | phone=447000000008 | error=connection reset
+2026-08-17 11:37:54 | WARNING | app.conversation.context_store | [] Conversation context update skipped | no existing context | phone=441111111111
+2026-08-17 11:37:54 | ERROR | app.conversation.builder | [] Customer lookup failed while building conversation context | phone=441111111111 | error=connection reset
 2026-08-17 11:37:54 | INFO | app.conversation.manager | [t1] conversation.turn.started | phone=8034
 2026-08-17 11:37:54 | INFO | app.conversation.intent.classifier | [t1] Intent classified | phone=8034 | intent=banking_question | confidence=0.70 | workflow=none | step=none | method=rule
 2026-08-17 11:37:54 | INFO | app.conversation.manager | [t1] conversation.intent.classified | phone=8034 | intent=banking_question | confidence=0.70
@@ -1909,45 +1909,45 @@
 2026-08-17 11:38:05 | INFO | app.services.llm_understanding | [] LLM side-question answered | workflow=cheque | duration=0.05ms
 2026-08-17 11:38:05 | ERROR | app.services.llm_understanding | [] LLM jump detection call failed | error=boom
 2026-08-17 11:38:05 | INFO | app.services.llm_understanding | [] LLM workflow jump detected | from=transfer | to=loan | confidence=0.90 | duration=0.07ms
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900200 | type=loan
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:38:05 | INFO | app.workflows.processors.loan | [t1] Loan workflow step | phone=0200 | step=SELECT_LOAN_TYPE
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:38:05 | INFO | app.workflows.processors.loan | [t1] Loan type selected | phone=0200 | loan_type=home
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:38:05 | INFO | app.workflows.processors.loan | [t1] Applied pending loan form after type selection | phone=0200 | fields=['applicant_name', 'monthly_income', 'employment_type']
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900201 | type=loan
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:38:05 | INFO | app.workflows.processors.loan | [t2] Loan workflow step | phone=0201 | step=SELECT_LOAN_TYPE
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=447700900201
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=447700900201
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:38:05 | INFO | app.workflows.processors.loan | [t2] Loan type selected | phone=0201 | loan_type=vehicle
 2026-08-17 11:38:05 | INFO | app.workflows.processors.onboarding | [] Onboarding workflow step | phone=0000 | step=COLLECT_AADHAAR
 2026-08-17 11:38:05 | INFO | app.workflows.processors.onboarding | [] Registration cancelled at Aadhaar step | phone=0000
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900120 | type=onboarding
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:38:05 | INFO | app.workflows.processors.onboarding | [t1] Onboarding workflow step | phone=0120 | step=COLLECT_AADHAAR
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=447700900120
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=447700900120
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:38:05 | INFO | app.workflows.processors.onboarding | [t1] Registration Aadhaar collected | phone=0120
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900120 | type=onboarding
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:38:05 | INFO | app.workflows.processors.onboarding | [t3] Onboarding workflow step | phone=0120 | step=COLLECT_AADHAAR
 2026-08-17 11:38:05 | INFO | app.workflows.processors.onboarding | [t3] Registration declined at Aadhaar prompt | phone=0120
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900120 | type=onboarding
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:38:05 | INFO | app.workflows.processors.onboarding | [t2] Onboarding workflow step | phone=0120 | step=COLLECT_AADHAAR
 2026-08-17 11:38:05 | INFO | app.rag.retriever | RAG index built | chunks=16 | files=4
 2026-08-17 11:38:05 | INFO | app.services.registration_gate | [t3] Registration gate | unregistered | phone=0113
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900113 | type=onboarding
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:38:05 | INFO | app.services.registration_gate | [t1] Registration gate | unregistered, question — deferring registration | phone=0111
 2026-08-17 11:38:05 | INFO | app.services.registration_gate | [t2] Registration gate | unregistered | phone=0112
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900112 | type=onboarding
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900115 | type=onboarding
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:38:05 | INFO | app.workflows.manager | [t5] Active workflow found | type=onboarding | step=COLLECT_AADHAAR | phone=0115
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow deleted | phone=447700900115
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900114 | type=onboarding
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:38:05 | INFO | app.workflows.manager | [t4] Active workflow found | type=onboarding | step=COLLECT_AADHAAR | phone=0114
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow deleted | phone=447700900114
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:38:05 | INFO | app.workflows.manager | [t4] Checking for deterministic workflow start | phone=0114 | query='I want to deposit a cheque'
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900114 | type=cheque
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:38:05 | INFO | app.workflows.manager | [t4] Resumed pending service after registration | phone=0114
 2026-08-17 11:38:05 | ERROR | app.conversation.renderer | [trace-9] response.render.send_failed | phone=0000 | kind=buttons | error=boom
 2026-08-17 11:38:05 | INFO | app.conversation.renderer | [trace-9] response.render.sent | phone=0000 | kind=buttons | success=True
@@ -1961,56 +1961,56 @@
 2026-08-17 11:38:05 | INFO | app.conversation.renderer | [trace-7] response.render.sent | phone=0000 | kind=buttons | success=True
 2026-08-17 11:38:05 | WARNING | app.conversation.renderer | [trace-8] response.render.interactive_limits_exceeded | phone=0000 | kind=list — falling back to text
 2026-08-17 11:38:05 | INFO | app.conversation.renderer | [trace-8] response.render.sent | phone=0000 | kind=list | success=True
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:38:05 | INFO | app.workflows.manager | Workflow-related question | workflow=transfer | phone=0099
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:38:05 | INFO | app.workflows.manager | Workflow-related question | workflow=transfer | phone=0099
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:38:05 | INFO | app.workflows.manager | [t6] Active workflow found | type=transfer | step=SELECT_BENEFICIARY | phone=0099
 2026-08-17 11:38:05 | INFO | app.workflows.processors.transfer | [t6] Transfer workflow step | phone=0099 | step=SELECT_BENEFICIARY
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:38:05 | INFO | app.workflows.manager | [t4] Workflow jump requested, confirming | from=cheque | to=loan | phone=0097
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:38:05 | INFO | app.workflows.manager | [t5] Workflow jump requested, confirming | from=cheque | to=loan | phone=0097
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow deleted | phone=447700900097
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:38:05 | INFO | app.workflows.manager | [t6] Workflow stop confirmed | type=cheque | phone=0097 | closing=False | jump_to=loan
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=loan
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:38:05 | INFO | app.workflows.manager | [t7] Workflow jump requested, confirming | from=cheque | to=loan | phone=0097
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:38:05 | INFO | app.workflows.manager | [t8] Workflow stop declined, resuming | type=cheque | phone=0097
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:38:05 | INFO | app.workflows.manager | Workflow-related question | workflow=cheque | phone=0097
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:38:05 | INFO | app.workflows.manager | Workflow-related question | workflow=cheque | phone=0097
 2026-08-17 11:38:05 | INFO | app.workflows.manager | [t1] Side question answered mid-workflow, resuming step | workflow=cheque | phone=0097
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:38:05 | INFO | app.workflows.manager | Workflow-related question | workflow=cheque | phone=0097
 2026-08-17 11:38:05 | INFO | app.workflows.manager | [t2] Side question answered mid-workflow, resuming step | workflow=cheque | phone=0097
 2026-08-17 11:38:05 | INFO | app.workflows.manager | [t1] Checking for deterministic workflow start | phone=0096 | query='I want a loan'
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900096 | type=loan
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:38:05 | INFO | app.workflows.manager | [t2] Checking for deterministic workflow start | phone=0096 | query='I want a loan'
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900096 | type=loan
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:38:05 | INFO | app.workflows.manager | [t3] Active workflow found | type=loan | step=SELECT_LOAN_TYPE | phone=0096
 2026-08-17 11:38:05 | INFO | app.workflows.processors.loan | [t3] Loan workflow step | phone=0096 | step=SELECT_LOAN_TYPE
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=447700900096
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=447700900096
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:38:05 | INFO | app.workflows.processors.loan | [t3] Loan type selected | phone=0096 | loan_type=home
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900096 | type=transfer
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900098 | type=loan
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=447700900098
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900098 | type=cheque
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=447700900098
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:38:05 | INFO | app.workflows.manager | [t2] Workflow stop requested, confirming | type=cheque | phone=0098 | trigger='Cancel'
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=447700900098 | type=cheque
-2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=447700900098
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:38:05 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:38:05 | INFO | app.workflows.manager | [t1] Workflow stop requested, confirming | type=cheque | phone=0098 | trigger='Cancel'
 2026-08-17 11:38:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=back | confidence=0.98 | workflow=none | step=none | method=rule
 2026-08-17 11:38:06 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=balance_request | confidence=0.92 | workflow=none | step=none | method=rule
@@ -2047,91 +2047,91 @@
 2026-08-17 11:38:06 | INFO | app.services.whatsapp | [trace-3] WhatsApp list message sent | phone=5760
 2026-08-17 11:38:06 | INFO | app.services.whatsapp | [trace-1] WhatsApp message sent | phone=5760
 2026-08-17 11:38:16 | INFO | app.workflows.manager | [] Checking for deterministic workflow start | phone=0001 | query='I want to deposit a cheque'
-2026-08-17 11:38:16 | INFO | app.workflows.memory | Workflow created | phone=447700900001 | type=cheque
+2026-08-17 11:38:16 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:38:16 | INFO | app.workflows.manager | [] Active workflow found | type=cheque | step=UPLOAD_CHEQUE | phone=0001
 2026-08-17 11:38:16 | INFO | app.workflows.processors.cheque | [] Cheque workflow step | phone=0001 | step=UPLOAD_CHEQUE
 2026-08-17 11:38:16 | INFO | app.workflows.processors.cheque | [] Cheque validation | phone=0001 | missing_or_invalid=['amount_in_figures']
-2026-08-17 11:38:16 | INFO | app.workflows.memory | Workflow updated | phone=447700900001
-2026-08-17 11:38:16 | INFO | app.workflows.memory | Workflow updated | phone=447700900001
+2026-08-17 11:38:16 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:38:16 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:38:16 | INFO | app.workflows.manager | [] Active workflow found | type=cheque | step=CORRECT_CHEQUE | phone=0001
 2026-08-17 11:38:16 | INFO | app.workflows.processors.cheque | [] Cheque workflow step | phone=0001 | step=CORRECT_CHEQUE
-2026-08-17 11:38:16 | INFO | app.workflows.memory | Workflow deleted | phone=447700900001
+2026-08-17 11:38:16 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:38:16 | INFO | app.workflows.manager | [] Workflow interrupted | type=cheque | phone=0001 | trigger='menu'
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=loan
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:53:13 | INFO | app.workflows.manager | [lt3] Active workflow found | type=loan | step=SELECT_LOAN_TYPE | phone=0099
 2026-08-17 11:53:13 | INFO | app.workflows.processors.loan | [lt3] Loan workflow step | phone=0099 | step=SELECT_LOAN_TYPE
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:53:13 | INFO | app.workflows.processors.loan | [lt3] Loan type selected | phone=0099 | loan_type=vehicle
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=loan
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:53:13 | INFO | app.workflows.manager | [lt2] Active workflow found | type=loan | step=CONFIRM_LOAN | phone=0099
 2026-08-17 11:53:13 | INFO | app.workflows.processors.loan | [lt2] Loan workflow step | phone=0099 | step=CONFIRM_LOAN
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:53:13 | INFO | app.workflows.processors.loan | [lt2] Loan application declined at confirmation | phone=0099
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=loan
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:53:13 | INFO | app.workflows.manager | [lt1] Active workflow found | type=loan | step=CONFIRM_LOAN | phone=0099
 2026-08-17 11:53:13 | INFO | app.workflows.processors.loan | [lt1] Loan workflow step | phone=0099 | step=CONFIRM_LOAN
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:53:13 | INFO | app.workflows.processors.loan | [lt1] Loan request created | phone=0099 | request_id=LOAN-F33EDE9F
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=kyc
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=kyc
 2026-08-17 11:53:13 | INFO | app.workflows.manager | [kt2] Active workflow found | type=kyc | step=CONFIRM_KYC | phone=0099
 2026-08-17 11:53:13 | INFO | app.workflows.processors.kyc | [kt2] KYC workflow step | phone=0099 | step=CONFIRM_KYC
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:53:13 | INFO | app.workflows.processors.kyc | [kt2] KYC update declined at confirmation | phone=0099
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=kyc
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=kyc
 2026-08-17 11:53:13 | INFO | app.workflows.manager | [kt1] Active workflow found | type=kyc | step=CONFIRM_KYC | phone=0099
 2026-08-17 11:53:13 | INFO | app.workflows.processors.kyc | [kt1] KYC workflow step | phone=0099 | step=CONFIRM_KYC
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:53:13 | INFO | app.workflows.processors.kyc | [kt1] KYC request created | phone=0099 | request_id=KYC-7CB07469
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:53:13 | INFO | app.workflows.manager | [ot3] Active workflow found | type=onboarding | step=SELECT_ACCOUNT_TYPE | phone=0099
 2026-08-17 11:53:13 | INFO | app.workflows.processors.onboarding | [ot3] Onboarding workflow step | phone=0099 | step=SELECT_ACCOUNT_TYPE
 2026-08-17 11:53:13 | INFO | app.workflows.processors.onboarding | [ot3] Account opened | phone=0099 | account_number=GB12FNCL00010009999999 | type=current
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:53:13 | INFO | app.workflows.manager | [ot2] Active workflow found | type=onboarding | step=CONFIRM_REGISTRATION | phone=0099
 2026-08-17 11:53:13 | INFO | app.workflows.processors.onboarding | [ot2] Onboarding workflow step | phone=0099 | step=CONFIRM_REGISTRATION
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:53:13 | INFO | app.workflows.processors.onboarding | [ot2] Registration declined at confirmation step | phone=0099
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:53:13 | INFO | app.workflows.manager | [ot1] Active workflow found | type=onboarding | step=CONFIRM_REGISTRATION | phone=0099
 2026-08-17 11:53:13 | INFO | app.workflows.processors.onboarding | [ot1] Onboarding workflow step | phone=0099 | step=CONFIRM_REGISTRATION
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:53:13 | INFO | app.workflows.processors.onboarding | [ot1] Customer record created | phone=0099 | customer_id=1
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:53:13 | INFO | app.workflows.manager | [tt4] Active workflow found | type=transfer | step=SELECT_AMOUNT | phone=0099
 2026-08-17 11:53:13 | INFO | app.workflows.processors.transfer | [tt4] Transfer workflow step | phone=0099 | step=SELECT_AMOUNT
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:53:13 | INFO | app.workflows.manager | [tt1] Active workflow found | type=transfer | step=SELECT_SOURCE_ACCOUNT | phone=0099
 2026-08-17 11:53:13 | INFO | app.workflows.processors.transfer | [tt1] Transfer workflow step | phone=0099 | step=SELECT_SOURCE_ACCOUNT
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:53:13 | INFO | app.workflows.manager | [tt3] Active workflow found | type=transfer | step=CONFIRM_TRANSFER | phone=0099
 2026-08-17 11:53:13 | INFO | app.workflows.processors.transfer | [tt3] Transfer workflow step | phone=0099 | step=CONFIRM_TRANSFER
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:53:13 | INFO | app.workflows.manager | [tt2] Active workflow found | type=transfer | step=CONFIRM_TRANSFER | phone=0099
 2026-08-17 11:53:13 | INFO | app.workflows.processors.transfer | [tt2] Transfer workflow step | phone=0099 | step=CONFIRM_TRANSFER
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:53:13 | INFO | app.workflows.processors.transfer | [tt2] Transfer initiated | phone=0099 | reference=TRF-A244D72E | amount=£25.00
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:53:13 | INFO | app.workflows.manager | [cs3] Workflow stop requested, confirming | type=cheque | phone=0099 | trigger='Cancel'
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:53:13 | INFO | app.workflows.manager | [cs4] Workflow stop declined, resuming | type=cheque | phone=0099
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:53:13 | INFO | app.workflows.manager | [cs1] Workflow stop requested, confirming | type=cheque | phone=0099 | trigger='Cancel'
-2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow deleted | phone=447700900099
+2026-08-17 11:53:13 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:53:13 | INFO | app.workflows.manager | [cs2] Workflow stop confirmed | type=cheque | phone=0099 | closing=False | jump_to=none
 2026-08-17 11:53:13 | INFO | app.workflows.processors.cheque | [] Cheque validation | phone=0000 | missing_or_invalid=[]
 2026-08-17 11:53:13 | INFO | app.workflows.processors.cheque | [] Cheque request created | phone=0000 | request_id=CHQ-4B6E75C9
 2026-08-17 11:53:13 | INFO | app.workflows.processors.cheque | [] Cheque validation | phone=0000 | missing_or_invalid=['payee']
-2026-08-17 11:53:13 | WARNING | app.conversation.context_store | [] Conversation context update skipped | no existing context | phone=447000000099
-2026-08-17 11:53:13 | ERROR | app.conversation.builder | [] Customer lookup failed while building conversation context | phone=447000000008 | error=connection reset
+2026-08-17 11:53:13 | WARNING | app.conversation.context_store | [] Conversation context update skipped | no existing context | phone=441111111111
+2026-08-17 11:53:13 | ERROR | app.conversation.builder | [] Customer lookup failed while building conversation context | phone=441111111111 | error=connection reset
 2026-08-17 11:53:13 | INFO | app.conversation.manager | [t1] conversation.turn.started | phone=8034
 2026-08-17 11:53:13 | INFO | app.conversation.intent.classifier | [t1] Intent classified | phone=8034 | intent=banking_question | confidence=0.70 | workflow=none | step=none | method=rule
 2026-08-17 11:53:13 | INFO | app.conversation.manager | [t1] conversation.intent.classified | phone=8034 | intent=banking_question | confidence=0.70
@@ -2530,45 +2530,45 @@
 2026-08-17 11:53:22 | INFO | app.services.llm_understanding | [] LLM side-question answered | workflow=cheque | duration=0.08ms
 2026-08-17 11:53:22 | ERROR | app.services.llm_understanding | [] LLM jump detection call failed | error=boom
 2026-08-17 11:53:22 | INFO | app.services.llm_understanding | [] LLM workflow jump detected | from=transfer | to=loan | confidence=0.90 | duration=0.10ms
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=447700900200 | type=loan
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:53:22 | INFO | app.workflows.processors.loan | [t1] Loan workflow step | phone=0200 | step=SELECT_LOAN_TYPE
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:53:22 | INFO | app.workflows.processors.loan | [t1] Loan type selected | phone=0200 | loan_type=home
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow updated | phone=447700900200
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:53:22 | INFO | app.workflows.processors.loan | [t1] Applied pending loan form after type selection | phone=0200 | fields=['applicant_name', 'monthly_income', 'employment_type']
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=447700900201 | type=loan
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:53:22 | INFO | app.workflows.processors.loan | [t2] Loan workflow step | phone=0201 | step=SELECT_LOAN_TYPE
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow updated | phone=447700900201
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow updated | phone=447700900201
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:53:22 | INFO | app.workflows.processors.loan | [t2] Loan type selected | phone=0201 | loan_type=vehicle
 2026-08-17 11:53:22 | INFO | app.workflows.processors.onboarding | [] Onboarding workflow step | phone=0000 | step=COLLECT_AADHAAR
 2026-08-17 11:53:22 | INFO | app.workflows.processors.onboarding | [] Registration cancelled at Aadhaar step | phone=0000
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=447700900120 | type=onboarding
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:53:22 | INFO | app.workflows.processors.onboarding | [t1] Onboarding workflow step | phone=0120 | step=COLLECT_AADHAAR
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow updated | phone=447700900120
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow updated | phone=447700900120
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:53:22 | INFO | app.workflows.processors.onboarding | [t1] Registration Aadhaar collected | phone=0120
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=447700900120 | type=onboarding
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:53:22 | INFO | app.workflows.processors.onboarding | [t3] Onboarding workflow step | phone=0120 | step=COLLECT_AADHAAR
 2026-08-17 11:53:22 | INFO | app.workflows.processors.onboarding | [t3] Registration declined at Aadhaar prompt | phone=0120
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=447700900120 | type=onboarding
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:53:22 | INFO | app.workflows.processors.onboarding | [t2] Onboarding workflow step | phone=0120 | step=COLLECT_AADHAAR
 2026-08-17 11:53:22 | INFO | app.rag.retriever | RAG index built | chunks=16 | files=4
 2026-08-17 11:53:22 | INFO | app.services.registration_gate | [t3] Registration gate | unregistered | phone=0113
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=447700900113 | type=onboarding
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:53:22 | INFO | app.services.registration_gate | [t1] Registration gate | unregistered, question — deferring registration | phone=0111
 2026-08-17 11:53:22 | INFO | app.services.registration_gate | [t2] Registration gate | unregistered | phone=0112
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=447700900112 | type=onboarding
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=447700900115 | type=onboarding
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:53:22 | INFO | app.workflows.manager | [t5] Active workflow found | type=onboarding | step=COLLECT_AADHAAR | phone=0115
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow deleted | phone=447700900115
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=447700900114 | type=onboarding
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
 2026-08-17 11:53:22 | INFO | app.workflows.manager | [t4] Active workflow found | type=onboarding | step=COLLECT_AADHAAR | phone=0114
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow deleted | phone=447700900114
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:53:22 | INFO | app.workflows.manager | [t4] Checking for deterministic workflow start | phone=0114 | query='I want to deposit a cheque'
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=447700900114 | type=cheque
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:53:22 | INFO | app.workflows.manager | [t4] Resumed pending service after registration | phone=0114
 2026-08-17 11:53:22 | ERROR | app.conversation.renderer | [trace-9] response.render.send_failed | phone=0000 | kind=buttons | error=boom
 2026-08-17 11:53:22 | INFO | app.conversation.renderer | [trace-9] response.render.sent | phone=0000 | kind=buttons | success=True
@@ -2582,56 +2582,56 @@
 2026-08-17 11:53:22 | INFO | app.conversation.renderer | [trace-7] response.render.sent | phone=0000 | kind=buttons | success=True
 2026-08-17 11:53:22 | WARNING | app.conversation.renderer | [trace-8] response.render.interactive_limits_exceeded | phone=0000 | kind=list — falling back to text
 2026-08-17 11:53:22 | INFO | app.conversation.renderer | [trace-8] response.render.sent | phone=0000 | kind=list | success=True
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:53:22 | INFO | app.workflows.manager | Workflow-related question | workflow=transfer | phone=0099
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:53:22 | INFO | app.workflows.manager | Workflow-related question | workflow=transfer | phone=0099
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=onboarding
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=transfer
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=onboarding
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
 2026-08-17 11:53:22 | INFO | app.workflows.manager | [t6] Active workflow found | type=transfer | step=SELECT_BENEFICIARY | phone=0099
 2026-08-17 11:53:22 | INFO | app.workflows.processors.transfer | [t6] Transfer workflow step | phone=0099 | step=SELECT_BENEFICIARY
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow updated | phone=447700900099
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=447700900099 | type=cheque
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
-2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:53:22 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:53:22 | INFO | app.workflows.manager | [t4] Workflow jump requested, confirming | from=cheque | to=loan | phone=0097
-2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
-2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:53:23 | INFO | app.workflows.manager | [t5] Workflow jump requested, confirming | from=cheque | to=loan | phone=0097
-2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow deleted | phone=447700900097
+2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:53:23 | INFO | app.workflows.manager | [t6] Workflow stop confirmed | type=cheque | phone=0097 | closing=False | jump_to=loan
-2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=loan
-2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
-2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
+2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:53:23 | INFO | app.workflows.manager | [t7] Workflow jump requested, confirming | from=cheque | to=loan | phone=0097
-2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow updated | phone=447700900097
+2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:53:23 | INFO | app.workflows.manager | [t8] Workflow stop declined, resuming | type=cheque | phone=0097
-2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:53:23 | INFO | app.workflows.manager | Workflow-related question | workflow=cheque | phone=0097
-2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:53:23 | INFO | app.workflows.manager | Workflow-related question | workflow=cheque | phone=0097
 2026-08-17 11:53:23 | INFO | app.workflows.manager | [t1] Side question answered mid-workflow, resuming step | workflow=cheque | phone=0097
-2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=447700900097 | type=cheque
+2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
 2026-08-17 11:53:23 | INFO | app.workflows.manager | Workflow-related question | workflow=cheque | phone=0097
 2026-08-17 11:53:23 | INFO | app.workflows.manager | [t2] Side question answered mid-workflow, resuming step | workflow=cheque | phone=0097
 2026-08-17 11:53:23 | INFO | app.workflows.manager | [t1] Checking for deterministic workflow start | phone=0096 | query='I want a loan'
-2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=447700900096 | type=loan
+2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:53:23 | INFO | app.workflows.manager | [t2] Checking for deterministic workflow start | phone=0096 | query='I want a loan'
-2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=447700900096 | type=loan
+2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
 2026-08-17 11:53:23 | INFO | app.workflows.manager | [t3] Active workflow found | type=loan | step=SELECT_LOAN_TYPE | phone=0096
 2026-08-17 11:53:23 | INFO | app.workflows.processors.loan | [t3] Loan workflow step | phone=0096 | step=SELECT_LOAN_TYPE
-2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow updated | phone=447700900096
-2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow updated | phone=447700900096
+2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:53:23 | INFO | app.workflows.processors.loan | [t3] Loan type selected | phone=0096 | loan_type=home
-2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=447700900096 | type=transfer
-2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=447700900098 | type=loan
-2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow updated | phone=447700900098
-2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=447700900098 | type=cheque
-2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow updated | phone=447700900098
+2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=transfer
+2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=loan
+2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:53:23 | INFO | app.workflows.manager | [t2] Workflow stop requested, confirming | type=cheque | phone=0098 | trigger='Cancel'
-2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=447700900098 | type=cheque
-2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow updated | phone=447700900098
+2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=cheque
+2026-08-17 11:53:23 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:53:23 | INFO | app.workflows.manager | [t1] Workflow stop requested, confirming | type=cheque | phone=0098 | trigger='Cancel'
 2026-08-17 11:53:23 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=back | confidence=0.98 | workflow=none | step=none | method=rule
 2026-08-17 11:53:23 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=balance_request | confidence=0.92 | workflow=none | step=none | method=rule
@@ -2668,7 +2668,7 @@
 2026-08-17 11:53:23 | INFO | app.services.whatsapp | [trace-3] WhatsApp list message sent | phone=5760
 2026-08-17 11:53:23 | INFO | app.services.whatsapp | [trace-1] WhatsApp message sent | phone=5760
 2026-08-17 11:55:01 | INFO | app.workflows.manager | [] Checking for deterministic workflow start | phone=0001 | query='update my kyc'
-2026-08-17 11:55:01 | INFO | app.workflows.memory | Workflow created | phone=447700900001 | type=kyc
+2026-08-17 11:55:01 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=kyc
 2026-08-17 11:55:01 | INFO | app.workflows.manager | [] Active workflow found | type=kyc | step=UPLOAD_KYC_FORM | phone=0001
 2026-08-17 11:55:01 | INFO | app.workflows.processors.kyc | [] KYC workflow step | phone=0001 | step=UPLOAD_KYC_FORM
 2026-08-17 11:55:01 | INFO | app.workflows.manager | [] Active workflow found | type=kyc | step=UPLOAD_KYC_FORM | phone=0001
@@ -2679,24 +2679,24 @@
 2026-08-17 11:55:01 | INFO | app.workflows.processors.kyc | [] KYC document unreadable/invalid | phone=0001 | id_type=aadhaar | has_name=True | has_dob=True | id_number_valid=False
 2026-08-17 11:55:01 | INFO | app.workflows.manager | [] Active workflow found | type=kyc | step=UPLOAD_KYC_FORM | phone=0001
 2026-08-17 11:55:01 | INFO | app.workflows.processors.kyc | [] KYC workflow step | phone=0001 | step=UPLOAD_KYC_FORM
-2026-08-17 11:55:01 | INFO | app.workflows.memory | Workflow updated | phone=447700900001
-2026-08-17 11:55:01 | INFO | app.workflows.memory | Workflow updated | phone=447700900001
+2026-08-17 11:55:01 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:55:01 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:55:01 | INFO | app.workflows.processors.kyc | [] KYC document verified, awaiting confirmation | phone=0001 | id_type=aadhaar
 2026-08-17 11:55:01 | INFO | app.workflows.manager | [] Active workflow found | type=kyc | step=CONFIRM_KYC | phone=0001
 2026-08-17 11:55:01 | INFO | app.workflows.processors.kyc | [] KYC workflow step | phone=0001 | step=CONFIRM_KYC
-2026-08-17 11:55:01 | INFO | app.workflows.memory | Workflow deleted | phone=447700900001
+2026-08-17 11:55:01 | INFO | app.workflows.memory | Workflow deleted | phone=441111111111
 2026-08-17 11:55:01 | INFO | app.workflows.processors.kyc | [] KYC request created | phone=0001 | request_id=KYC-83B6C0C0
 2026-08-17 11:55:01 | INFO | app.workflows.manager | [] Checking for deterministic workflow start | phone=0002 | query='update my kyc'
-2026-08-17 11:55:01 | INFO | app.workflows.memory | Workflow created | phone=447700900002 | type=kyc
+2026-08-17 11:55:01 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=kyc
 2026-08-17 11:55:01 | INFO | app.workflows.manager | [] Active workflow found | type=kyc | step=UPLOAD_KYC_FORM | phone=0002
 2026-08-17 11:55:01 | INFO | app.workflows.processors.kyc | [] KYC workflow step | phone=0002 | step=UPLOAD_KYC_FORM
-2026-08-17 11:55:01 | INFO | app.workflows.memory | Workflow updated | phone=447700900002
-2026-08-17 11:55:01 | INFO | app.workflows.memory | Workflow updated | phone=447700900002
+2026-08-17 11:55:01 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:55:01 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:55:01 | INFO | app.workflows.processors.kyc | [] KYC document verified, awaiting confirmation | phone=0002 | id_type=passport
 2026-08-17 11:55:01 | INFO | app.workflows.manager | [] Checking for deterministic workflow start | phone=0003 | query='update my kyc'
-2026-08-17 11:55:01 | INFO | app.workflows.memory | Workflow created | phone=447700900003 | type=kyc
+2026-08-17 11:55:01 | INFO | app.workflows.memory | Workflow created | phone=441111111111 | type=kyc
 2026-08-17 11:55:01 | INFO | app.workflows.manager | [] Active workflow found | type=kyc | step=UPLOAD_KYC_FORM | phone=0003
 2026-08-17 11:55:01 | INFO | app.workflows.processors.kyc | [] KYC workflow step | phone=0003 | step=UPLOAD_KYC_FORM
-2026-08-17 11:55:01 | INFO | app.workflows.memory | Workflow updated | phone=447700900003
-2026-08-17 11:55:01 | INFO | app.workflows.memory | Workflow updated | phone=447700900003
+2026-08-17 11:55:01 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
+2026-08-17 11:55:01 | INFO | app.workflows.memory | Workflow updated | phone=441111111111
 2026-08-17 11:55:01 | INFO | app.workflows.processors.kyc | [] KYC document verified, awaiting confirmation | phone=0003 | id_type=driving_license

@@ -18,7 +18,7 @@ def normalize_phone_number(phone_number: str | None) -> str:
     format used in the bank database.
 
     This handles values such as "+91 11111 11111", "911111111111",
-    "447818658034", and numbers with leading zeros or formatting noise.
+    "441111111111", and numbers with leading zeros or formatting noise.
     """
     if phone_number is None:
         return ""
