@@ -71,6 +71,26 @@ def append_to_session(phone_number: str, role: str, content: str) -> None:
         logger.error(f"Redis set error | phone={phone_number} | error={e}")
 
 
+def append_turn_to_session(phone_number: str, user_content: str, assistant_content: str) -> None:
+    """Append both halves of one conversation turn (the customer's message
+    and the assistant's reply) in a single read-modify-write, instead of
+    two independent append_to_session() calls each paying their own
+    GET+SET round-trip for what is really one update."""
+    try:
+        history = get_session_history(phone_number)
+        history.append({"role": "user", "content": user_content})
+        history.append({"role": "assistant", "content": assistant_content})
+        if len(history) > 20:
+            history = history[-20:]
+        redis_client.setex(
+            f"session:{phone_number}",
+            SESSION_TTL,
+            json.dumps(history)
+        )
+    except Exception as e:
+        logger.error(f"Redis set error | phone={phone_number} | error={e}")
+
+
 def clear_session(phone_number: str) -> None:
     try:
         redis_client.delete(f"session:{phone_number}")

@@ -205,7 +205,7 @@ class RunAgentRoutingIntegrationTests(unittest.IsolatedAsyncioTestCase):
             patch("app.conversation.manager.build_context", side_effect=lambda *a, **k: _fresh_context()),
             patch.object(agent_module.conversation_context_store, "save", return_value=True),
             patch("app.conversation.manager.get_workflow", return_value=None),
-            patch("app.conversation.manager.append_to_session"),
+            patch("app.conversation.manager.append_turn_to_session"),
         ]
 
     async def test_out_of_scope_message_never_calls_the_llm(self):

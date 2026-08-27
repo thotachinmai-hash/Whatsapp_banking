@@ -47,7 +47,7 @@ from app.conversation.responses.errors import render_agent_error
 from app.conversation.router import route_intent
 from app.conversation.workflow_adapter import start_workflow_directly
 from app.logger import get_logger
-from app.memory import append_to_session
+from app.memory import append_turn_to_session
 from app.services.registration_gate import check_registration_gate
 from app.workflows.manager import WorkflowManager
 from app.workflows.memory import get_workflow
@@ -724,8 +724,10 @@ class ConversationManager:
         # mechanism from ConversationContext — see docs/current_architecture.md,
         # "Conversation Context — Phase 1". Never logs the raw message —
         # only Redis stores it, under the same TTL/retention as before.
-        await asyncio.to_thread(append_to_session, phone_number, "user", query)
-        await asyncio.to_thread(append_to_session, phone_number, "assistant", structured.text[:500])
+        # Both halves of the turn are appended in one read-modify-write
+        # (append_turn_to_session) instead of two independent GET+SET
+        # round-trips.
+        await asyncio.to_thread(append_turn_to_session, phone_number, query, structured.text[:500])
         await asyncio.to_thread(self._persist, context, phone_number, trace_id, structured.text)
         logger.info(f"[{trace_id}] conversation.turn.completed | phone={phone_number[-4:]}")
         return structured if was_structured else structured.text

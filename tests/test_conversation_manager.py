@@ -56,7 +56,7 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
             patch("app.conversation.manager.build_context", return_value=context),
             patch("app.conversation.manager.check_registration_gate", return_value=registration_gate_result),
             patch("app.conversation.manager.get_workflow", return_value=None),
-            patch("app.conversation.manager.append_to_session"),
+            patch("app.conversation.manager.append_turn_to_session"),
         )
 
     # 1. New banking question
@@ -440,7 +440,7 @@ class ConversationManagerArchitectureBoundaryTests(unittest.IsolatedAsyncioTestC
             patch("app.conversation.manager.build_context", return_value=context),
             patch("app.conversation.manager.check_registration_gate", return_value=None),
             patch("app.conversation.manager.get_workflow", return_value=None),
-            patch("app.conversation.manager.append_to_session"),
+            patch("app.conversation.manager.append_turn_to_session"),
         )
 
     async def test_active_workflow_remains_authoritative_over_router(self):
@@ -506,7 +506,7 @@ class ConversationManagerMenuTapTests(unittest.IsolatedAsyncioTestCase):
             patch("app.conversation.manager.build_context", return_value=context),
             patch("app.conversation.manager.check_registration_gate", return_value=None),
             patch("app.conversation.manager.get_workflow", return_value=None),
-            patch("app.conversation.manager.append_to_session"),
+            patch("app.conversation.manager.append_turn_to_session"),
         )
 
     async def test_out_of_scope_digit_falls_back_to_start_requested(self):

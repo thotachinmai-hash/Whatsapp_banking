@@ -202,7 +202,7 @@ def _patches(context):
         patch("app.conversation.manager.build_context", return_value=context),
         patch("app.conversation.manager.check_registration_gate", return_value=None),
         patch("app.conversation.manager.get_workflow", return_value=None),
-        patch("app.conversation.manager.append_to_session"),
+        patch("app.conversation.manager.append_turn_to_session"),
     )
 
 
