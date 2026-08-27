@@ -33,6 +33,8 @@ from app.services.llm_understanding import (
 )
 from app.conversation.renderer import InteractiveButton, StructuredResponse
 from app.conversation.workflow_adapter import start_workflow_directly
+from app.conversation.intent.models import CONFIDENCE_HIGH, WORKFLOW_EXECUTING_INTENTS
+from app.conversation.router import get_workflow_for_intent
 
 from app.workflows.processors.cheque import ChequeWorkflowProcessor
 from app.workflows.processors.loan import LOAN_TYPES, LoanWorkflowHandler, detect_loan_type_from_text, loan_type_list_prompt
@@ -77,6 +79,7 @@ class WorkflowManager:
         query: str,
         parsed_document: dict | None = None,
         trace_id: str = "",
+        intent_result: Any = None,
     ) -> dict[str, Any]:
         """
         Handle an active workflow.
@@ -201,6 +204,42 @@ class WorkflowManager:
 
         if _is_back_command(query) and workflow_type != WORKFLOW_TRANSFER:
             return _handle_back_for_workflow(workflow, phone_number)
+
+        # Generic, any-workflow-to-any-workflow switch: the SAME
+        # intent_result app/conversation/manager.py already computed for
+        # this message via classify_intent() (before it even knew a
+        # workflow was active) is reused here — not a second, separate
+        # classification, and not a per-workflow-pair keyword table. If
+        # the classifier confidently recognized a DIFFERENT workflow-
+        # starting request than the one currently active (e.g. "I want to
+        # create another bank account" mid-loan-application), switch
+        # immediately: no confirmation round-trip, no need to say
+        # "cancel" first. This runs BEFORE the older, narrower jump
+        # detection below (which stays as a fallback for phrasing the
+        # fast rules don't catch) and before the free-text
+        # question/side-answer handling, since a clear new request should
+        # win over both.
+        #
+        # CONFIDENCE_HIGH matches the exact bar a fresh (no-workflow)
+        # START_WORKFLOW decision already requires (see router.py) — this
+        # doesn't lower the bar for starting a financial workflow, it only
+        # extends the SAME bar to also apply while a different one is
+        # active. _is_current_workflow_input still guards against a
+        # genuine field answer that happens to contain a workflow keyword
+        # being misread as a switch.
+        if (
+            intent_result is not None
+            and intent_result.intent in WORKFLOW_EXECUTING_INTENTS
+            and intent_result.confidence >= CONFIDENCE_HIGH
+            and not _is_current_workflow_input(workflow, query)
+        ):
+            target_workflow = get_workflow_for_intent(intent_result.intent)
+            if target_workflow and target_workflow != workflow_type:
+                switched = _switch_workflow(
+                    phone_number, workflow_type, target_workflow, query, trace_id, self.transfer_handler
+                )
+                if switched is not None:
+                    return switched
 
         # Questions and general banking requests are allowed during every
         # workflow. Answer them without losing the active flow or asking the
@@ -902,3 +941,80 @@ def _handle_back_for_workflow(workflow: dict[str, Any], phone_number: str) -> di
     if previous[0]:
         set_workflow_step(phone_number, previous[0])
     return {"handled": True, "response": previous[1] + "\n\nReply *Back* or *Cancel* anytime."}
+
+
+def _switch_workflow(
+    phone_number: str,
+    from_workflow: str,
+    to_workflow: str,
+    query: str,
+    trace_id: str,
+    transfer_handler: Any,
+) -> dict[str, Any] | None:
+    """Abandon `from_workflow` and start `to_workflow` in its place — the
+    one, generic, any-to-any mechanism behind WorkflowManager.handle()'s
+    switch check above. Reuses start_workflow_directly (app/conversation/
+    workflow_adapter.py), the SAME starter a fresh no-active-workflow
+    START_WORKFLOW decision already uses for every workflow type, so
+    there is no second, workflow-type-specific starting path to keep in
+    sync.
+
+    Clears the structured workflow record only — the conversation's
+    session history and ConversationContext are untouched by this call,
+    so useful context (what the customer already said) isn't lost, even
+    though the old workflow's in-progress, unconfirmed answers are. This
+    matches the existing behavior of every other workflow-abandoning path
+    in this file (the greeting-word restart, the confirmed-stop path) —
+    nothing is ever committed until a workflow's own final confirmation
+    step, so abandoning mid-flow loses no real banking action, only
+    not-yet-submitted form state.
+
+    Returns None (caller falls through to the existing behavior) if the
+    target workflow type isn't one start_workflow_directly can start —
+    defensive; every WORKFLOW_EXECUTING_INTENTS value maps to a type it
+    handles today.
+
+    Deliberately does NOT clear `from_workflow` up front. start_workflow_directly's
+    own create_workflow() call (when it actually starts one) already
+    overwrites the same per-phone Redis record, so a genuine switch needs
+    no separate delete — and some starters legitimately answer without
+    creating a workflow at all (insufficient balance for a transfer, no
+    account types left to add): clearing first would abandon the old
+    workflow even on THAT path, losing real in-progress state for no
+    reason. Checking the actual post-call state instead keeps the old
+    workflow fully intact whenever no new one was actually created."""
+    started = start_workflow_directly(
+        to_workflow, phone_number, transfer_handler=transfer_handler, query=query, trace_id=trace_id,
+    )
+    if started is None or not started.get("handled"):
+        return None
+
+    new_workflow = get_workflow(phone_number)
+    if not new_workflow or new_workflow.get("type") != to_workflow:
+        # Answered informationally without starting a workflow (e.g.
+        # "insufficient balance" / "no account types left") -- nothing
+        # switched, so no "pausing" note and the old workflow (if any) is
+        # still exactly as it was.
+        return started
+
+    from_label = _WORKFLOW_LABELS.get(from_workflow, "previous request")
+    logger.info(
+        f"[{trace_id}] Workflow switched | from={from_workflow} | to={to_workflow} | "
+        f"phone={phone_number[-4:]} | trigger={query[:30]!r}"
+    )
+    switch_note = f"No problem — pausing your {from_label.lower()} for this.\n\n"
+    started["response"] = _prefix_response_text(started["response"], switch_note)
+    return started
+
+
+def _prefix_response_text(response: Any, prefix: str) -> Any:
+    """Prepend `prefix` to a response's visible text, whether it's a plain
+    string or a StructuredResponse (list/buttons) — used only by
+    _switch_workflow so the "pausing your X" note survives regardless of
+    which shape the target workflow's own starter happens to return."""
+    if isinstance(response, str):
+        return prefix + response
+    if isinstance(response, StructuredResponse):
+        response.text = prefix + response.text
+        return response
+    return response

@@ -27,6 +27,7 @@ from app.workflows.constants import (
     STEP_SELECT_LOAN_TYPE,
     STEP_UPLOAD_CHEQUE,
     STEP_UPLOAD_KYC_FORM,
+    WORKFLOW_ADD_ACCOUNT,
     WORKFLOW_CHEQUE,
     WORKFLOW_KYC,
     WORKFLOW_LOAN,
@@ -59,7 +60,12 @@ def start_workflow_directly(
     ("I'd like to open another account") — start the add-account flow
     instead of the (inapplicable) fresh-registration one."""
 
-    if workflow_type == WORKFLOW_ONBOARDING:
+    if workflow_type in (WORKFLOW_ONBOARDING, WORKFLOW_ADD_ACCOUNT):
+        # add_account_request (a registered customer asking for an
+        # additional account, e.g. "create another account") maps to the
+        # same starter as the registration_request/"already registered"
+        # case just above — see this function's own docstring for why
+        # WORKFLOW_ONBOARDING reaching here always means the latter.
         return start_add_account_workflow(phone_number, trace_id)
 
     if workflow_type == WORKFLOW_TRANSFER:

@@ -25,7 +25,7 @@ class _FakeWorkflowManager:
         self.start_requested_calls = []
         self.transfer_handler = object()
 
-    def handle(self, phone_number, query, parsed_document=None, trace_id=""):
+    def handle(self, phone_number, query, parsed_document=None, trace_id="", intent_result=None):
         self.handle_calls.append((phone_number, query))
         return self.handle_result
 

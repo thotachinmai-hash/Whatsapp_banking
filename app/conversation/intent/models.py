@@ -21,7 +21,7 @@ NAVIGATION_INTENTS = {
 WORKFLOW_REQUEST_INTENTS = {
     "registration_request", "transfer_request", "balance_request",
     "transaction_request", "cheque_deposit_request", "cheque_status_request",
-    "loan_application_request", "kyc_update_request",
+    "loan_application_request", "kyc_update_request", "add_account_request",
 }
 
 # ─── C. Banking questions / knowledge ─────────────────────────────────
@@ -70,7 +70,7 @@ ALL_INTENTS = frozenset().union(
 # itself — it is metadata for whichever future routing layer reads it.
 WORKFLOW_EXECUTING_INTENTS = {
     "registration_request", "transfer_request", "cheque_deposit_request",
-    "loan_application_request", "kyc_update_request",
+    "loan_application_request", "kyc_update_request", "add_account_request",
 }
 
 # Intents that, today, are answered via the existing LLM+tools branch of

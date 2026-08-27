@@ -48,7 +48,19 @@ _WORKFLOW_FOR_INTENT = {
     "loan_application_request": "loan",
     "cheque_deposit_request": "cheque",
     "kyc_update_request": "kyc",
+    "add_account_request": "add_account",
 }
+
+
+def get_workflow_for_intent(intent: str) -> Optional[str]:
+    """Public accessor for _WORKFLOW_FOR_INTENT — used by
+    WorkflowManager.handle() (app/workflows/manager.py) to recognize a
+    clear new-workflow-starting intent while a DIFFERENT workflow is
+    already active, so it can switch immediately instead of staying
+    stuck on the old one. The same mapping every fresh (no-active-
+    workflow) START_WORKFLOW decision already uses — one table, not a
+    second copy."""
+    return _WORKFLOW_FOR_INTENT.get(intent)
 
 
 class RoutingDecision(BaseModel):

@@ -233,6 +233,7 @@ class ConversationManager:
                 query=query,
                 parsed_document=parsed_document,
                 trace_id=trace_id,
+                intent_result=intent_result,
             )
             reprocess_query = workflow_result.get("reprocess_query")
             if reprocess_query:

@@ -391,11 +391,34 @@ def classify_workflow_request(text: str) -> Optional[IntentResult]:
     # phrase — "open a savings account" (a real, common phrasing) fell
     # through to a generic out-of-scope fallback. \w* covers "savings"/
     # "current"/"salary"/nothing at all.
-    if any(k in normalized for k in ("register", "sign up", "create an account")) or re.search(
+    # `not _is_question` guards this the same way every sibling rule below
+    # already does (see the comment above kyc_update_request) — without
+    # it, "what documents do I need to open an account" was read as a
+    # request to actually START onboarding instead of the question it is.
+    if not _is_question(text) and (any(k in normalized for k in ("register", "sign up", "create an account")) or re.search(
         r"\bopen\s+(?:an?|my)\s+\w*\s*account\b", normalized
-    ):
+    )):
         confidence = _dampen_for_hedging(0.85, normalized)
         return IntentResult(intent="registration_request", confidence=confidence, method="rule")
+
+    # An ALREADY-registered customer opening an additional account — kept
+    # distinct from registration_request above, which is for a brand-new
+    # customer. Phrasing is deliberately unambiguous ("another"/"add"/
+    # "additional"/"second"/"one more") rather than a bare "new account",
+    # which is exactly what a not-yet-registered customer would also say
+    # and stays with registration_request (the registration gate upstream
+    # already routes an unregistered customer into onboarding before this
+    # classification matters).
+    if not _is_question(text) and (
+        re.search(r"\banother\s+\w*\s*account\b", normalized)
+        or any(k in normalized for k in (
+            "add account", "add an account", "additional account",
+            "second account", "one more account", "create another",
+            "open another",
+        ))
+    ):
+        confidence = _dampen_for_hedging(0.85, normalized)
+        return IntentResult(intent="add_account_request", confidence=confidence, method="rule")
 
     amount_currency = _extract_amount_and_currency(text)
     beneficiary = _extract_beneficiary_name(text)
