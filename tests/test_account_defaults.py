@@ -27,7 +27,7 @@ def test_create_transfer_debits_source_account_balance(monkeypatch):
             if "INSERT INTO transfers" in query:
                 return {
                     "reference": "TRF-123",
-                    "phone_number": "919999999999",
+                    "phone_number": "911111111111",
                     "source_account": "GB12FNCL00010001234567",
                     "beneficiary_name": "Amit",
                     "beneficiary_account": "GB90FNCL11112222333344",
@@ -64,7 +64,7 @@ def test_create_transfer_debits_source_account_balance(monkeypatch):
 
     result = database.create_transfer(
         reference="TRF-123",
-        phone_number="919999999999",
+        phone_number="911111111111",
         source_account="GB12FNCL00010001234567",
         beneficiary_name="Amit",
         beneficiary_account="GB90FNCL11112222333344",

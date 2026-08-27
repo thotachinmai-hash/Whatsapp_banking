@@ -47,20 +47,20 @@ class SendTextMessageTests(unittest.IsolatedAsyncioTestCase):
         _TrackingAsyncClient.last_request = None
 
     async def test_send_text_message_uses_full_chat_id_for_numeric_phone(self):
-        result = await whatsapp.send_text_message("919080745760", "Hello", "trace-1")
+        result = await whatsapp.send_text_message("911111111111", "Hello", "trace-1")
 
         self.assertTrue(result)
         self.assertIsNotNone(_TrackingAsyncClient.last_request)
         self.assertEqual(
             _TrackingAsyncClient.last_request["url"], "https://graph.facebook.com/v25.0/12345/messages"
         )
-        self.assertEqual(_TrackingAsyncClient.last_request["json"]["to"], "919080745760")
+        self.assertEqual(_TrackingAsyncClient.last_request["json"]["to"], "911111111111")
         self.assertEqual(_TrackingAsyncClient.last_request["json"]["type"], "text")
         self.assertEqual(_TrackingAsyncClient.last_request["json"]["text"], {"body": "Hello"})
 
     async def test_send_button_message_builds_expected_payload(self):
         result = await whatsapp.send_button_message(
-            "919080745760", "Ready to send this?",
+            "911111111111", "Ready to send this?",
             [{"id": "1", "title": "Yes, send it"}, {"id": "2", "title": "Edit amount"}],
             "trace-2",
         )
@@ -89,7 +89,7 @@ class SendTextMessageTests(unittest.IsolatedAsyncioTestCase):
             }
         ]
         result = await whatsapp.send_list_message(
-            "919080745760", "Choose a loan type", "Choose", sections, "trace-3"
+            "911111111111", "Choose a loan type", "Choose", sections, "trace-3"
         )
 
         self.assertTrue(result)
@@ -110,7 +110,7 @@ class SendTextMessageTests(unittest.IsolatedAsyncioTestCase):
 
         with mock.patch.object(whatsapp.httpx, "AsyncClient", _FailingClient):
             result = await whatsapp.send_button_message(
-                "919080745760", "Hi", [{"id": "1", "title": "Yes"}], "trace-4"
+                "911111111111", "Hi", [{"id": "1", "title": "Yes"}], "trace-4"
             )
         self.assertFalse(result)
 
