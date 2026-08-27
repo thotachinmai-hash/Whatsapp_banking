@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 from app.conversation.context import ConversationContext
 from app.conversation.intent.models import IntentResult
@@ -26,7 +26,7 @@ class _FakeWorkflowManager:
         self.start_requested_calls = []
         self.transfer_handler = object()
 
-    async def handle(self, phone_number, query, parsed_document=None, trace_id=""):
+    def handle(self, phone_number, query, parsed_document=None, trace_id=""):
         self.handle_calls.append((phone_number, query))
         return self.handle_result
 
@@ -54,7 +54,7 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
         context = context if context is not None else _fresh_context()
         return (
             patch("app.conversation.manager.build_context", return_value=context),
-            patch("app.conversation.manager.check_registration_gate", new=AsyncMock(return_value=registration_gate_result)),
+            patch("app.conversation.manager.check_registration_gate", return_value=registration_gate_result),
             patch("app.conversation.manager.get_workflow", return_value=None),
             patch("app.conversation.manager.append_to_session"),
         )
@@ -438,7 +438,7 @@ class ConversationManagerArchitectureBoundaryTests(unittest.IsolatedAsyncioTestC
         context = context if context is not None else _fresh_context()
         return (
             patch("app.conversation.manager.build_context", return_value=context),
-            patch("app.conversation.manager.check_registration_gate", new=AsyncMock(return_value=None)),
+            patch("app.conversation.manager.check_registration_gate", return_value=None),
             patch("app.conversation.manager.get_workflow", return_value=None),
             patch("app.conversation.manager.append_to_session"),
         )
@@ -504,7 +504,7 @@ class ConversationManagerMenuTapTests(unittest.IsolatedAsyncioTestCase):
         context = context if context is not None else _fresh_context()
         return (
             patch("app.conversation.manager.build_context", return_value=context),
-            patch("app.conversation.manager.check_registration_gate", new=AsyncMock(return_value=None)),
+            patch("app.conversation.manager.check_registration_gate", return_value=None),
             patch("app.conversation.manager.get_workflow", return_value=None),
             patch("app.conversation.manager.append_to_session"),
         )

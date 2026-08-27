@@ -31,7 +31,7 @@ def _is_greeting(query: str) -> bool:
     return normalized in GREETING_KEYWORDS
 
 
-async def check_registration_gate(
+def check_registration_gate(
     phone_number: str,
     query: str,
     trace_id: str = "",

@@ -201,7 +201,7 @@ class RunAgentRoutingIntegrationTests(unittest.IsolatedAsyncioTestCase):
         # build_agent/get_session_history stay patched via app.agent.agent
         # below since the LLM branch (_run_llm_agent) still lives there.
         return [
-            patch("app.conversation.manager.check_registration_gate", new=AsyncMock(return_value=None)),
+            patch("app.conversation.manager.check_registration_gate", return_value=None),
             patch("app.conversation.manager.build_context", side_effect=lambda *a, **k: _fresh_context()),
             patch.object(agent_module.conversation_context_store, "save", return_value=True),
             patch("app.conversation.manager.get_workflow", return_value=None),
@@ -213,7 +213,7 @@ class RunAgentRoutingIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
         patches = self._patches()
         with patches[0], patches[1], patches[2], patches[3], patches[4], \
-             patch.object(agent_module.workflow_manager, "handle", new=AsyncMock(return_value={"handled": False, "response": None})), \
+             patch.object(agent_module.workflow_manager, "handle", return_value={"handled": False, "response": None}), \
              patch.object(agent_module.workflow_manager, "start_requested") as mock_start_requested, \
              patch("app.agent.agent.build_agent") as mock_build_agent:
 
@@ -230,7 +230,7 @@ class RunAgentRoutingIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
         patches = self._patches()
         with patches[0], patches[1], patches[2], patches[3], patches[4], \
-             patch.object(agent_module.workflow_manager, "handle", new=AsyncMock(return_value={"handled": False, "response": None})), \
+             patch.object(agent_module.workflow_manager, "handle", return_value={"handled": False, "response": None}), \
              patch.object(agent_module.workflow_manager, "start_requested") as mock_start_requested, \
              patch("app.agent.agent.get_session_history", return_value=[]):
 
@@ -253,7 +253,7 @@ class RunAgentRoutingIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
         patches = self._patches()
         with patches[0], patches[1], patches[2], patches[3], patches[4], \
-             patch.object(agent_module.workflow_manager, "handle", new=AsyncMock(return_value={"handled": False, "response": None})), \
+             patch.object(agent_module.workflow_manager, "handle", return_value={"handled": False, "response": None}), \
              patch.object(
                  agent_module.workflow_manager,
                  "start_requested",
@@ -277,7 +277,7 @@ class RunAgentRoutingIntegrationTests(unittest.IsolatedAsyncioTestCase):
              patch.object(
                  agent_module.workflow_manager,
                  "handle",
-                 new=AsyncMock(return_value={"handled": True, "response": "Which account should we use?"}),
+                 return_value={"handled": True, "response": "Which account should we use?"},
              ), \
              patch.object(agent_module.workflow_manager, "start_requested") as mock_start_requested, \
              patch("app.agent.agent.build_agent") as mock_build_agent:

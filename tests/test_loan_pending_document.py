@@ -53,7 +53,7 @@ class LoanPendingDocumentTests(unittest.IsolatedAsyncioTestCase):
 
         with patch("app.workflows.processors.loan.get_accounts_by_phone", return_value=FAKE_ACCOUNTS), \
              patch("app.workflows.processors.loan.get_customer_by_phone", return_value={"full_name": "Jane Doe"}):
-            result = await self.handler.handle(
+            result = self.handler.handle(
                 workflow=get_workflow("441111111111"),
                 phone_number="441111111111",
                 query="home loan",
@@ -77,7 +77,7 @@ class LoanPendingDocumentTests(unittest.IsolatedAsyncioTestCase):
 
         with patch("app.workflows.processors.loan.get_accounts_by_phone", return_value=FAKE_ACCOUNTS), \
              patch("app.workflows.processors.loan.get_customer_by_phone", return_value={"full_name": "Alex Doe"}):
-            result = await self.handler.handle(
+            result = self.handler.handle(
                 workflow=get_workflow("441111111111"),
                 phone_number="441111111111",
                 query="vehicle",

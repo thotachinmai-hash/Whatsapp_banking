@@ -155,7 +155,7 @@ class ChequeWorkflowProcessor:
     Handles the cheque deposit workflow.
     """
 
-    async def handle(
+    def handle(
         self,
         workflow: dict[str, Any],
         phone_number: str,
@@ -171,7 +171,7 @@ class ChequeWorkflowProcessor:
         logger.info(f"[{trace_id}] Cheque workflow step | phone={phone_number[-4:]} | step={step}")
 
         if step == STEP_UPLOAD_CHEQUE:
-            return await self._handle_upload_cheque(
+            return self._handle_upload_cheque(
                 workflow,
                 phone_number,
                 parsed_document,
@@ -179,7 +179,7 @@ class ChequeWorkflowProcessor:
             )
 
         elif step == STEP_CORRECT_CHEQUE:
-            return await self._handle_correct_cheque(
+            return self._handle_correct_cheque(
                 workflow,
                 phone_number,
                 query,
@@ -192,7 +192,7 @@ class ChequeWorkflowProcessor:
             "response": "Unknown cheque workflow step."
         }
 
-    async def _handle_upload_cheque(
+    def _handle_upload_cheque(
         self,
         workflow: dict[str, Any],
         phone_number: str,
@@ -226,7 +226,7 @@ class ChequeWorkflowProcessor:
 
         return self._validate_or_finalize(phone_number, content, trace_id)
 
-    async def _handle_correct_cheque(
+    def _handle_correct_cheque(
         self,
         workflow: dict[str, Any],
         phone_number: str,

@@ -1,6 +1,6 @@
+import asyncio
 import time
 import uuid
-import time
 from app.logger import get_logger
 from app.metrics import (
     log_message_received,
@@ -245,7 +245,7 @@ def build_document_schema(active_workflow: dict | None) -> dict:
     return GENERIC_DOCUMENT_SCHEMA
 
 
-async def _handle_bare_document_upload(
+def _handle_bare_document_upload(
     detected_type: str,
     phone_number: str,
     parsed_document: dict,
@@ -271,7 +271,7 @@ async def _handle_bare_document_upload(
         workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
         create_workflow(phone_number, workflow)
         logger.info(f"[{trace_id}] Auto-detected cheque upload | phone={phone_number[-4:]}")
-        result = await ChequeWorkflowProcessor().handle(
+        result = ChequeWorkflowProcessor().handle(
             workflow=workflow, phone_number=phone_number, query="",
             parsed_document=parsed_document, trace_id=trace_id,
         )
@@ -281,7 +281,7 @@ async def _handle_bare_document_upload(
         workflow = create_workflow_model(WORKFLOW_KYC, STEP_UPLOAD_KYC_FORM)
         create_workflow(phone_number, workflow)
         logger.info(f"[{trace_id}] Auto-detected KYC document upload | phone={phone_number[-4:]}")
-        result = await KYCWorkflowHandler().handle(
+        result = KYCWorkflowHandler().handle(
             workflow=workflow, phone_number=phone_number, query="",
             parsed_document=parsed_document, trace_id=trace_id,
         )
@@ -616,7 +616,7 @@ async def handle_incoming_message(payload: dict) -> dict:
                 f"[{trace_id}] filename={filename}, mime_type={mime_type}, file_size={len(file_bytes)} bytes"
             )
 
-            active_workflow = get_workflow(phone_number)
+            active_workflow = await asyncio.to_thread(get_workflow, phone_number)
             document_prompt = build_document_prompt(active_workflow, filename)
             document_schema = build_document_schema(active_workflow)
 
@@ -655,10 +655,11 @@ async def handle_incoming_message(payload: dict) -> dict:
                 f"[{trace_id}] Document parsed successfully | duration={parse_duration:.2f}ms"
             )
 
-            if not active_workflow and get_customer_by_phone(phone_number):
+            if not active_workflow and await asyncio.to_thread(get_customer_by_phone, phone_number):
                 detected_type = detect_workflow_type(parsed_document.get("content", {}))
                 if detected_type:
-                    auto_response = await _handle_bare_document_upload(
+                    auto_response = await asyncio.to_thread(
+                        _handle_bare_document_upload,
                         detected_type, phone_number, parsed_document, trace_id
                     )
                     if auto_response is not None:

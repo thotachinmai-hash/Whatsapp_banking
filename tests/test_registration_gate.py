@@ -37,7 +37,7 @@ class RegistrationGateDeferralTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_unregistered_question_is_not_onboarded(self):
         with patch("app.services.registration_gate.get_customer_by_phone", return_value=None):
-            result = await check_registration_gate(
+            result = check_registration_gate(
                 phone_number="441111111111",
                 query="What documents do I need for a home loan?",
                 trace_id="t1",
@@ -49,7 +49,7 @@ class RegistrationGateDeferralTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_unregistered_service_request_starts_onboarding_with_pending_query(self):
         with patch("app.services.registration_gate.get_customer_by_phone", return_value=None):
-            result = await check_registration_gate(
+            result = check_registration_gate(
                 phone_number="441111111111",
                 query="I want to deposit a cheque",
                 trace_id="t2",
@@ -61,7 +61,7 @@ class RegistrationGateDeferralTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_unregistered_greeting_still_starts_onboarding(self):
         with patch("app.services.registration_gate.get_customer_by_phone", return_value=None):
-            result = await check_registration_gate(
+            result = check_registration_gate(
                 phone_number="441111111111",
                 query="hi",
                 trace_id="t3",
@@ -96,7 +96,7 @@ class RegisteredCustomerMenuTapTests(unittest.IsolatedAsyncioTestCase):
         ):
             for digit in ("1", "2", "3", "4", "5", "6", "7"):
                 with self.subTest(digit=digit):
-                    result = await check_registration_gate(
+                    result = check_registration_gate(
                         phone_number=f"44770090020{digit}",
                         query=digit,
                         trace_id=f"t{digit}",
@@ -115,7 +115,7 @@ class RegisteredCustomerMenuTapTests(unittest.IsolatedAsyncioTestCase):
             "app.services.registration_gate.get_customer_by_phone",
             return_value={"full_name": "John Smith"},
         ), patch("app.services.registration_gate.get_accounts_by_phone", return_value=[]):
-            result = await check_registration_gate(
+            result = check_registration_gate(
                 phone_number="441111111111",
                 query="hey there",
                 trace_id="t8",
@@ -145,13 +145,13 @@ class ResumePendingServiceTests(unittest.IsolatedAsyncioTestCase):
 
         with patch("app.workflows.processors.onboarding.OnboardingWorkflowHandler.handle") as mock_handle, \
              patch("app.database.get_customer_by_phone", return_value={"full_name": "Test User"}):
-            async def _complete(*args, **kwargs):
+            def _complete(*args, **kwargs):
                 from app.workflows.memory import complete_workflow
                 complete_workflow("441111111111")
                 return {"handled": True, "response": "Account created!"}
             mock_handle.side_effect = _complete
 
-            result = await self.manager.handle(
+            result = self.manager.handle(
                 phone_number="441111111111",
                 query="savings",
                 trace_id="t4",
@@ -174,13 +174,13 @@ class ResumePendingServiceTests(unittest.IsolatedAsyncioTestCase):
 
         with patch("app.workflows.processors.onboarding.OnboardingWorkflowHandler.handle") as mock_handle, \
              patch("app.database.get_customer_by_phone", return_value=None):
-            async def _cancel(*args, **kwargs):
+            def _cancel(*args, **kwargs):
                 from app.workflows.memory import complete_workflow
                 complete_workflow("441111111111")
                 return {"handled": True, "response": "Registration cancelled."}
             mock_handle.side_effect = _cancel
 
-            result = await self.manager.handle(
+            result = self.manager.handle(
                 phone_number="441111111111",
                 query="no",
                 trace_id="t5",

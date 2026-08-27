@@ -71,7 +71,7 @@ class WorkflowManager:
         self.transfer_handler = TransferWorkflowProcessor()
         self.transactions_handler = ViewTransactionsWorkflowHandler()
 
-    async def handle(
+    def handle(
         self,
         phone_number: str,
         query: str,
@@ -317,7 +317,7 @@ class WorkflowManager:
 
         if workflow_type == WORKFLOW_CHEQUE:
 
-            return await self.cheque_handler.handle(
+            return self.cheque_handler.handle(
                 workflow=workflow,
                 phone_number=phone_number,
                 query=query,
@@ -327,7 +327,7 @@ class WorkflowManager:
 
         elif workflow_type == WORKFLOW_LOAN:
 
-            return await self.loan_handler.handle(
+            return self.loan_handler.handle(
                 workflow=workflow,
                 phone_number=phone_number,
                 query=query,
@@ -337,7 +337,7 @@ class WorkflowManager:
 
         elif workflow_type == WORKFLOW_KYC:
 
-            return await self.kyc_handler.handle(
+            return self.kyc_handler.handle(
                 workflow=workflow,
                 phone_number=phone_number,
                 query=query,
@@ -353,7 +353,7 @@ class WorkflowManager:
             # branch is naturally a no-op for WORKFLOW_ADD_ACCOUNT.
             pending_service_query = workflow.get("data", {}).get("pending_service_query")
 
-            result = await self.onboarding_handler.handle(
+            result = self.onboarding_handler.handle(
                 workflow=workflow,
                 phone_number=phone_number,
                 query=query,
@@ -386,7 +386,7 @@ class WorkflowManager:
             return self.transfer_handler.handle(workflow, phone_number, query, trace_id=trace_id)
 
         elif workflow_type == WORKFLOW_VIEW_TRANSACTIONS:
-            return await self.transactions_handler.handle(workflow, phone_number, query, trace_id=trace_id)
+            return self.transactions_handler.handle(workflow, phone_number, query, trace_id=trace_id)
 
         logger.warning(
             f"Unknown workflow type: {workflow_type}"

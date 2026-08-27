@@ -93,10 +93,9 @@ class ViewTransactionsMenuTests(unittest.TestCase):
         with patch("app.workflows.processors.transactions.get_accounts_by_phone", return_value=[_SAVINGS, _CURRENT]), \
              patch("app.workflows.processors.transactions.get_account_by_number", return_value={**_CURRENT, "id": 2}), \
              patch("app.workflows.processors.transactions.get_transactions", return_value=_TRANSACTIONS):
-            import asyncio
-            result = asyncio.run(self.manager.handle(
+            result = self.manager.handle(
                 phone_number="441111111111", query="vtxn_2", trace_id="tv4"
-            ))
+            )
 
         self.assertTrue(result["handled"])
         structured = as_structured_response(result["response"])

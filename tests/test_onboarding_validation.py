@@ -123,7 +123,7 @@ class OnboardingValidationTests(unittest.TestCase):
     def test_stops_onboarding_for_stop_commands(self) -> None:
         with patch("app.workflows.processors.onboarding.complete_workflow") as mock_complete:
             workflow = {"step": STEP_COLLECT_AADHAAR}
-            result = asyncio.run(self.handler.handle(workflow, "911111111111", "please stop"))
+            result = self.handler.handle(workflow, "911111111111", "please stop")
 
         self.assertTrue(result["handled"])
         self.assertIn("stopped", result["response"].lower())
@@ -151,7 +151,7 @@ class OnboardingStartsAtAadhaarTests(unittest.IsolatedAsyncioTestCase):
             "content": {"aadhaar_number": "123456789012", "full_name": "Jordan Smith"},
         }
 
-        result = await self.handler.handle(
+        result = self.handler.handle(
             {"step": STEP_COLLECT_AADHAAR}, self.phone, "", parsed_document, "t1"
         )
 
@@ -164,7 +164,7 @@ class OnboardingStartsAtAadhaarTests(unittest.IsolatedAsyncioTestCase):
         workflow = create_workflow_model(WORKFLOW_ONBOARDING, STEP_COLLECT_AADHAAR)
         create_workflow(self.phone, workflow)
 
-        result = await self.handler.handle(
+        result = self.handler.handle(
             {"step": STEP_COLLECT_AADHAAR}, self.phone, "yes", None, "t2"
         )
 
@@ -179,7 +179,7 @@ class OnboardingStartsAtAadhaarTests(unittest.IsolatedAsyncioTestCase):
         create_workflow(self.phone, workflow)
 
         with patch("app.workflows.processors.onboarding.complete_workflow") as mock_complete:
-            result = await self.handler.handle({"step": STEP_COLLECT_AADHAAR}, self.phone, "no", None, "t3")
+            result = self.handler.handle({"step": STEP_COLLECT_AADHAAR}, self.phone, "no", None, "t3")
 
         self.assertTrue(result["handled"])
         self.assertEqual(result["response"], "We are not proceeding with your registration but you can still chat with us.")

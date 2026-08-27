@@ -53,7 +53,7 @@ class KYCWorkflowHandler:
     OCR — a customer who mistypes a digit would otherwise get KYC data on
     file that was never actually verified against their real ID."""
 
-    async def handle(self, workflow: dict[str, Any], phone_number: str, query: str, parsed_document: dict | None = None, trace_id: str = "") -> dict[str, Any]:
+    def handle(self, workflow: dict[str, Any], phone_number: str, query: str, parsed_document: dict | None = None, trace_id: str = "") -> dict[str, Any]:
         logger.info(f"[{trace_id}] KYC workflow step | phone={phone_number[-4:]} | step={workflow['step']}")
         if workflow["step"] == STEP_UPLOAD_KYC_FORM:
             return self._collect(workflow, phone_number, query, parsed_document, trace_id)

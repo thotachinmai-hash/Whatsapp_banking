@@ -85,7 +85,7 @@ class ViewTransactionsWorkflowHandler:
     """Single-step handler: resolve the tapped/typed account choice, then
     complete the workflow after showing its last 5 transactions."""
 
-    async def handle(self, workflow: dict[str, Any], phone_number: str, query: str, trace_id: str = "") -> dict[str, Any]:
+    def handle(self, workflow: dict[str, Any], phone_number: str, query: str, trace_id: str = "") -> dict[str, Any]:
         # Not persisted in the workflow record itself — Decimal balances
         # aren't JSON-serializable for Redis storage (see create_workflow),
         # so re-fetch fresh instead, same as transfer.py's own fallback.

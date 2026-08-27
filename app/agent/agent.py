@@ -1,3 +1,4 @@
+import asyncio
 import os
 import re
 import time
@@ -500,7 +501,7 @@ async def _run_llm_agent(
     (ConversationManager._finish) owns persisting the turn."""
     start = time.time()
 
-    history = get_session_history(phone_number)
+    history = await asyncio.to_thread(get_session_history, phone_number)
 
     past_messages = []
     for msg in history[-6:]:
@@ -509,7 +510,7 @@ async def _run_llm_agent(
         elif msg["role"] == "assistant":
             past_messages.append(AIMessage(content=msg["content"][:300]))
 
-    agent = build_agent(trace_id, phone_number)
+    agent = await asyncio.to_thread(build_agent, trace_id, phone_number)
 
     initial_state: AgentState = {
         "messages": past_messages + [HumanMessage(content=query)],

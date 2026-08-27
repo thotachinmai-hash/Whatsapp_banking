@@ -308,7 +308,7 @@ class LoanWorkflowHandler:
     still missing.
     """
 
-    async def handle(self, workflow: dict[str, Any], phone_number: str, query: str, parsed_document: dict | None = None, trace_id: str = "") -> dict[str, Any]:
+    def handle(self, workflow: dict[str, Any], phone_number: str, query: str, parsed_document: dict | None = None, trace_id: str = "") -> dict[str, Any]:
         step = workflow["step"]
         logger.info(f"[{trace_id}] Loan workflow step | phone={phone_number[-4:]} | step={step}")
         if step == STEP_SELECT_LOAN_TYPE:

@@ -230,7 +230,7 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         workflow = create_workflow_model(WORKFLOW_ONBOARDING, STEP_COLLECT_AADHAAR)
         create_workflow(self.phone, workflow)
 
-        result = await self.manager.handle(self.phone, "Why is the sky blue?", trace_id="t1")
+        result = self.manager.handle(self.phone, "Why is the sky blue?", trace_id="t1")
 
         self.assertTrue(result["handled"])
         response = as_structured_response(result["response"]).text.lower()
@@ -242,7 +242,7 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
         create_workflow(self.phone, workflow)
 
-        result = await self.manager.handle(self.phone, "What should I do?", trace_id="t2")
+        result = self.manager.handle(self.phone, "What should I do?", trace_id="t2")
 
         self.assertTrue(result["handled"])
         structured = as_structured_response(result["response"])
@@ -259,7 +259,7 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         workflow = create_workflow_model(WORKFLOW_TRANSFER, STEP_SELECT_BENEFICIARY)
         create_workflow(self.phone, workflow)
 
-        result = await self.manager.handle(self.phone, "check my balance", trace_id="t2a")
+        result = self.manager.handle(self.phone, "check my balance", trace_id="t2a")
 
         self.assertTrue(result["handled"])
         structured = as_structured_response(result["response"])
@@ -269,15 +269,15 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("stop here", text)
         self.assertEqual({b.id for b in structured.buttons}, {"continue", "stop"})
 
-        result = await self.manager.handle(self.phone, "stop", trace_id="t2b")
+        result = self.manager.handle(self.phone, "stop", trace_id="t2b")
         self.assertFalse(result["handled"])
         self.assertEqual(result.get("reprocess_query"), "check my balance")
         self.assertIsNone(get_workflow(self.phone))
 
         workflow = create_workflow_model(WORKFLOW_TRANSFER, STEP_SELECT_BENEFICIARY)
         create_workflow(self.phone, workflow)
-        result = await self.manager.handle(self.phone, "check my balance", trace_id="t2c")
-        result = await self.manager.handle(self.phone, "continue", trace_id="t2d")
+        result = self.manager.handle(self.phone, "check my balance", trace_id="t2c")
+        result = self.manager.handle(self.phone, "continue", trace_id="t2d")
         self.assertTrue(result["handled"])
         response = as_structured_response(result["response"]).text.lower()
         self.assertIn("proceed with current request before addressing new request", response)
@@ -289,7 +289,7 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         create_workflow(self.phone, workflow)
         workflow_id_before = get_workflow(self.phone)["workflow_id"]
 
-        await self.manager.handle(self.phone, "What should I do?", trace_id="t3")
+        self.manager.handle(self.phone, "What should I do?", trace_id="t3")
 
         workflow_after = get_workflow(self.phone)
         self.assertIsNotNone(workflow_after)
@@ -311,7 +311,7 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         # LLM-fallback-unavailable/declined path specifically: falling
         # back to reprocess_query rather than answering inline.
         with patch("app.workflows.manager.is_llm_fallback_enabled", return_value=False):
-            result = await self.manager.handle(
+            result = self.manager.handle(
                 self.phone, "What's the interest rate on a personal loan?", trace_id="t4"
             )
 
@@ -328,7 +328,7 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         create_workflow(self.phone, workflow)
         workflow_id_before = get_workflow(self.phone)["workflow_id"]
 
-        await self.manager.handle(self.phone, "What's the interest rate on a personal loan?", trace_id="t5")
+        self.manager.handle(self.phone, "What's the interest rate on a personal loan?", trace_id="t5")
 
         workflow_after = get_workflow(self.phone)
         self.assertIsNotNone(workflow_after)
@@ -346,7 +346,7 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         create_workflow(self.phone, workflow)
 
         with patch("app.workflows.processors.transfer.get_beneficiaries_by_phone", return_value=[]):
-            result = await self.manager.handle(self.phone, "send 500", trace_id="t6")
+            result = self.manager.handle(self.phone, "send 500", trace_id="t6")
 
         self.assertNotEqual(result.get("reprocess_query"), "send 500")
 
@@ -377,7 +377,7 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
             "app.workflows.manager.answer_side_question",
             return_value="Your interest rate depends on the loan type.",
         ):
-            result = await self.manager.handle(
+            result = self.manager.handle(
                 self.phone, "What's the interest rate on a personal loan?", trace_id="t1"
             )
 
@@ -402,7 +402,7 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
         create_workflow(self.phone, workflow)
 
         with patch("app.workflows.manager.answer_side_question") as mock_answer:
-            result = await self.manager.handle(self.phone, "Get my balance", trace_id="t12")
+            result = self.manager.handle(self.phone, "Get my balance", trace_id="t12")
 
         mock_answer.assert_not_called()
         self.assertFalse(result["handled"])
@@ -416,7 +416,7 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
         workflow_id_before = get_workflow(self.phone)["workflow_id"]
 
         with patch("app.workflows.manager.answer_side_question", return_value="Some answer."):
-            await self.manager.handle(self.phone, "What's the interest rate on a loan?", trace_id="t2")
+            self.manager.handle(self.phone, "What's the interest rate on a loan?", trace_id="t2")
 
         after = get_workflow(self.phone)
         self.assertEqual(after["workflow_id"], workflow_id_before)
@@ -434,7 +434,7 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
         create_workflow(self.phone, workflow)
 
         with patch("app.workflows.manager.detect_soft_decline", return_value=True):
-            result = await self.manager.handle(
+            result = self.manager.handle(
                 self.phone, "okay i dont want to go with transfer right now", trace_id="t9"
             )
 
@@ -454,7 +454,7 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
 
         with patch("app.workflows.manager.detect_soft_decline") as mock_decline, \
              patch("app.workflows.processors.transfer.create_beneficiary", return_value=None):
-            await self.manager.handle(self.phone, "GB29NWBK60161331926819", trace_id="t10")
+            self.manager.handle(self.phone, "GB29NWBK60161331926819", trace_id="t10")
 
         mock_decline.assert_not_called()
 
@@ -474,7 +474,7 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
                 "app.workflows.manager.detect_step_or_workflow_jump",
                 return_value=JumpTarget(target_workflow="loan", confidence=0.9),
              ):
-            result = await self.manager.handle(
+            result = self.manager.handle(
                 self.phone, "actually let me apply for a loan instead", trace_id="t11"
             )
 
@@ -487,7 +487,7 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
         create_workflow(self.phone, workflow)
 
         with patch("app.workflows.manager.answer_side_question", return_value=None):
-            result = await self.manager.handle(
+            result = self.manager.handle(
                 self.phone, "What's the interest rate on a personal loan?", trace_id="t3"
             )
 
@@ -504,7 +504,7 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
             "app.workflows.manager.detect_step_or_workflow_jump",
             return_value=JumpTarget(target_workflow="loan", confidence=0.9),
         ):
-            result = await self.manager.handle(self.phone, "actually let me apply for a loan instead", trace_id="t4")
+            result = self.manager.handle(self.phone, "actually let me apply for a loan instead", trace_id="t4")
 
         self.assertTrue(result["handled"])
         # The confirmation prompt is now a StructuredResponse with tap-to-
@@ -528,9 +528,9 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
             "app.workflows.manager.detect_step_or_workflow_jump",
             return_value=JumpTarget(target_workflow="loan", confidence=0.9),
         ):
-            await self.manager.handle(self.phone, "actually let me apply for a loan instead", trace_id="t5")
+            self.manager.handle(self.phone, "actually let me apply for a loan instead", trace_id="t5")
 
-        result = await self.manager.handle(self.phone, "switch", trace_id="t6")
+        result = self.manager.handle(self.phone, "switch", trace_id="t6")
 
         self.assertTrue(result["handled"])
         self.assertEqual(get_workflow(self.phone)["type"], "loan")
@@ -546,9 +546,9 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
             "app.workflows.manager.detect_step_or_workflow_jump",
             return_value=JumpTarget(target_workflow="loan", confidence=0.9),
         ):
-            await self.manager.handle(self.phone, "actually let me apply for a loan instead", trace_id="t7")
+            self.manager.handle(self.phone, "actually let me apply for a loan instead", trace_id="t7")
 
-        result = await self.manager.handle(self.phone, "continue", trace_id="t8")
+        result = self.manager.handle(self.phone, "continue", trace_id="t8")
 
         self.assertTrue(result["handled"])
         self.assertEqual(get_workflow(self.phone)["type"], WORKFLOW_CHEQUE)
@@ -582,7 +582,7 @@ class InteractiveListConversionTests(unittest.IsolatedAsyncioTestCase):
         self.manager.start_requested(self.phone, "I want a loan", trace_id="t2")
         with patch("app.workflows.processors.loan.get_accounts_by_phone", return_value=fake_accounts), \
              patch("app.workflows.processors.loan.get_customer_by_phone", return_value={"full_name": "Alex Doe"}):
-            result = await self.manager.handle(self.phone, "2", trace_id="t3")
+            result = self.manager.handle(self.phone, "2", trace_id="t3")
         self.assertTrue(result["handled"])
         from app.workflows.memory import get_workflow
         workflow = get_workflow(self.phone)
@@ -647,7 +647,7 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
         create_workflow(self.phone, workflow)
 
         with patch("app.database.get_customer_by_phone", return_value={"full_name": "Alex"}):
-            result = await self.manager.handle(self.phone, "Cancel", trace_id="t1")
+            result = self.manager.handle(self.phone, "Cancel", trace_id="t1")
 
         self.assertTrue(result["handled"])
         self.assertIn("cancelled", result["response"].lower())
@@ -660,7 +660,7 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
         create_workflow(self.phone, workflow)
 
         with patch("app.database.get_customer_by_phone", return_value={"full_name": "Alex"}):
-            await self.manager.handle(self.phone, "Cancel", trace_id="t2")
+            self.manager.handle(self.phone, "Cancel", trace_id="t2")
 
         self.assertIsNone(get_workflow(self.phone))
 
@@ -671,7 +671,7 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
         workflow = create_workflow_model("loan", STEP_UPLOAD_LOAN_FORM)
         create_workflow(self.phone, workflow)
 
-        result = await self.manager.handle(self.phone, "Back", trace_id="t3")
+        result = self.manager.handle(self.phone, "Back", trace_id="t3")
 
         self.assertTrue(result["handled"])
         self.assertEqual(get_workflow(self.phone)["step"], STEP_SELECT_LOAN_TYPE)

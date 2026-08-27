@@ -16,6 +16,7 @@ back here would be circular — dependency injection is the clean way
 around that, not a workaround.
 """
 
+import asyncio
 import re
 import time
 from typing import Any, Awaitable, Callable, Optional
@@ -204,7 +205,7 @@ class ConversationManager:
         # typed text both flow through here, so this covers both.
         message = clean_noisy_text(message)
 
-        context = self._load_context(phone_number, trace_id)
+        context = await asyncio.to_thread(self._load_context, phone_number, trace_id)
         if context is not None:
             context.last_user_message = message[:500]
             await self._update_language(context, message, detected_language, is_voice, trace_id)
@@ -214,8 +215,8 @@ class ConversationManager:
         reprocess_query = None
 
         try:
-            gate_result = await check_registration_gate(
-                phone_number=phone_number, query=query, trace_id=trace_id
+            gate_result = await asyncio.to_thread(
+                check_registration_gate, phone_number=phone_number, query=query, trace_id=trace_id
             )
             if gate_result and gate_result["handled"]:
                 return await self._finish(context, phone_number, query, gate_result["response"], trace_id)
@@ -224,7 +225,8 @@ class ConversationManager:
             if handoff_result is not None:
                 return handoff_result
 
-            workflow_result = await self.workflow_manager.handle(
+            workflow_result = await asyncio.to_thread(
+                self.workflow_manager.handle,
                 phone_number=phone_number,
                 query=query,
                 parsed_document=parsed_document,
@@ -258,7 +260,9 @@ class ConversationManager:
 
             is_compound = _is_compound_or_conditional(query)
             if is_compound and _looks_like_transfer_request_with_condition(query):
-                deterministic = self.workflow_manager.start_requested(phone_number, query, trace_id=trace_id)
+                deterministic = await asyncio.to_thread(
+                    self.workflow_manager.start_requested, phone_number, query, trace_id=trace_id
+                )
                 if deterministic["handled"]:
                     self._register_progress(context)
                     return await self._finish(
@@ -303,7 +307,9 @@ class ConversationManager:
                 # to ask rather than guess before starting a financial
                 # workflow; a bare digit has no such ambiguity to protect
                 # against.
-                deterministic = self.workflow_manager.start_requested(phone_number, query, trace_id=trace_id)
+                deterministic = await asyncio.to_thread(
+                    self.workflow_manager.start_requested, phone_number, query, trace_id=trace_id
+                )
                 if deterministic["handled"]:
                     self._register_progress(context)
                     return await self._finish(
@@ -343,7 +349,9 @@ class ConversationManager:
                 # handled upstream, or an unmapped/errored classification)
                 # — behave exactly as before Phase 3 and give the legacy
                 # keyword starter its normal chance.
-                requested_workflow = self.workflow_manager.start_requested(phone_number, query, trace_id=trace_id)
+                requested_workflow = await asyncio.to_thread(
+                    self.workflow_manager.start_requested, phone_number, query, trace_id=trace_id
+                )
                 if (
                     not requested_workflow["handled"]
                     and action == "START_WORKFLOW"
@@ -354,7 +362,8 @@ class ConversationManager:
                     # keyword gate didn't — fall back to the
                     # smallest-necessary adapter rather than losing the
                     # router's confident decision to the general LLM.
-                    requested_workflow = start_workflow_directly(
+                    requested_workflow = await asyncio.to_thread(
+                        start_workflow_directly,
                         routing_decision.workflow,
                         phone_number,
                         transfer_handler=self.workflow_manager.transfer_handler,
@@ -392,7 +401,7 @@ class ConversationManager:
             )
             if context is not None:
                 context.last_error = "turn_failed"
-                self._persist(context, phone_number, trace_id, None)
+                await asyncio.to_thread(self._persist, context, phone_number, trace_id, None)
             error_str = str(e)
             if "rate_limit_exceeded" in error_str or "429" in error_str or "503" in error_str:
                 return render_service_unavailable()
@@ -557,7 +566,8 @@ class ConversationManager:
 
         workflow_type = WORKFLOW_FOR_ACTION.get(selected)
         if workflow_type:
-            started = start_workflow_directly(
+            started = await asyncio.to_thread(
+                start_workflow_directly,
                 workflow_type, phone_number, transfer_handler=self.workflow_manager.transfer_handler,
                 query=query, trace_id=trace_id,
             )
@@ -710,8 +720,8 @@ class ConversationManager:
         # mechanism from ConversationContext — see docs/current_architecture.md,
         # "Conversation Context — Phase 1". Never logs the raw message —
         # only Redis stores it, under the same TTL/retention as before.
-        append_to_session(phone_number, "user", query)
-        append_to_session(phone_number, "assistant", structured.text[:500])
-        self._persist(context, phone_number, trace_id, structured.text)
+        await asyncio.to_thread(append_to_session, phone_number, "user", query)
+        await asyncio.to_thread(append_to_session, phone_number, "assistant", structured.text[:500])
+        await asyncio.to_thread(self._persist, context, phone_number, trace_id, structured.text)
         logger.info(f"[{trace_id}] conversation.turn.completed | phone={phone_number[-4:]}")
         return structured if was_structured else structured.text

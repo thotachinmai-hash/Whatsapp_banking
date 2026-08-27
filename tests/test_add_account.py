@@ -9,7 +9,7 @@ app/conversation/workflow_adapter.py (natural-language trigger)."""
 
 import asyncio
 import unittest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 from app.conversation.renderer import ResponseKind, as_structured_response
 from app.workflows.constants import (
@@ -115,7 +115,7 @@ class AddAccountIdentityChecksTests(unittest.IsolatedAsyncioTestCase):
             "content": {"aadhaar_number": "999999999999", "full_name": "Alex Doe"},
         }
         with patch("app.workflows.processors.onboarding.get_customer_by_phone", return_value=CUSTOMER):
-            result = await self.handler.handle(
+            result = self.handler.handle(
                 {"step": STEP_COLLECT_AADHAAR, "type": WORKFLOW_ADD_ACCOUNT}, self.phone, "", parsed_document, trace_id="t1"
             )
 
@@ -133,7 +133,7 @@ class AddAccountIdentityChecksTests(unittest.IsolatedAsyncioTestCase):
             "content": {"aadhaar_number": "123456789012", "full_name": "Alex Doe"},
         }
         with patch("app.workflows.processors.onboarding.get_customer_by_phone", return_value=CUSTOMER):
-            result = await self.handler.handle(
+            result = self.handler.handle(
                 {"step": STEP_COLLECT_AADHAAR, "type": WORKFLOW_ADD_ACCOUNT}, self.phone, "", parsed_document, trace_id="t2"
             )
 
@@ -148,7 +148,7 @@ class AddAccountIdentityChecksTests(unittest.IsolatedAsyncioTestCase):
             "content": {"pan_number": "ZZZZZ9999Z", "full_name": "Alex Doe"},
         }
         with patch("app.workflows.processors.onboarding.get_customer_by_phone", return_value=CUSTOMER):
-            result = await self.handler.handle(
+            result = self.handler.handle(
                 {"step": STEP_COLLECT_PAN, "type": WORKFLOW_ADD_ACCOUNT}, self.phone, "", parsed_document, trace_id="t3"
             )
 
@@ -176,7 +176,7 @@ class AddAccountConfirmSkipsCreateCustomerTests(unittest.IsolatedAsyncioTestCase
         with patch("app.workflows.processors.onboarding.create_customer") as mock_create_customer, \
              patch("app.workflows.processors.onboarding.get_customer_by_phone", return_value=CUSTOMER), \
              patch("app.workflows.processors.onboarding.get_accounts_by_phone", return_value=_accounts("savings")):
-            result = await self.handler.handle(workflow, self.phone, "yes", None, trace_id="t1")
+            result = self.handler.handle(workflow, self.phone, "yes", None, trace_id="t1")
 
         mock_create_customer.assert_not_called()
         self.assertTrue(result["handled"])
@@ -193,7 +193,7 @@ class AddAccountConfirmSkipsCreateCustomerTests(unittest.IsolatedAsyncioTestCase
         with patch("app.workflows.processors.onboarding.create_customer") as mock_create_customer, \
              patch("app.workflows.processors.onboarding.get_customer_by_phone", return_value=CUSTOMER), \
              patch("app.workflows.processors.onboarding.get_accounts_by_phone", return_value=_accounts("savings")):
-            result = await self.handler.handle(workflow, self.phone, "yes", None, trace_id="t2")
+            result = self.handler.handle(workflow, self.phone, "yes", None, trace_id="t2")
 
         mock_create_customer.assert_not_called()
         response = as_structured_response(result["response"])
@@ -218,7 +218,7 @@ class AddAccountSelectTypeTests(unittest.IsolatedAsyncioTestCase):
 
         with patch("app.workflows.processors.onboarding.get_accounts_by_phone", return_value=_accounts("savings")), \
              patch("app.workflows.processors.onboarding.create_zero_balance_account") as mock_create:
-            result = await self.handler.handle(workflow, self.phone, "savings", None, trace_id="t1")
+            result = self.handler.handle(workflow, self.phone, "savings", None, trace_id="t1")
 
         mock_create.assert_not_called()
         self.assertTrue(result["handled"])
@@ -237,7 +237,7 @@ class AddAccountSelectTypeTests(unittest.IsolatedAsyncioTestCase):
         with patch("app.workflows.processors.onboarding.get_accounts_by_phone", return_value=_accounts("savings")), \
              patch("app.workflows.processors.onboarding.create_zero_balance_account", return_value=fake_account) as mock_create, \
              patch("app.workflows.processors.onboarding.cache_active_account"):
-            result = await self.handler.handle(workflow, self.phone, "current", None, trace_id="t2")
+            result = self.handler.handle(workflow, self.phone, "current", None, trace_id="t2")
 
         mock_create.assert_called_once()
         self.assertEqual(mock_create.call_args.kwargs["account_type"], "current")

@@ -91,7 +91,7 @@ class LoanConfirmButtonTests(ButtonWiringTestCase):
     async def test_tapping_yes_submits_the_loan(self):
         self._complete_loan_workflow()
         with patch("app.workflows.processors.loan.create_loan_request") as mock_create:
-            result = await self.manager.handle(self.phone, "yes", trace_id="lt1")
+            result = self.manager.handle(self.phone, "yes", trace_id="lt1")
         self.assertTrue(result["handled"])
         mock_create.assert_called_once()
         self.assertIsNone(get_workflow(self.phone))
@@ -100,7 +100,7 @@ class LoanConfirmButtonTests(ButtonWiringTestCase):
     async def test_tapping_no_cancels_the_loan(self):
         self._complete_loan_workflow()
         with patch("app.workflows.processors.loan.create_loan_request") as mock_create:
-            result = await self.manager.handle(self.phone, "no", trace_id="lt2")
+            result = self.manager.handle(self.phone, "no", trace_id="lt2")
         self.assertTrue(result["handled"])
         mock_create.assert_not_called()
         self.assertIsNone(get_workflow(self.phone))
@@ -113,7 +113,7 @@ class LoanConfirmButtonTests(ButtonWiringTestCase):
         fake_accounts = [{"account_number": "GB12FNCL00010001234567", "account_type": "current", "balance": "500.00", "currency": "INR"}]
         with patch("app.workflows.processors.loan.get_accounts_by_phone", return_value=fake_accounts), \
              patch("app.workflows.processors.loan.get_customer_by_phone", return_value={"full_name": "Alex Doe"}):
-            result = await self.manager.handle(self.phone, "lt_vehicle", trace_id="lt3")  # row id for Vehicle Loan
+            result = self.manager.handle(self.phone, "lt_vehicle", trace_id="lt3")  # row id for Vehicle Loan
         self.assertTrue(result["handled"])
         stored = get_workflow(self.phone)
         # With a single linked account, the customer is now asked to confirm
@@ -152,7 +152,7 @@ class LoanConfirmButtonTests(ButtonWiringTestCase):
         self.assertIn("gb12fncl00010001234567", offer_text)
 
         with patch("app.workflows.processors.loan.get_accounts_by_phone", return_value=single_account):
-            result = await self.manager.handle(self.phone, "acct_yes", trace_id="lt5")
+            result = self.manager.handle(self.phone, "acct_yes", trace_id="lt5")
 
         self.assertTrue(result["handled"])
         stored = get_workflow(self.phone)
@@ -181,7 +181,7 @@ class LoanConfirmButtonTests(ButtonWiringTestCase):
             {"account_number": "GB12FNCL00010009999999", "account_type": "savings", "balance": "1000.00", "currency": "INR"},
         ]
         with patch("app.workflows.processors.loan.get_accounts_by_phone", return_value=accounts):
-            result = await self.manager.handle(self.phone, "acct_no", trace_id="lt6")
+            result = self.manager.handle(self.phone, "acct_no", trace_id="lt6")
 
         self.assertTrue(result["handled"])
         stored = get_workflow(self.phone)
@@ -204,7 +204,7 @@ class KYCConfirmButtonTests(ButtonWiringTestCase):
     async def test_tapping_yes_submits_the_kyc_update(self):
         self._complete_kyc_workflow()
         with patch("app.workflows.processors.kyc.create_kyc_request") as mock_create:
-            result = await self.manager.handle(self.phone, "yes", trace_id="kt1")
+            result = self.manager.handle(self.phone, "yes", trace_id="kt1")
         self.assertTrue(result["handled"])
         mock_create.assert_called_once()
         self.assertIsNone(get_workflow(self.phone))
@@ -212,7 +212,7 @@ class KYCConfirmButtonTests(ButtonWiringTestCase):
     async def test_tapping_no_cancels_the_kyc_update(self):
         self._complete_kyc_workflow()
         with patch("app.workflows.processors.kyc.create_kyc_request") as mock_create:
-            result = await self.manager.handle(self.phone, "no", trace_id="kt2")
+            result = self.manager.handle(self.phone, "no", trace_id="kt2")
         self.assertTrue(result["handled"])
         mock_create.assert_not_called()
         self.assertIsNone(get_workflow(self.phone))
@@ -234,7 +234,7 @@ class OnboardingButtonTests(ButtonWiringTestCase):
     async def test_tapping_yes_confirm_creates_customer_and_moves_to_account_type(self):
         with patch("app.workflows.processors.onboarding.create_customer", return_value={"id": 1}) as mock_create:
             self._confirm_registration_workflow()
-            result = await self.manager.handle(self.phone, "yes", trace_id="ot1")
+            result = self.manager.handle(self.phone, "yes", trace_id="ot1")
         self.assertTrue(result["handled"])
         mock_create.assert_called_once()
         stored = get_workflow(self.phone)
@@ -244,7 +244,7 @@ class OnboardingButtonTests(ButtonWiringTestCase):
     async def test_tapping_no_restart_cancels_registration(self):
         with patch("app.workflows.processors.onboarding.create_customer") as mock_create:
             self._confirm_registration_workflow()
-            result = await self.manager.handle(self.phone, "no", trace_id="ot2")
+            result = self.manager.handle(self.phone, "no", trace_id="ot2")
         self.assertTrue(result["handled"])
         mock_create.assert_not_called()
         self.assertIsNone(get_workflow(self.phone))
@@ -253,7 +253,7 @@ class OnboardingButtonTests(ButtonWiringTestCase):
         workflow = create_workflow_model(WORKFLOW_ONBOARDING, STEP_COLLECT_AADHAAR)
         create_workflow(self.phone, workflow)
 
-        result = await self.manager.handle(self.phone, "yes", trace_id="ot6")
+        result = self.manager.handle(self.phone, "yes", trace_id="ot6")
 
         self.assertTrue(result["handled"])
         self.assertEqual(
@@ -268,7 +268,7 @@ class OnboardingButtonTests(ButtonWiringTestCase):
         workflow = create_workflow_model(WORKFLOW_ONBOARDING, STEP_COLLECT_AADHAAR)
         create_workflow(self.phone, workflow)
 
-        result = await self.manager.handle(self.phone, "no", trace_id="ot7")
+        result = self.manager.handle(self.phone, "no", trace_id="ot7")
 
         self.assertTrue(result["handled"])
         self.assertEqual(
@@ -284,7 +284,7 @@ class OnboardingButtonTests(ButtonWiringTestCase):
         with patch("app.workflows.processors.onboarding.create_zero_balance_account", return_value=fake_account) as mock_acct, \
              patch("app.workflows.processors.onboarding.cache_active_account"), \
              patch("app.workflows.processors.onboarding.get_accounts_by_phone", return_value=[]):
-            result = await self.manager.handle(self.phone, "current", trace_id="ot3")  # row id for Current Account
+            result = self.manager.handle(self.phone, "current", trace_id="ot3")  # row id for Current Account
         self.assertTrue(result["handled"])
         mock_acct.assert_called_once()
         self.assertEqual(mock_acct.call_args.kwargs["account_type"], "current")
@@ -304,7 +304,7 @@ class TransferButtonTests(ButtonWiringTestCase):
         })
         create_workflow(self.phone, workflow)
         with patch("app.workflows.processors.transfer.get_accounts_by_phone", return_value=self._accounts()):
-            result = await self.manager.handle(self.phone, "src_1", trace_id="tt1")  # row id for first account
+            result = self.manager.handle(self.phone, "src_1", trace_id="tt1")  # row id for first account
         self.assertTrue(result["handled"])
         stored = get_workflow(self.phone)
         self.assertEqual(stored["step"], STEP_CONFIRM_TRANSFER)
@@ -338,7 +338,7 @@ class TransferButtonTests(ButtonWiringTestCase):
         self.assertIn("gb12fncl00010001111111", offer_text)
 
         with patch("app.workflows.processors.transfer.get_accounts_by_phone", return_value=single_account):
-            result = await self.manager.handle(self.phone, "acct_yes", trace_id="tt2")
+            result = self.manager.handle(self.phone, "acct_yes", trace_id="tt2")
 
         self.assertTrue(result["handled"])
         stored = get_workflow(self.phone)
@@ -359,7 +359,7 @@ class TransferButtonTests(ButtonWiringTestCase):
         })
         create_workflow(self.phone, workflow)
         with patch("app.workflows.processors.transfer.get_accounts_by_phone", return_value=self._accounts()):
-            result = await self.manager.handle(self.phone, "acct_no", trace_id="tt3")
+            result = self.manager.handle(self.phone, "acct_no", trace_id="tt3")
 
         self.assertTrue(result["handled"])
         stored = get_workflow(self.phone)
@@ -373,7 +373,7 @@ class TransferButtonTests(ButtonWiringTestCase):
         })
         create_workflow(self.phone, workflow)
         with patch("app.workflows.processors.transfer.create_transfer") as mock_transfer:
-            result = await self.manager.handle(self.phone, "txfr_confirm", trace_id="tt2")  # button id for Yes, send it
+            result = self.manager.handle(self.phone, "txfr_confirm", trace_id="tt2")  # button id for Yes, send it
         self.assertTrue(result["handled"])
         mock_transfer.assert_called_once()
         self.assertIsNone(get_workflow(self.phone))
@@ -388,7 +388,7 @@ class TransferButtonTests(ButtonWiringTestCase):
         create_workflow(self.phone, workflow)
         with patch("app.workflows.processors.transfer.create_transfer") as mock_transfer, \
              patch("app.workflows.processors.transfer.get_customer_by_phone", return_value={"full_name": "Alex"}):
-            result = await self.manager.handle(self.phone, "txfr_confirm", trace_id="tt2a")
+            result = self.manager.handle(self.phone, "txfr_confirm", trace_id="tt2a")
         self.assertTrue(result["handled"])
         mock_transfer.assert_called_once()
         structured = as_structured_response(result["response"])
@@ -404,7 +404,7 @@ class TransferButtonTests(ButtonWiringTestCase):
         })
         create_workflow(self.phone, workflow)
         with patch("app.workflows.processors.transfer.create_transfer") as mock_transfer:
-            result = await self.manager.handle(self.phone, "txfr_edit", trace_id="tt3")  # button id for Edit amount
+            result = self.manager.handle(self.phone, "txfr_edit", trace_id="tt3")  # button id for Edit amount
         self.assertTrue(result["handled"])
         mock_transfer.assert_not_called()
         self.assertEqual(get_workflow(self.phone)["step"], STEP_SELECT_AMOUNT)
@@ -415,7 +415,7 @@ class TransferButtonTests(ButtonWiringTestCase):
         })
         create_workflow(self.phone, workflow)
         with patch("app.workflows.processors.transfer.get_accounts_by_phone", return_value=self._accounts()):
-            result = await self.manager.handle(self.phone, "2", trace_id="tt4")  # row id "2" = £50
+            result = self.manager.handle(self.phone, "2", trace_id="tt4")  # row id "2" = £50
         self.assertTrue(result["handled"])
         stored = get_workflow(self.phone)
         self.assertEqual(stored["step"], STEP_SELECT_SOURCE_ACCOUNT)
@@ -436,8 +436,8 @@ class ContinueStopButtonTests(ButtonWiringTestCase):
         workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
         create_workflow(self.phone, workflow)
         with patch("app.database.get_customer_by_phone", return_value={"full_name": "Alex"}):
-            await self.manager.handle(self.phone, "Cancel", trace_id="cs1")  # -> asks Continue/Stop
-            result = await self.manager.handle(self.phone, "stop", trace_id="cs2")  # tap "Stop"
+            self.manager.handle(self.phone, "Cancel", trace_id="cs1")  # -> asks Continue/Stop
+            result = self.manager.handle(self.phone, "stop", trace_id="cs2")  # tap "Stop"
         self.assertTrue(result["handled"])
         self.assertIsNone(get_workflow(self.phone))
 
@@ -447,8 +447,8 @@ class ContinueStopButtonTests(ButtonWiringTestCase):
         workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
         create_workflow(self.phone, workflow)
         with patch("app.database.get_customer_by_phone", return_value={"full_name": "Alex"}):
-            await self.manager.handle(self.phone, "Cancel", trace_id="cs3")  # -> asks Continue/Stop
-            result = await self.manager.handle(self.phone, "continue", trace_id="cs4")  # tap "Continue"
+            self.manager.handle(self.phone, "Cancel", trace_id="cs3")  # -> asks Continue/Stop
+            result = self.manager.handle(self.phone, "continue", trace_id="cs4")  # tap "Continue"
         self.assertTrue(result["handled"])
         stored = get_workflow(self.phone)
         self.assertIsNotNone(stored)

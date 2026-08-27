@@ -126,7 +126,7 @@ class OnboardingWorkflowHandler:
     police anyway.
     """
 
-    async def handle(
+    def handle(
         self,
         workflow: dict[str, Any],
         phone_number: str,
