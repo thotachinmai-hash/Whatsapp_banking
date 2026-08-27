@@ -57,11 +57,12 @@ def log_agent_call(success: bool, duration_ms: float, tools_called: list, trace_
     logger.info(f"[{trace_id}] METRIC | agent_call | success={success} | duration={duration_ms:.2f}ms | tools={tools_called}")
 
 
-def log_whatsapp_send(success: bool, trace_id: str):
+def log_whatsapp_send(success: bool, trace_id: str, duration_ms: float | None = None):
     metrics_store["whatsapp_sends"] += 1
     if not success:
         metrics_store["whatsapp_errors"] += 1
-    logger.info(f"[{trace_id}] METRIC | whatsapp_send | success={success}")
+    duration_part = f" | duration={duration_ms:.2f}ms" if duration_ms is not None else ""
+    logger.info(f"[{trace_id}] METRIC | whatsapp_send | success={success}{duration_part}")
 
 
 def log_request(duration_ms: float, trace_id: str):

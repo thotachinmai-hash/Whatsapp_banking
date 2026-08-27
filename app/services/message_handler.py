@@ -662,8 +662,10 @@ async def handle_incoming_message(payload: dict) -> dict:
                         detected_type, phone_number, parsed_document, trace_id
                     )
                     if auto_response is not None:
+                        send_start = time.time()
                         send_success = await render_and_send(auto_response, from_person, trace_id)
-                        log_whatsapp_send(send_success, trace_id)
+                        send_duration = (time.time() - send_start) * 1000
+                        log_whatsapp_send(send_success, trace_id, send_duration)
                         await _send_receipt_if_any(auto_response, from_person, trace_id)
                         total_duration = (time.time() - request_start) * 1000
                         log_request(total_duration, trace_id)
@@ -729,11 +731,13 @@ async def handle_incoming_message(payload: dict) -> dict:
         # Send response back to WhatsApp — as a voice note (with a text
         # fallback if speech synthesis fails) when the customer sent voice,
         # matching how they reached out; text otherwise.
+        send_start = time.time()
         if is_voice_message:
             send_success = await send_voice_reply(response, from_person, trace_id, language=detected_language)
         else:
             send_success = await render_and_send(response, from_person, trace_id)
-        log_whatsapp_send(send_success, trace_id)
+        send_duration = (time.time() - send_start) * 1000
+        log_whatsapp_send(send_success, trace_id, send_duration)
 
         # A successful cheque/loan/KYC/transfer submission carries a
         # generated PDF receipt (see app/services/receipts.py) — send it
