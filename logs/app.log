@@ -464,55 +464,55 @@
 2026-08-17 11:35:36 | ERROR | app.services.idempotency | Idempotency mark_completed failed | external_message_id=MSG-DOWN | error=connection refused
 2026-08-17 11:35:36 | ERROR | app.services.idempotency | Idempotency mark_failed failed | external_message_id=MSG-DOWN | error=connection refused
 2026-08-17 11:35:36 | INFO | app.main | [b8fdf4ff] webhook.received
-2026-08-17 11:35:36 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:35:36 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:35:36 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:35:36 | INFO | app.main | [2940a3a6] webhook.received
-2026-08-17 11:35:36 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:35:36 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:35:36 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:35:36 | INFO | app.main | [7b4814ce] webhook.received
-2026-08-17 11:35:36 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-2', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:35:36 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-2', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:35:36 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:35:36 | INFO | app.main | [cf990ece] webhook.received
-2026-08-17 11:35:36 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-2', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:35:36 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-2', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:35:36 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:35:36 | INFO | app.main | [0a60840a] webhook.received
-2026-08-17 11:35:36 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IND-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:35:36 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IND-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:35:36 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:35:36 | INFO | app.main | [742aa2d5] webhook.received
-2026-08-17 11:35:36 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IND-MSG-2', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:35:36 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IND-MSG-2', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:35:36 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:35:36 | INFO | app.main | [b5226bff] webhook.received
-2026-08-17 11:35:36 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'RETRY-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:35:36 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'RETRY-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:35:36 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:35:36 | INFO | app.main | [e8bca0ce] webhook.received
-2026-08-17 11:35:36 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'GROUP-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': True}}
+2026-08-17 11:35:36 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'GROUP-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': True}}
 2026-08-17 11:35:36 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:35:37 | INFO | app.main | [2e9fe365] webhook.received
-2026-08-17 11:35:37 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IMG-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'image', 'isGroup': False}}
+2026-08-17 11:35:37 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IMG-DUP-1', 'chatId': '911111111111@c.us', 'body': '', 'type': 'image', 'isGroup': False}}
 2026-08-17 11:35:37 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:35:37 | INFO | app.main | [5524f9cd] webhook.received
-2026-08-17 11:35:37 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IMG-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'image', 'isGroup': False}}
+2026-08-17 11:35:37 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IMG-DUP-1', 'chatId': '911111111111@c.us', 'body': '', 'type': 'image', 'isGroup': False}}
 2026-08-17 11:35:37 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:35:37 | INFO | app.main | [ef345e92] webhook.received
-2026-08-17 11:35:37 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DOWN-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:35:37 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DOWN-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:35:37 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:35:37 | INFO | app.main | [4d75b3a7] webhook.received
-2026-08-17 11:35:37 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-1', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:35:37 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-1', 'chatId': '911111111111@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:35:37 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:35:37 | INFO | app.main | [28f07ece] webhook.received
-2026-08-17 11:35:37 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-1', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:35:37 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-1', 'chatId': '911111111111@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:35:37 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:35:37 | INFO | app.main | [409dd7a8] webhook.received
-2026-08-17 11:35:37 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-2', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:35:37 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-2', 'chatId': '911111111111@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:35:37 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:35:37 | INFO | app.main | [efb93742] webhook.received
-2026-08-17 11:35:37 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-3', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:35:37 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-3', 'chatId': '911111111111@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:35:37 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:35:37 | INFO | app.main | [20ff4a79] webhook.received
-2026-08-17 11:35:37 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'VOICE-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'audio', 'isGroup': False}}
+2026-08-17 11:35:37 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'VOICE-DUP-1', 'chatId': '911111111111@c.us', 'body': '', 'type': 'audio', 'isGroup': False}}
 2026-08-17 11:35:37 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:35:37 | INFO | app.main | [5b8ec4a2] webhook.received
-2026-08-17 11:35:37 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'VOICE-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'audio', 'isGroup': False}}
+2026-08-17 11:35:37 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'VOICE-DUP-1', 'chatId': '911111111111@c.us', 'body': '', 'type': 'audio', 'isGroup': False}}
 2026-08-17 11:35:37 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:35:37 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=greeting | confidence=0.97 | workflow=none | step=none | method=rule
 2026-08-17 11:35:37 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cancel | confidence=0.99 | workflow=none | step=none | method=rule
@@ -1165,55 +1165,55 @@
 2026-08-17 11:36:38 | ERROR | app.services.idempotency | Idempotency mark_completed failed | external_message_id=MSG-DOWN | error=connection refused
 2026-08-17 11:36:38 | ERROR | app.services.idempotency | Idempotency mark_failed failed | external_message_id=MSG-DOWN | error=connection refused
 2026-08-17 11:36:38 | INFO | app.main | [8a15ca25] webhook.received
-2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:36:38 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:36:38 | INFO | app.main | [11da1e3e] webhook.received
-2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:36:38 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:36:38 | INFO | app.main | [2827fa22] webhook.received
-2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-2', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-2', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:36:38 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:36:38 | INFO | app.main | [5563bf32] webhook.received
-2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-2', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-2', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:36:38 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:36:38 | INFO | app.main | [368902fc] webhook.received
-2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IND-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IND-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:36:38 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:36:38 | INFO | app.main | [30b1df72] webhook.received
-2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IND-MSG-2', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IND-MSG-2', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:36:38 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:36:38 | INFO | app.main | [560fdec1] webhook.received
-2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'RETRY-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'RETRY-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:36:38 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:36:38 | INFO | app.main | [6eec1f40] webhook.received
-2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'GROUP-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': True}}
+2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'GROUP-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': True}}
 2026-08-17 11:36:38 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:36:38 | INFO | app.main | [1c0ebe13] webhook.received
-2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IMG-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'image', 'isGroup': False}}
+2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IMG-DUP-1', 'chatId': '911111111111@c.us', 'body': '', 'type': 'image', 'isGroup': False}}
 2026-08-17 11:36:38 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:36:38 | INFO | app.main | [7a99b86a] webhook.received
-2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IMG-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'image', 'isGroup': False}}
+2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IMG-DUP-1', 'chatId': '911111111111@c.us', 'body': '', 'type': 'image', 'isGroup': False}}
 2026-08-17 11:36:38 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:36:38 | INFO | app.main | [c8800a0e] webhook.received
-2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DOWN-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DOWN-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:36:38 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:36:38 | INFO | app.main | [61f2891e] webhook.received
-2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-1', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-1', 'chatId': '911111111111@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:36:38 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:36:38 | INFO | app.main | [37b59de1] webhook.received
-2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-1', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-1', 'chatId': '911111111111@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:36:38 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:36:38 | INFO | app.main | [74d844a3] webhook.received
-2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-2', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-2', 'chatId': '911111111111@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:36:38 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:36:38 | INFO | app.main | [2d1953e0] webhook.received
-2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-3', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-3', 'chatId': '911111111111@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:36:38 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:36:38 | INFO | app.main | [f3c66c4a] webhook.received
-2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'VOICE-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'audio', 'isGroup': False}}
+2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'VOICE-DUP-1', 'chatId': '911111111111@c.us', 'body': '', 'type': 'audio', 'isGroup': False}}
 2026-08-17 11:36:38 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:36:38 | INFO | app.main | [33b30392] webhook.received
-2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'VOICE-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'audio', 'isGroup': False}}
+2026-08-17 11:36:38 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'VOICE-DUP-1', 'chatId': '911111111111@c.us', 'body': '', 'type': 'audio', 'isGroup': False}}
 2026-08-17 11:36:38 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:36:38 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=greeting | confidence=0.97 | workflow=none | step=none | method=rule
 2026-08-17 11:36:38 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cancel | confidence=0.99 | workflow=none | step=none | method=rule
@@ -1786,55 +1786,55 @@
 2026-08-17 11:38:04 | ERROR | app.services.idempotency | Idempotency mark_completed failed | external_message_id=MSG-DOWN | error=connection refused
 2026-08-17 11:38:04 | ERROR | app.services.idempotency | Idempotency mark_failed failed | external_message_id=MSG-DOWN | error=connection refused
 2026-08-17 11:38:04 | INFO | app.main | [ef0634d5] webhook.received
-2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:38:04 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:38:04 | INFO | app.main | [0bb86b7f] webhook.received
-2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:38:04 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:38:04 | INFO | app.main | [c93c82b9] webhook.received
-2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-2', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-2', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:38:04 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:38:04 | INFO | app.main | [7cafd003] webhook.received
-2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-2', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-2', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:38:04 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:38:04 | INFO | app.main | [cc8a87c9] webhook.received
-2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IND-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IND-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:38:04 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:38:04 | INFO | app.main | [5519b7ba] webhook.received
-2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IND-MSG-2', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IND-MSG-2', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:38:04 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:38:04 | INFO | app.main | [2d664555] webhook.received
-2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'RETRY-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'RETRY-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:38:04 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:38:04 | INFO | app.main | [4559f9a4] webhook.received
-2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'GROUP-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': True}}
+2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'GROUP-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': True}}
 2026-08-17 11:38:04 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:38:04 | INFO | app.main | [d9edb282] webhook.received
-2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IMG-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'image', 'isGroup': False}}
+2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IMG-DUP-1', 'chatId': '911111111111@c.us', 'body': '', 'type': 'image', 'isGroup': False}}
 2026-08-17 11:38:04 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:38:04 | INFO | app.main | [51b14f65] webhook.received
-2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IMG-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'image', 'isGroup': False}}
+2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IMG-DUP-1', 'chatId': '911111111111@c.us', 'body': '', 'type': 'image', 'isGroup': False}}
 2026-08-17 11:38:04 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:38:04 | INFO | app.main | [52d8bc3d] webhook.received
-2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DOWN-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DOWN-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:38:04 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:38:04 | INFO | app.main | [b347127b] webhook.received
-2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-1', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-1', 'chatId': '911111111111@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:38:04 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:38:04 | INFO | app.main | [2fcd1fa3] webhook.received
-2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-1', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-1', 'chatId': '911111111111@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:38:04 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:38:04 | INFO | app.main | [6ebc471a] webhook.received
-2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-2', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-2', 'chatId': '911111111111@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:38:04 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:38:04 | INFO | app.main | [589f45e1] webhook.received
-2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-3', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-3', 'chatId': '911111111111@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:38:04 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:38:04 | INFO | app.main | [8c3f8dd4] webhook.received
-2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'VOICE-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'audio', 'isGroup': False}}
+2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'VOICE-DUP-1', 'chatId': '911111111111@c.us', 'body': '', 'type': 'audio', 'isGroup': False}}
 2026-08-17 11:38:04 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:38:04 | INFO | app.main | [f868f1c3] webhook.received
-2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'VOICE-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'audio', 'isGroup': False}}
+2026-08-17 11:38:04 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'VOICE-DUP-1', 'chatId': '911111111111@c.us', 'body': '', 'type': 'audio', 'isGroup': False}}
 2026-08-17 11:38:04 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:38:04 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=greeting | confidence=0.97 | workflow=none | step=none | method=rule
 2026-08-17 11:38:04 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cancel | confidence=0.99 | workflow=none | step=none | method=rule
@@ -2407,55 +2407,55 @@
 2026-08-17 11:53:21 | ERROR | app.services.idempotency | Idempotency mark_completed failed | external_message_id=MSG-DOWN | error=connection refused
 2026-08-17 11:53:21 | ERROR | app.services.idempotency | Idempotency mark_failed failed | external_message_id=MSG-DOWN | error=connection refused
 2026-08-17 11:53:21 | INFO | app.main | [934a1bf2] webhook.received
-2026-08-17 11:53:21 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:53:21 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:53:21 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:53:21 | INFO | app.main | [f19d11f7] webhook.received
-2026-08-17 11:53:21 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:53:21 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:53:21 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:53:21 | INFO | app.main | [9a32ada5] webhook.received
-2026-08-17 11:53:21 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-2', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:53:21 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-2', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:53:21 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:53:21 | INFO | app.main | [bac1c3f1] webhook.received
-2026-08-17 11:53:21 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-2', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:53:21 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DUP-MSG-2', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:53:21 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:53:21 | INFO | app.main | [2bdced57] webhook.received
-2026-08-17 11:53:21 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IND-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:53:21 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IND-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:53:21 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:53:21 | INFO | app.main | [8df481d1] webhook.received
-2026-08-17 11:53:21 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IND-MSG-2', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:53:21 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IND-MSG-2', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:53:21 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:53:21 | INFO | app.main | [f66cdab5] webhook.received
-2026-08-17 11:53:21 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'RETRY-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:53:21 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'RETRY-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:53:21 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:53:21 | INFO | app.main | [d42f62a6] webhook.received
-2026-08-17 11:53:21 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'GROUP-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': True}}
+2026-08-17 11:53:21 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'GROUP-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': True}}
 2026-08-17 11:53:21 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:53:22 | INFO | app.main | [809ea7b0] webhook.received
-2026-08-17 11:53:22 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IMG-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'image', 'isGroup': False}}
+2026-08-17 11:53:22 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IMG-DUP-1', 'chatId': '911111111111@c.us', 'body': '', 'type': 'image', 'isGroup': False}}
 2026-08-17 11:53:22 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:53:22 | INFO | app.main | [5665be93] webhook.received
-2026-08-17 11:53:22 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IMG-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'image', 'isGroup': False}}
+2026-08-17 11:53:22 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'IMG-DUP-1', 'chatId': '911111111111@c.us', 'body': '', 'type': 'image', 'isGroup': False}}
 2026-08-17 11:53:22 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:53:22 | INFO | app.main | [66637f5e] webhook.received
-2026-08-17 11:53:22 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DOWN-MSG-1', 'chatId': '919080745760@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:53:22 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'DOWN-MSG-1', 'chatId': '911111111111@c.us', 'body': 'Hi', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:53:22 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:53:22 | INFO | app.main | [afa55018] webhook.received
-2026-08-17 11:53:22 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-1', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:53:22 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-1', 'chatId': '911111111111@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:53:22 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:53:22 | INFO | app.main | [c4987792] webhook.received
-2026-08-17 11:53:22 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-1', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:53:22 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-1', 'chatId': '911111111111@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:53:22 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:53:22 | INFO | app.main | [d3f9c5cb] webhook.received
-2026-08-17 11:53:22 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-2', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:53:22 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-2', 'chatId': '911111111111@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:53:22 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:53:22 | INFO | app.main | [2af4ac1d] webhook.received
-2026-08-17 11:53:22 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-3', 'chatId': '919080745760@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
+2026-08-17 11:53:22 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'TRF-EVENT-3', 'chatId': '911111111111@c.us', 'body': 'Send 500 to Priya', 'type': 'chat', 'isGroup': False}}
 2026-08-17 11:53:22 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:53:22 | INFO | app.main | [7e8573f2] webhook.received
-2026-08-17 11:53:22 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'VOICE-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'audio', 'isGroup': False}}
+2026-08-17 11:53:22 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'VOICE-DUP-1', 'chatId': '911111111111@c.us', 'body': '', 'type': 'audio', 'isGroup': False}}
 2026-08-17 11:53:22 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:53:22 | INFO | app.main | [a027f30e] webhook.received
-2026-08-17 11:53:22 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'VOICE-DUP-1', 'chatId': '919080745760@c.us', 'body': '', 'type': 'audio', 'isGroup': False}}
+2026-08-17 11:53:22 | INFO | app.main | payload received | payload={'event': 'message.received', 'data': {'id': 'VOICE-DUP-1', 'chatId': '911111111111@c.us', 'body': '', 'type': 'audio', 'isGroup': False}}
 2026-08-17 11:53:22 | INFO | app.main | message ignored | missing entry
 2026-08-17 11:53:22 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=greeting | confidence=0.97 | workflow=none | step=none | method=rule
 2026-08-17 11:53:22 | INFO | app.conversation.intent.classifier | [] Intent classified | phone=unknown | intent=cancel | confidence=0.99 | workflow=none | step=none | method=rule
