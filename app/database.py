@@ -113,65 +113,98 @@ def get_db_connection():
     return _get_pool().getconn()
 
 
-def release_db_connection(conn) -> None:
-    """Return a connection to the pool instead of closing the socket."""
+def release_db_connection(conn, discard: bool = False) -> None:
+    """Return a connection to the pool instead of closing the socket
+    directly. `discard=True` tells the pool to close and drop this
+    connection instead of recycling it for reuse — use this when the
+    connection itself failed (a dropped socket, a server-side idle
+    timeout), not when a query on an otherwise-healthy connection just
+    failed for an unrelated reason (a bad query, a constraint violation).
+
+    Before this existed, EVERY connection was unconditionally returned to
+    the pool via putconn(conn) even after a failure — so a connection
+    that died mid-request (Render's Postgres closing an idle connection,
+    a transient network blip) got silently recycled and could be handed
+    to the NEXT, completely unrelated caller, who would fail the exact
+    same way. That's what a confirmed-active, confirmed-correctly-linked
+    customer account intermittently looking "not found"/"not registered"
+    turned out to be — not a data or phone-number bug, a poisoned pool
+    connection. See _execute() below, which discards+retries instead."""
     if conn is not None:
-        _get_pool().putconn(conn)
+        _get_pool().putconn(conn, close=discard)
+
+
+# Exceptions from psycopg2 that mean "the CONNECTION itself is bad" (a
+# dropped socket, a server-closed idle connection, a network blip) as
+# opposed to a query/data problem (bad SQL, a constraint violation) that
+# would just fail identically on a retry. Only these are worth a retry —
+# see _execute()'s docstring.
+_CONNECTION_ERRORS = (psycopg2.OperationalError, psycopg2.InterfaceError)
+
+
+def _execute(action: str, run):
+    """Shared connection-acquire/run/release logic for execute_query(),
+    execute_write(), and execute_write_returning() below — `run(conn)`
+    does the actual cursor.execute(...)/fetch/commit and returns whatever
+    that caller wants back.
+
+    Retries ONCE, with a freshly-acquired connection, but ONLY for a
+    connection-level failure (_CONNECTION_ERRORS) — never for a query/
+    data error, which isn't transient and would just fail the identical
+    way again. A connection that failed at the connection level is
+    explicitly discarded (release_db_connection(..., discard=True))
+    instead of recycled, so one transient failure can no longer poison
+    the pool for every subsequent, unrelated request."""
+    last_error: Exception | None = None
+    for attempt in range(2):
+        conn = None
+        try:
+            conn = get_db_connection()
+            result = run(conn)
+            release_db_connection(conn)
+            return result
+        except _CONNECTION_ERRORS as e:
+            last_error = e
+            release_db_connection(conn, discard=True)
+            logger.warning(f"{action} hit a connection-level error (attempt {attempt + 1}/2) | error={e}")
+        except Exception as e:
+            if conn is not None:
+                conn.rollback()
+                release_db_connection(conn)
+            logger.error(f"{action} failed: {e}")
+            raise
+    logger.error(f"{action} failed after retry: {last_error}")
+    raise last_error
 
 
 def execute_query(query: str, params: tuple = None) -> list:
-    conn = None
-    try:
-        conn = get_db_connection()
+    def run(conn):
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cursor.execute(query, params)
-        results = [dict(row) for row in cursor.fetchall()]
-        return results
-    except Exception as e:
-        if conn:
-            conn.rollback()
-        logger.error(f"Query failed: {e}")
-        raise
-    finally:
-        if conn:
-            release_db_connection(conn)
+        return [dict(row) for row in cursor.fetchall()]
+
+    return _execute("Query", run)
 
 
 def execute_write(query: str, params: tuple = None) -> bool:
-    conn = None
-    try:
-        conn = get_db_connection()
+    def run(conn):
         cursor = conn.cursor()
         cursor.execute(query, params)
         conn.commit()
         return True
-    except Exception as e:
-        if conn:
-            conn.rollback()
-        logger.error(f"Write failed: {e}")
-        raise
-    finally:
-        if conn:
-            release_db_connection(conn)
+
+    return _execute("Write", run)
 
 
 def execute_write_returning(query: str, params: tuple = None) -> dict | None:
-    conn = None
-    try:
-        conn = get_db_connection()
+    def run(conn):
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cursor.execute(query, params)
         row = cursor.fetchone()
         conn.commit()
         return dict(row) if row else None
-    except Exception as e:
-        if conn:
-            conn.rollback()
-        logger.error(f"Write-returning failed: {e}")
-        raise
-    finally:
-        if conn:
-            release_db_connection(conn)
+
+    return _execute("Write-returning", run)
 
 
 def get_account_by_number(account_number: str) -> dict | None:
