@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS kyc_requests (
 -- Seed data — 3 test accounts
 INSERT INTO accounts (account_number, account_holder, phone_number, account_type, balance, currency) VALUES
 ('GB12HSBC00010001234567', 'John Smith', '447818658034', 'current', 2543.67, 'GBP'),
-('GB12HSBC00010007654321', 'Sarah Johnson', '919080745760', 'savings', 15750.00, 'GBP'),
+('GB12HSBC00010007654321', 'Sarah Johnson', '911111111111', 'savings', 15750.00, 'GBP'),
 ('GB12HSBC00010009876543', 'Michael Brown', '447123456789', 'current', 892.34, 'GBP');
 
 -- Registered customers — John Smith and Sarah Johnson are registered so the
