@@ -10,7 +10,7 @@ from app.workflows.constants import STEP_CONFIRM_TRANSFER
 def _ctx(workflow=None, step=None):
     if workflow is None:
         return None
-    return ConversationContext(phone_number="447000000000", current_workflow=workflow, current_step=step)
+    return ConversationContext(phone_number="441111111111", current_workflow=workflow, current_step=step)
 
 
 def _route(text, workflow=None, step=None):
@@ -177,7 +177,7 @@ class RouterNeverAuthorizesFinancialActionTests(unittest.TestCase):
         self.assertEqual(decision.action, "SAFE_FALLBACK")
 
 
-def _fresh_context(phone_number="447818658034"):
+def _fresh_context(phone_number="441111111111"):
     return ConversationContext(phone_number=phone_number)
 
 
@@ -218,7 +218,7 @@ class RunAgentRoutingIntegrationTests(unittest.IsolatedAsyncioTestCase):
              patch("app.agent.agent.build_agent") as mock_build_agent:
 
             response = await agent_module.run_agent(
-                query="Why is the sky blue?", phone_number="447818658034", trace_id="rt1"
+                query="Why is the sky blue?", phone_number="441111111111", trace_id="rt1"
             )
 
         mock_build_agent.assert_not_called()
@@ -241,7 +241,7 @@ class RunAgentRoutingIntegrationTests(unittest.IsolatedAsyncioTestCase):
             with patch("app.agent.agent.build_agent", return_value=fake_agent):
                 response = await agent_module.run_agent(
                     query="I earn 5000 monthly and want a personal loan",
-                    phone_number="447818658034",
+                    phone_number="441111111111",
                     trace_id="rt2",
                 )
 
@@ -262,7 +262,7 @@ class RunAgentRoutingIntegrationTests(unittest.IsolatedAsyncioTestCase):
              patch("app.agent.agent.build_agent") as mock_build_agent:
 
             response = await agent_module.run_agent(
-                query="I want a personal loan", phone_number="447818658034", trace_id="rt3"
+                query="I want a personal loan", phone_number="441111111111", trace_id="rt3"
             )
 
         mock_start_requested.assert_called_once()
@@ -283,7 +283,7 @@ class RunAgentRoutingIntegrationTests(unittest.IsolatedAsyncioTestCase):
              patch("app.agent.agent.build_agent") as mock_build_agent:
 
             response = await agent_module.run_agent(
-                query="500", phone_number="447818658034", trace_id="rt4"
+                query="500", phone_number="441111111111", trace_id="rt4"
             )
 
         mock_start_requested.assert_not_called()

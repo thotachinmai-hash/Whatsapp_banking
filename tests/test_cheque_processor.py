@@ -20,7 +20,7 @@ class ChequeProcessorTests(unittest.TestCase):
         mock_get_customer_by_phone.return_value = {"full_name": "John Smith"}
 
         result = self.processor._validate_or_finalize(
-            "447000000000",
+            "441111111111",
             {"payee": "Jane Doe", "amount_in_figures": "250.00"},
         )
 
@@ -43,7 +43,7 @@ class ChequeProcessorTests(unittest.TestCase):
         mock_create_cheque_request.return_value = {"request_id": "CHQ-1234"}
 
         result = self.processor._validate_or_finalize(
-            "447000000000",
+            "441111111111",
             {
                 "payee": "John Smith",
                 "amount_in_figures": "250.00",
@@ -57,4 +57,4 @@ class ChequeProcessorTests(unittest.TestCase):
         self.assertIn("date", result["response"].lower())
         self.assertIn("drawer", result["response"].lower())
         mock_create_cheque_request.assert_called_once()
-        mock_complete_workflow.assert_called_once_with("447000000000")
+        mock_complete_workflow.assert_called_once_with("441111111111")
