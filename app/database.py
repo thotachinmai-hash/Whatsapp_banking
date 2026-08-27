@@ -477,7 +477,6 @@ def create_loan_request(
     details: dict,
     status: str = "PENDING",
 ) -> dict | None:
-    ensure_application_tables()
     return execute_write_returning(
         """INSERT INTO loan_requests
            (request_id, phone_number, loan_type, details, status)
@@ -497,7 +496,6 @@ def get_loan_request_by_id(request_id: str) -> dict | None:
 
 def get_loan_requests_by_phone(phone_number: str) -> list[dict]:
     """Return all loan applications belonging to the signed-in customer."""
-    ensure_application_tables()
     normalized = normalize_phone_number(phone_number)
     if not normalized:
         return []
@@ -515,7 +513,6 @@ def create_kyc_request(
     details: dict,
     status: str = "PENDING",
 ) -> dict | None:
-    ensure_application_tables()
     return execute_write_returning(
         """INSERT INTO kyc_requests (request_id, phone_number, details, status)
            VALUES (%s, %s, %s::jsonb, %s)
@@ -525,7 +522,6 @@ def create_kyc_request(
 
 
 def get_kyc_request_by_id(request_id: str) -> dict | None:
-    ensure_application_tables()
     results = execute_query(
         "SELECT * FROM kyc_requests WHERE request_id = %s",
         (request_id.strip().upper(),),
@@ -535,7 +531,6 @@ def get_kyc_request_by_id(request_id: str) -> dict | None:
 
 def get_kyc_requests_by_phone(phone_number: str) -> list[dict]:
     """Return all KYC update requests belonging to the signed-in customer."""
-    ensure_application_tables()
     normalized = normalize_phone_number(phone_number)
     if not normalized:
         return []
@@ -564,7 +559,6 @@ def ensure_beneficiaries_table() -> None:
 
 def get_beneficiaries_by_phone(phone_number: str) -> list[dict]:
     """Return all saved beneficiaries for a customer, oldest first."""
-    ensure_beneficiaries_table()
     normalized = normalize_phone_number(phone_number)
     if not normalized:
         return []
@@ -586,7 +580,6 @@ def create_beneficiary(
     Save a new beneficiary, or update the name/bank on an existing one with
     the same account number for this customer (re-adding is harmless).
     """
-    ensure_beneficiaries_table()
     normalized_phone = normalize_phone_number(phone_number)
     return execute_write_returning(
         """INSERT INTO beneficiaries (phone_number, beneficiary_name, account_number, bank_name)
@@ -614,6 +607,18 @@ def ensure_transfers_table() -> None:
             created_at TIMESTAMP DEFAULT NOW()
         );"""
     )
+
+
+def ensure_all_tables() -> None:
+    """Run every ensure_*_table() migration once. Previously each was
+    called on every single loan/KYC/beneficiary/transfer request (a
+    CREATE TABLE IF NOT EXISTS write query on every call) — now called
+    once at app startup instead (see app/main.py's startup hook), since
+    the tables either already exist or are created before the first
+    request can be handled either way."""
+    ensure_application_tables()
+    ensure_beneficiaries_table()
+    ensure_transfers_table()
 
 
 def _apply_account_transaction(
@@ -672,7 +677,6 @@ def create_transfer(
     amount,
     status: str = "COMPLETED",
 ) -> dict | None:
-    ensure_transfers_table()
     normalized_phone = normalize_phone_number(phone_number)
     amount_decimal = Decimal(str(amount))
     conn = None
@@ -738,7 +742,6 @@ def create_transfer(
 
 
 def get_transfer_by_reference(reference: str) -> dict | None:
-    ensure_transfers_table()
     results = execute_query(
         "SELECT * FROM transfers WHERE reference = %s",
         (reference.strip().upper(),),
@@ -748,7 +751,6 @@ def get_transfer_by_reference(reference: str) -> dict | None:
 
 def get_transfers_by_phone(phone_number: str) -> list[dict]:
     """Return all transfers initiated by this customer, most recent first."""
-    ensure_transfers_table()
     normalized = normalize_phone_number(phone_number)
     if not normalized:
         return []
@@ -762,7 +764,6 @@ def get_transfers_by_phone(phone_number: str) -> list[dict]:
 
 def update_transfer_status(reference: str, status: str) -> dict | None:
     """Reflect the bank side completing (or failing) a transfer."""
-    ensure_transfers_table()
     return execute_write_returning(
         """UPDATE transfers SET status = %s WHERE reference = %s RETURNING *""",
         (status, reference.strip().upper()),

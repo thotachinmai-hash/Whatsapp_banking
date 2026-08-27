@@ -67,6 +67,16 @@ app.add_middleware(
 app.include_router(router, prefix="/api")
 
 
+@app.on_event("startup")
+async def _startup() -> None:
+    """Run the ensure_*_table() migrations once here instead of on every
+    loan/KYC/beneficiary/transfer request (see app/database.py's
+    ensure_all_tables())."""
+    from app.database import ensure_all_tables
+
+    ensure_all_tables()
+
+
 @app.on_event("shutdown")
 async def _shutdown() -> None:
     """Release the shared WhatsApp HTTP client and DB connection pool cleanly."""
