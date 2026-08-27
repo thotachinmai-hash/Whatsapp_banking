@@ -301,7 +301,7 @@ def build_agent(trace_id: str,phone_number: str,) -> Any:
             f"Known workflow data: {json.dumps(active_workflow.get('data', {}), default=str)[:1200]}"
         )
 
-    def agent_node(state: AgentState) -> dict:  # type: ignore
+    async def agent_node(state: AgentState) -> dict:  # type: ignore
         start = time.time()
         system_message = SystemMessage(content=f"""You are a helpful Finacle Banking assistant on WhatsApp.
 You help customers check their account balance, view transactions and spend summaries,
@@ -429,7 +429,7 @@ Important: Keep responses short and suitable for WhatsApp messages.""")
         attempts = 4
         for attempt in range(1, attempts + 1):
             try:
-                response = llm_with_tools.invoke(messages)
+                response = await llm_with_tools.ainvoke(messages)
                 duration = (time.time() - start) * 1000
                 # A reasoning model can occasionally spend its entire token
                 # budget on internal reasoning_content and come back with
