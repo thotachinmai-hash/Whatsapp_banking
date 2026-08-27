@@ -29,7 +29,7 @@ def test_get_accounts_by_phone_normalizes_phone_variants(monkeypatch):
 
     monkeypatch.setattr(database, "execute_query", fake_execute_query)
 
-    result = database.get_accounts_by_phone("+91 98765 43210")
+    result = database.get_accounts_by_phone("+91 11111 11111")
 
     assert result[0]["account_number"] == "FNCL000000000001"
     assert calls["params"] == ("911111111111",)
