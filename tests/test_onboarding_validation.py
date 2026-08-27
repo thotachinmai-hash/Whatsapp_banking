@@ -83,8 +83,8 @@ class OnboardingValidationTests(unittest.TestCase):
     def test_stops_onboarding_for_stop_commands(self) -> None:
         with patch("app.workflows.processors.onboarding.complete_workflow") as mock_complete:
             workflow = {"step": STEP_COLLECT_AADHAAR}
-            result = asyncio.run(self.handler.handle(workflow, "919000000000", "please stop"))
+            result = asyncio.run(self.handler.handle(workflow, "911111111111", "please stop"))
 
         self.assertTrue(result["handled"])
         self.assertIn("stopped", result["response"].lower())
-        mock_complete.assert_called_once_with("919000000000")
+        mock_complete.assert_called_once_with("911111111111")
