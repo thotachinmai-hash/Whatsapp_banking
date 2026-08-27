@@ -7,11 +7,51 @@ import psycopg2
 import psycopg2.errors
 import psycopg2.extras
 import psycopg2.pool
+import redis
 from dotenv import load_dotenv
 from app.logger import get_logger
+from app.memory import redis_client
 
 load_dotenv()
 logger = get_logger(__name__)
+
+# Short-TTL read cache for low-churn lookups that would otherwise hit
+# Postgres on nearly every message (customer registration status) or that
+# are effectively static reference data (the bank's published loan rate
+# card). Cache errors never block a request -- a miss/failure just falls
+# through to the normal DB read, same as before this existed.
+CUSTOMER_CACHE_TTL = 300  # 5 minutes
+LOAN_PRODUCT_CACHE_TTL = 3600  # 1 hour -- rate card, changes rarely if ever
+
+_UNSET = object()
+
+
+def _cache_get(key: str):
+    """Returns _UNSET on a cache miss/error so a legitimately cached
+    `None` (e.g. "no customer with this number") is distinguishable from
+    "not cached yet"."""
+    try:
+        raw = redis_client.get(key)
+    except redis.RedisError as e:
+        logger.error(f"Cache read failed | key={key} | error={e}")
+        return _UNSET
+    if raw is None:
+        return _UNSET
+    return json.loads(raw)
+
+
+def _cache_set(key: str, value, ttl: int) -> None:
+    try:
+        redis_client.setex(key, ttl, json.dumps(value, default=str))
+    except redis.RedisError as e:
+        logger.error(f"Cache write failed | key={key} | error={e}")
+
+
+def _cache_delete(key: str) -> None:
+    try:
+        redis_client.delete(key)
+    except redis.RedisError as e:
+        logger.error(f"Cache invalidation failed | key={key} | error={e}")
 
 # Postgres now lives on Render (a network hop away, not localhost), so
 # opening a brand-new psycopg2.connect() per query — the old behavior —
@@ -255,15 +295,33 @@ def get_spend_summary(
     return execute_query(query, tuple(params))
 
 
+def _customer_cache_key(normalized_phone: str) -> str:
+    return f"cache:customer:{normalized_phone}"
+
+
 def get_customer_by_phone(phone_number: str) -> dict | None:
+    """Checked on nearly every incoming message (see
+    app/services/registration_gate.py) — cached briefly since registration
+    status essentially never changes mid-conversation. A negative result
+    ("not registered") is cached too, so a repeat message from an
+    unregistered number doesn't re-hit Postgres every time; create_customer
+    below explicitly invalidates this the moment that changes."""
     normalized = normalize_phone_number(phone_number)
     if not normalized:
         return None
+
+    cache_key = _customer_cache_key(normalized)
+    cached = _cache_get(cache_key)
+    if cached is not _UNSET:
+        return cached
+
     results = execute_query(
         "SELECT * FROM customers WHERE phone_number = %s",
         (normalized,)
     )
-    return results[0] if results else None
+    customer = results[0] if results else None
+    _cache_set(cache_key, customer, CUSTOMER_CACHE_TTL)
+    return customer
 
 
 def create_customer(
@@ -276,7 +334,7 @@ def create_customer(
     address: str = "",
 ) -> dict | None:
     normalized_phone = normalize_phone_number(phone_number)
-    return execute_write_returning(
+    customer = execute_write_returning(
         """INSERT INTO customers (
             phone_number, full_name, aadhaar_number, pan_number,
             date_of_birth, guardian_name, address
@@ -284,6 +342,11 @@ def create_customer(
            RETURNING *""",
         (normalized_phone, full_name, aadhaar_number, pan_number, date_of_birth, guardian_name, address)
     )
+    # Invalidate rather than overwrite — get_customer_by_phone() will
+    # re-populate the cache on the next read, avoiding a second write path
+    # that could disagree with it.
+    _cache_delete(_customer_cache_key(normalized_phone))
+    return customer
 
 
 ACCOUNT_TYPES = ("savings", "current", "salary")
@@ -774,13 +837,29 @@ def get_loan_product(loan_type: str) -> dict | None:
     """The bank's published rate-card entry for one loan type — real,
     static reference data (see infra/postgres/init.sql), not a customer's
     application. Used so the assistant can answer rate/fee/tenure
-    questions with an actual figure instead of inventing or refusing."""
+    questions with an actual figure instead of inventing or refusing.
+    Cached with a long TTL since this data essentially never changes."""
+    normalized_type = loan_type.strip().lower()
+    cache_key = f"cache:loan_product:{normalized_type}"
+    cached = _cache_get(cache_key)
+    if cached is not _UNSET:
+        return cached
+
     results = execute_query(
         "SELECT * FROM loan_products WHERE loan_type = %s",
-        (loan_type.strip().lower(),),
+        (normalized_type,),
     )
-    return results[0] if results else None
+    product = results[0] if results else None
+    _cache_set(cache_key, product, LOAN_PRODUCT_CACHE_TTL)
+    return product
 
 
 def get_all_loan_products() -> list[dict]:
-    return execute_query("SELECT * FROM loan_products ORDER BY loan_type")
+    cache_key = "cache:loan_products:all"
+    cached = _cache_get(cache_key)
+    if cached is not _UNSET:
+        return cached
+
+    products = execute_query("SELECT * FROM loan_products ORDER BY loan_type")
+    _cache_set(cache_key, products, LOAN_PRODUCT_CACHE_TTL)
+    return products
