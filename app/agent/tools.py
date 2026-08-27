@@ -34,6 +34,38 @@ from app.rag.retriever import search as rag_search
 
 logger = get_logger(__name__)
 
+
+def _tool_error(tool_name: str, action: str, e: Exception, trace_id: str) -> dict:
+    """Shared error-path builder for every DB-backed tool below. A tool's
+    normal "nothing found" result and a genuine technical failure (a DB
+    connection blip, a query timeout) used to look IDENTICAL to the LLM —
+    both were `{"found": False, "message": "..."}`, differing only in
+    wording the model had to parse correctly every time. Confirmed live in
+    production: a real, already-registered, active customer got told
+    "you don't have a registered account, please contact your bank
+    branch" — the account and customer records were verified to genuinely
+    exist and be active, so the actual DB call almost certainly hit a
+    transient error that got misread as "not found" instead of "a
+    technical problem occurred." The explicit `error: True` flag plus the
+    unambiguous, self-contained message (which the grounding rule in
+    app/agent/agent.py's system prompt now explicitly tells the LLM to
+    relay as-is, never reinterpreted as "not registered") closes that
+    gap structurally instead of hoping the model parses wording correctly
+    every time."""
+    logger.error(f"[{trace_id}] TOOL | {tool_name} | error={e}")
+    return {
+        "found": False,
+        "error": True,
+        "message": (
+            f"A temporary technical problem occurred while {action}. "
+            "This is NOT related to registration or account status — "
+            "tell the customer there was a temporary issue and to try "
+            "again shortly, never that they're unregistered or have no "
+            "account."
+        ),
+    }
+
+
 # The LLM (and customers) naturally describe spending in everyday words that
 # don't match the exact category values stored in the transactions table.
 # Map the common synonyms onto the real category before querying, so "how
@@ -157,9 +189,7 @@ def tool_get_account_balance(account_number: str = "", phone_number: str = "", t
             "status": account["status"]
         }
     except Exception as e:
-        duration = (time.time() - start) * 1000
-        logger.error(f"[{trace_id}] TOOL | get_account_balance | error={e} | duration={duration:.2f}ms")
-        return {"found": False, "message": f"Error retrieving account: {str(e)}"}
+        return _tool_error("get_account_balance", "retrieving your account balance", e, trace_id)
 
 
 def tool_get_last_transactions(
@@ -241,8 +271,7 @@ def tool_get_last_transactions(
             "total": len(formatted)
         }
     except Exception as e:
-        logger.error(f"[{trace_id}] TOOL | get_last_transactions | error={e}")
-        return {"found": False, "message": f"Error retrieving transactions: {str(e)}"}
+        return _tool_error("get_last_transactions", "retrieving your transactions", e, trace_id)
 
 
 def tool_get_spend_summary(
@@ -307,8 +336,7 @@ def tool_get_spend_summary(
             "total_spent": sum(row["total"] for row in formatted),
         }
     except Exception as e:
-        logger.error(f"[{trace_id}] TOOL | get_spend_summary | error={e}")
-        return {"found": False, "message": f"Error retrieving spend summary: {str(e)}"}
+        return _tool_error("get_spend_summary", "retrieving your spend summary", e, trace_id)
 
 
 _LOAN_TYPE_ALIASES = {
@@ -356,8 +384,7 @@ def tool_get_loan_product_info(loan_type: str = "", trace_id: str = "") -> dict:
         logger.info(f"[{trace_id}] TOOL | get_loan_product_info | success | type={normalized} | duration={duration:.2f}ms")
         return {"found": True, "product": _format_loan_product(product)}
     except Exception as e:
-        logger.error(f"[{trace_id}] TOOL | get_loan_product_info | error={e}")
-        return {"found": False, "message": f"Error retrieving loan product info: {str(e)}"}
+        return _tool_error("get_loan_product_info", "retrieving loan product information", e, trace_id)
 
 
 def _format_loan_product(product: dict) -> dict:
@@ -401,8 +428,7 @@ def tool_search_bank_documents(query: str = "", trace_id: str = "") -> dict:
             return {"found": False, "message": "Nothing relevant was found in the bank's documents for this question."}
         return {"found": True, "results": [{"title": r["title"], "text": r["text"]} for r in results]}
     except Exception as e:
-        logger.error(f"[{trace_id}] TOOL | search_bank_documents | error={e}")
-        return {"found": False, "message": f"Error searching documents: {str(e)}"}
+        return _tool_error("search_bank_documents", "searching the bank's documents", e, trace_id)
 
 
 def tool_check_cheque_status(request_id: str = "", phone_number: str = "", trace_id: str = "") -> dict:
@@ -442,8 +468,7 @@ def tool_check_cheque_status(request_id: str = "", phone_number: str = "", trace
             for cheque in requests
         ]}
     except Exception as e:
-        logger.error(f"[{trace_id}] TOOL | check_cheque_status | error={e}")
-        return {"found": False, "message": f"Error retrieving cheque request: {str(e)}"}
+        return _tool_error("check_cheque_status", "retrieving your cheque request", e, trace_id)
 
 
 def tool_check_loan_status(request_id: str = "", phone_number: str = "", trace_id: str = "") -> dict:
@@ -468,8 +493,7 @@ def tool_check_loan_status(request_id: str = "", phone_number: str = "", trace_i
             for item in requests
         ]}
     except Exception as e:
-        logger.error(f"[{trace_id}] TOOL | check_loan_status | error={e}")
-        return {"found": False, "message": f"Error retrieving loan application: {str(e)}"}
+        return _tool_error("check_loan_status", "retrieving your loan application", e, trace_id)
 
 
 def tool_check_transfer_status(request_id: str = "", phone_number: str = "", trace_id: str = "") -> dict:
@@ -507,8 +531,7 @@ def tool_check_transfer_status(request_id: str = "", phone_number: str = "", tra
             for item in transfers
         ]}
     except Exception as e:
-        logger.error(f"[{trace_id}] TOOL | check_transfer_status | error={e}")
-        return {"found": False, "message": f"Error retrieving transfer: {str(e)}"}
+        return _tool_error("check_transfer_status", "retrieving your transfer", e, trace_id)
 
 
 def tool_check_kyc_status(request_id: str = "", phone_number: str = "", trace_id: str = "") -> dict:
@@ -550,8 +573,7 @@ def tool_check_kyc_status(request_id: str = "", phone_number: str = "", trace_id
             for item in requests
         ]}
     except Exception as e:
-        logger.error(f"[{trace_id}] TOOL | check_kyc_status | error={e}")
-        return {"found": False, "message": f"Error retrieving KYC request: {str(e)}"}
+        return _tool_error("check_kyc_status", "retrieving your KYC request", e, trace_id)
 
 
 def tool_list_beneficiaries(phone_number: str = "", trace_id: str = "") -> dict:
@@ -577,8 +599,7 @@ def tool_list_beneficiaries(phone_number: str = "", trace_id: str = "") -> dict:
             for item in beneficiaries
         ]}
     except Exception as e:
-        logger.error(f"[{trace_id}] TOOL | list_beneficiaries | error={e}")
-        return {"found": False, "message": f"Error retrieving beneficiaries: {str(e)}"}
+        return _tool_error("list_beneficiaries", "retrieving your saved beneficiaries", e, trace_id)
 
 
 def tool_start_cheque_workflow(phone_number: str) -> str:
