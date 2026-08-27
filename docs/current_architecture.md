@@ -734,7 +734,7 @@ applications, and KYC updates, an unguarded retry could mean two
 webhook payload (`payload["data"]`, the object every other Phase has
 called `data`) carries the underlying WhatsApp message identifier at
 `data.id` — a string in this deployment's payloads (e.g.
-`"true_919080745760@c.us_3EB0C767..."`). Some OpenWA/WPPConnect builds
+`"true_911111111111@c.us_3EB0C767..."`). Some OpenWA/WPPConnect builds
 nest it instead (`data.id._serialized` / `data.id.id`) or use
 `messageId`/`msgId`/`stanzaId`. `app/services/whatsapp.py::get_external_message_id()`
 tries each of these, in that order, and **never** falls back to hashing
@@ -955,7 +955,7 @@ Redis (`GET idempotency:<id>`) showing `{"status": "COMPLETED", ...}`
 and a TTL of ~86369s (~24h); two events with different ids but identical
 body text (`"What is my balance?"`) both processed independently; a
 `"I want to transfer money"` event started a real `transfer` workflow
-(confirmed via `GET workflow:919080745760` in Redis,
+(confirmed via `GET workflow:911111111111` in Redis,
 `step: "SELECT_BENEFICIARY"`), and replaying the exact same webhook event
 afterward returned `"duplicate"` with the workflow state unchanged — no
 second workflow/transfer was created; a duplicate `type: "image"` event
