@@ -72,7 +72,7 @@ flowchart TD
 ### Step 1 — Clone and configure
 
 ```bash
-git clone https://github.com/dinnyhub/whatsapp-banking-agent.git
+git clone https://github.com/thotachinmai-hash/Whatsapp_banking.git
 cd whatsapp-banking-agent
 cp .env.example .env
 ```
