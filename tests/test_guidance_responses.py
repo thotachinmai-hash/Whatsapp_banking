@@ -167,7 +167,7 @@ class GuidanceHandoffResolutionTests(unittest.TestCase):
 
 # ─── ConversationManager integration: guidance turn + handoff turn ─────
 
-def _fresh_context(phone_number="447818658034"):
+def _fresh_context(phone_number="441111111111"):
     return ConversationContext(phone_number=phone_number)
 
 
@@ -222,7 +222,7 @@ class ConversationManagerGuidanceIntegrationTests(unittest.IsolatedAsyncioTestCa
         with _patches(context)[0], _patches(context)[1], _patches(context)[2], _patches(context)[3], \
              patch.object(manager.context_store, "save", return_value=True):
             response = await manager.handle_message(
-                "447818658034", "What should I do?", "t9", llm_fallback=_fake_llm_fallback
+                "441111111111", "What should I do?", "t9", llm_fallback=_fake_llm_fallback
             )
 
         self.assertEqual(response, "llm-answer:What should I do?")
@@ -240,7 +240,7 @@ class ConversationManagerGuidanceIntegrationTests(unittest.IsolatedAsyncioTestCa
                  return_value={"handled": True, "response": "Loan application started."},
              ) as mock_start:
             response = await manager.handle_message(
-                "447818658034", "Start application", "t10", llm_fallback=_fake_llm_fallback
+                "441111111111", "Start application", "t10", llm_fallback=_fake_llm_fallback
             )
 
         mock_start.assert_called_once()
@@ -259,7 +259,7 @@ class ConversationManagerGuidanceIntegrationTests(unittest.IsolatedAsyncioTestCa
              patch.object(manager.context_store, "save", return_value=True), \
              patch("app.conversation.manager.start_workflow_directly") as mock_start:
             response = await manager.handle_message(
-                "447818658034", "Show documents", "t11", llm_fallback=_fake_llm_fallback
+                "441111111111", "Show documents", "t11", llm_fallback=_fake_llm_fallback
             )
 
         mock_start.assert_not_called()
@@ -278,7 +278,7 @@ class ConversationManagerGuidanceIntegrationTests(unittest.IsolatedAsyncioTestCa
              patch.object(manager.context_store, "save", return_value=True), \
              patch("app.conversation.manager.start_workflow_directly") as mock_start:
             response = await manager.handle_message(
-                "447818658034", "Cancel", "t12", llm_fallback=_fake_llm_fallback
+                "441111111111", "Cancel", "t12", llm_fallback=_fake_llm_fallback
             )
 
         mock_start.assert_not_called()
@@ -296,7 +296,7 @@ class ConversationManagerGuidanceIntegrationTests(unittest.IsolatedAsyncioTestCa
              patch.object(manager.context_store, "save", return_value=True), \
              patch("app.conversation.manager.start_workflow_directly") as mock_start:
             response = await manager.handle_message(
-                "447818658034", "Back", "t13", llm_fallback=_fake_llm_fallback
+                "441111111111", "Back", "t13", llm_fallback=_fake_llm_fallback
             )
 
         mock_start.assert_not_called()
@@ -318,7 +318,7 @@ class ConversationManagerGuidanceIntegrationTests(unittest.IsolatedAsyncioTestCa
              patch.object(manager.context_store, "save", return_value=True), \
              patch("app.conversation.manager.start_workflow_directly") as mock_start:
             response = await manager.handle_message(
-                "447818658034", "3", "t14", llm_fallback=_fake_llm_fallback
+                "441111111111", "3", "t14", llm_fallback=_fake_llm_fallback
             )
 
         mock_start.assert_not_called()
@@ -332,7 +332,7 @@ class ConversationManagerGuidanceIntegrationTests(unittest.IsolatedAsyncioTestCa
         with _patches(context)[0], _patches(context)[1], _patches(context)[2], _patches(context)[3], \
              patch.object(manager.context_store, "save", return_value=True):
             response = await manager.handle_message(
-                "447818658034",
+                "441111111111",
                 "I earn 50000 a month and want a personal loan",
                 "t15",
                 llm_fallback=_fake_llm_fallback,
