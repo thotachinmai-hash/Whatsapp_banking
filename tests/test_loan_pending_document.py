@@ -44,17 +44,17 @@ class LoanPendingDocumentTests(unittest.IsolatedAsyncioTestCase):
             "loan", STEP_SELECT_LOAN_TYPE,
             data={"pending_document_content": pending_content},
         )
-        create_workflow("447700900200", workflow)
+        create_workflow("441111111111", workflow)
 
         result = await self.handler.handle(
-            workflow=get_workflow("447700900200"),
-            phone_number="447700900200",
+            workflow=get_workflow("441111111111"),
+            phone_number="441111111111",
             query="home loan",
             trace_id="t1",
         )
 
         self.assertTrue(result["handled"])
-        stored = get_workflow("447700900200")
+        stored = get_workflow("441111111111")
         self.assertEqual(stored["step"], STEP_UPLOAD_LOAN_FORM)
         self.assertEqual(stored["data"]["applicant_name"], "Jane Doe")
         self.assertEqual(stored["data"]["loan_type"], "home")
@@ -65,17 +65,17 @@ class LoanPendingDocumentTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_no_pending_content_behaves_as_before(self):
         workflow = create_workflow_model("loan", STEP_SELECT_LOAN_TYPE)
-        create_workflow("447700900201", workflow)
+        create_workflow("441111111111", workflow)
 
         result = await self.handler.handle(
-            workflow=get_workflow("447700900201"),
-            phone_number="447700900201",
+            workflow=get_workflow("441111111111"),
+            phone_number="441111111111",
             query="vehicle",
             trace_id="t2",
         )
 
         self.assertTrue(result["handled"])
-        stored = get_workflow("447700900201")
+        stored = get_workflow("441111111111")
         self.assertEqual(stored["step"], STEP_UPLOAD_LOAN_FORM)
         self.assertEqual(stored["data"]["loan_type"], "vehicle")
 

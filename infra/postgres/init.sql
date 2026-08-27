@@ -145,9 +145,9 @@ INSERT INTO loan_products (loan_type, display_name, interest_rate_min, interest_
 
 -- Seed data — 3 test accounts
 INSERT INTO accounts (account_number, account_holder, phone_number, account_type, balance, currency) VALUES
-('GB12FNCL00010001234567', 'John Smith', '447818658034', 'current', 2543.67, 'GBP'),
+('GB12FNCL00010001234567', 'John Smith', '441111111111', 'current', 2543.67, 'GBP'),
 ('GB12FNCL00010007654321', 'Sarah Johnson', '911111111111', 'savings', 15750.00, 'GBP'),
-('GB12FNCL00010009876543', 'Michael Brown', '447123456789', 'current', 892.34, 'GBP');
+('GB12FNCL00010009876543', 'Michael Brown', '441111111111', 'current', 892.34, 'GBP');
 
 -- Registered customers — John Smith and Sarah Johnson are registered so the
 -- greeting/menu flow has real matches. Michael Brown is deliberately left
@@ -156,7 +156,7 @@ INSERT INTO accounts (account_number, account_holder, phone_number, account_type
 -- the registration gate and get_accounts_by_phone() both key off this
 -- number, so a mismatch makes a "registered" customer look unregistered.
 INSERT INTO customers (phone_number, full_name, aadhaar_number, pan_number) VALUES
-('447818658034', 'John Smith', '234567890123', 'ABCDE1234F'),
+('441111111111', 'John Smith', '234567890123', 'ABCDE1234F'),
 ('911111111111', 'Sarah Johnson', '345678901234', 'BXYZP5678K');
 
 -- Transactions for John Smith (account_id=1) — 3 months, categorized,
@@ -198,13 +198,13 @@ INSERT INTO transactions (account_id, transaction_type, category, amount, descri
 
 -- Sample cheque deposit requests, in different statuses, tied to John Smith
 INSERT INTO cheque_requests (request_id, phone_number, bank_name, branch, payee, amount_in_figures, amount_in_words, cheque_number, signatory, status, created_at) VALUES
-('CHQ-A1B2C3D4', '447818658034', 'Finacle Banking', 'London Central', 'John Smith', '500.00', 'Five Hundred Pounds Only', '000123', 'A. Patel', 'COMPLETED', NOW() - INTERVAL '10 days'),
-('CHQ-E5F6G7H8', '447818658034', 'Finacle Banking', 'London Central', 'John Smith', '1200.00', 'One Thousand Two Hundred Pounds Only', '000124', 'A. Patel', 'PENDING', NOW() - INTERVAL '1 day'),
+('CHQ-A1B2C3D4', '441111111111', 'Finacle Banking', 'London Central', 'John Smith', '500.00', 'Five Hundred Pounds Only', '000123', 'A. Patel', 'COMPLETED', NOW() - INTERVAL '10 days'),
+('CHQ-E5F6G7H8', '441111111111', 'Finacle Banking', 'London Central', 'John Smith', '1200.00', 'One Thousand Two Hundred Pounds Only', '000124', 'A. Patel', 'PENDING', NOW() - INTERVAL '1 day'),
 ('CHQ-J9K1L2M3', '911111111111', 'Barclays', 'Manchester', 'Sarah Johnson', '75.00', 'Seventy Five Pounds Only', '000045', 'R. Khan', 'REJECTED', NOW() - INTERVAL '5 days');
 
 -- Saved beneficiaries so the transfer workflow has real data to list
 INSERT INTO beneficiaries (phone_number, beneficiary_name, account_number, bank_name) VALUES
-('447818658034', 'Priya Sharma', 'GB29FNCL60161331926819', 'Finacle Banking'),
-('447818658034', 'Alex Morgan', 'GB77FNCL29001847502211', 'Finacle Banking'),
+('441111111111', 'Priya Sharma', 'GB29FNCL60161331926819', 'Finacle Banking'),
+('441111111111', 'Alex Morgan', 'GB77FNCL29001847502211', 'Finacle Banking'),
 ('911111111111', 'Rahul Verma', 'GB14FNCL74208891736642', 'Finacle Banking'),
 ('911111111111', 'Emma Wilson', 'GB05FNCL13590027461938', 'Finacle Banking');

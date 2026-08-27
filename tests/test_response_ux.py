@@ -61,25 +61,25 @@ class ResponseRendererTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_render_and_send_text(self):
         with patch("app.conversation.renderer.send_text_message", new=AsyncMock(return_value=True)) as mock_send:
-            result = await render_and_send("Hello", "447700900000", "trace-1")
+            result = await render_and_send("Hello", "441111111111", "trace-1")
         self.assertTrue(result)
-        mock_send.assert_awaited_once_with("447700900000", "Hello", "trace-1")
+        mock_send.assert_awaited_once_with("441111111111", "Hello", "trace-1")
 
     async def test_render_and_send_template(self):
         response = StructuredResponse.template("Hi Alex!", template_name="render_greeting")
         with patch("app.conversation.renderer.send_text_message", new=AsyncMock(return_value=True)) as mock_send:
-            result = await render_and_send(response, "447700900000", "trace-2")
+            result = await render_and_send(response, "441111111111", "trace-2")
         self.assertTrue(result)
-        mock_send.assert_awaited_once_with("447700900000", "Hi Alex!", "trace-2")
+        mock_send.assert_awaited_once_with("441111111111", "Hi Alex!", "trace-2")
 
     async def test_render_and_send_failure_returns_false_not_raise(self):
         with patch("app.conversation.renderer.send_text_message", new=AsyncMock(side_effect=RuntimeError("boom"))):
-            result = await render_and_send("Hello", "447700900000", "trace-3")
+            result = await render_and_send("Hello", "441111111111", "trace-3")
         self.assertFalse(result)
 
     async def test_render_and_send_delivery_declined(self):
         with patch("app.conversation.renderer.send_text_message", new=AsyncMock(return_value=False)):
-            result = await render_and_send("Hello", "447700900000", "trace-4")
+            result = await render_and_send("Hello", "441111111111", "trace-4")
         self.assertFalse(result)
 
     def test_renderer_hides_openwa_details(self):
@@ -134,7 +134,7 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self):
         self.manager = WorkflowManager()
-        self.phone = "447700900099"
+        self.phone = "441111111111"
         self.fake_redis = FakeRedis()
         patcher = patch("app.workflows.memory.redis_client", self.fake_redis)
         patcher.start()
@@ -234,7 +234,7 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
 class NavigationTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.manager = WorkflowManager()
-        self.phone = "447700900098"
+        self.phone = "441111111111"
         self.fake_redis = FakeRedis()
         patcher = patch("app.workflows.memory.redis_client", self.fake_redis)
         patcher.start()

@@ -6,7 +6,7 @@ from app.conversation.manager import ConversationManager
 from app.workflows.constants import STEP_CONFIRM_TRANSFER
 
 
-def _fresh_context(phone_number="447818658034"):
+def _fresh_context(phone_number="441111111111"):
     return ConversationContext(phone_number=phone_number)
 
 
@@ -67,7 +67,7 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
         p1, p2, p3, p4 = self._patches()
         with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
             response = await manager.handle_message(
-                "447818658034", "What is an overdraft?", "t1", llm_fallback=_fake_llm_fallback
+                "441111111111", "What is an overdraft?", "t1", llm_fallback=_fake_llm_fallback
             )
         self.assertEqual(response, "llm-answer:What is an overdraft?")
 
@@ -83,7 +83,7 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
 
         with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
             response = await manager.handle_message(
-                "447818658034", "Why is the sky blue?", "t2", llm_fallback=tracking_llm
+                "441111111111", "Why is the sky blue?", "t2", llm_fallback=tracking_llm
             )
         self.assertEqual(llm_calls, [])
         self.assertIn("banking", response.lower())
@@ -94,7 +94,7 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
         p1, p2, p3, p4 = self._patches()
         with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
             response = await manager.handle_message(
-                "447818658034", "Maybe send some money to Rahul", "t3", llm_fallback=_fake_llm_fallback
+                "441111111111", "Maybe send some money to Rahul", "t3", llm_fallback=_fake_llm_fallback
             )
         self.assertIn("who", response.lower())
         self.assertNotIn("llm-answer", response)
@@ -107,7 +107,7 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
         p1, p2, p3, p4 = self._patches()
         with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
             response = await manager.handle_message(
-                "447818658034", "Send £500 to Priya", "t4", llm_fallback=_fake_llm_fallback
+                "441111111111", "Send £500 to Priya", "t4", llm_fallback=_fake_llm_fallback
             )
         self.assertEqual(response, "Who would you like to pay?")
         self.assertEqual(len(wf.start_requested_calls), 1)
@@ -120,7 +120,7 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
         p1, p2, p3, p4 = self._patches()
         with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
             response = await manager.handle_message(
-                "447818658034", "I want a personal loan", "t5", llm_fallback=_fake_llm_fallback
+                "441111111111", "I want a personal loan", "t5", llm_fallback=_fake_llm_fallback
             )
         self.assertEqual(response, "Loan application started.")
 
@@ -132,7 +132,7 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
         p1, p2, p3, p4 = self._patches()
         with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
             response = await manager.handle_message(
-                "447818658034", "Deposit this cheque", "t6", llm_fallback=_fake_llm_fallback
+                "441111111111", "Deposit this cheque", "t6", llm_fallback=_fake_llm_fallback
             )
         self.assertEqual(response, "Cheque deposit started.")
 
@@ -144,7 +144,7 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
         p1, p2, p3, p4 = self._patches()
         with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
             response = await manager.handle_message(
-                "447818658034", "I want to update my KYC", "t7", llm_fallback=_fake_llm_fallback
+                "441111111111", "I want to update my KYC", "t7", llm_fallback=_fake_llm_fallback
             )
         self.assertEqual(response, "KYC update started.")
 
@@ -156,7 +156,7 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
         p1, p2, p3, p4 = self._patches()
         with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
             response = await manager.handle_message(
-                "447818658034", "500", "t8", llm_fallback=_fake_llm_fallback
+                "441111111111", "500", "t8", llm_fallback=_fake_llm_fallback
             )
         self.assertEqual(response, "Which account should we use?")
         self.assertEqual(len(wf.handle_calls), 1)
@@ -169,7 +169,7 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
         p1, p2, p3, p4 = self._patches(context=context)
         with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
             await manager.handle_message(
-                "447818658034", "Maybe send some money to Rahul", "t9", llm_fallback=_fake_llm_fallback
+                "441111111111", "Maybe send some money to Rahul", "t9", llm_fallback=_fake_llm_fallback
             )
         self.assertIsNotNone(context.pending_action)
         self.assertTrue(context.pending_action.startswith("clarify:"))
@@ -183,7 +183,7 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
         p1, p2, p3, p4 = self._patches(context=context)
         with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True) as mock_save:
             await manager.handle_message(
-                "447818658034", "I want a personal loan", "t10", llm_fallback=_fake_llm_fallback
+                "441111111111", "I want a personal loan", "t10", llm_fallback=_fake_llm_fallback
             )
         mock_save.assert_called()
         saved_context = mock_save.call_args[0][0]
@@ -202,7 +202,7 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
              }), \
              patch.object(manager.context_store, "save", return_value=True):
             await manager.handle_message(
-                "447818658034", "What should I do?", "t11", llm_fallback=_fake_llm_fallback
+                "441111111111", "What should I do?", "t11", llm_fallback=_fake_llm_fallback
             )
         self.assertNotIn("aadhaar_number", context.workflow_data)
         self.assertEqual(context.workflow_data.get("full_name"), "John Smith")
@@ -216,13 +216,13 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
         p1, p2, p3, p4 = self._patches(context=context)
         with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
             await manager.handle_message(
-                "447818658034", "Maybe send some money to Rahul", "t12a", llm_fallback=_fake_llm_fallback
+                "441111111111", "Maybe send some money to Rahul", "t12a", llm_fallback=_fake_llm_fallback
             )
         self.assertEqual(context.retry_count, 1)
 
         with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
             await manager.handle_message(
-                "447818658034", "I want a personal loan", "t12b", llm_fallback=_fake_llm_fallback
+                "441111111111", "I want a personal loan", "t12b", llm_fallback=_fake_llm_fallback
             )
         self.assertEqual(context.retry_count, 0)
 
@@ -235,7 +235,7 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
         for i in range(MAX_CLARIFICATION_RETRIES + 5):
             with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
                 await manager.handle_message(
-                    "447818658034", "Maybe send some money", f"t12c-{i}", llm_fallback=_fake_llm_fallback
+                    "441111111111", "Maybe send some money", f"t12c-{i}", llm_fallback=_fake_llm_fallback
                 )
         self.assertLessEqual(context.retry_count, MAX_CLARIFICATION_RETRIES)
 
@@ -249,7 +249,7 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
         p1, p2, p3, p4 = self._patches()
         with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
             response = await manager.handle_message(
-                "447818658034", "What is an overdraft?", "t13", llm_fallback=broken_llm
+                "441111111111", "What is an overdraft?", "t13", llm_fallback=broken_llm
             )
         self.assertNotIn("psycopg2", response)
         self.assertNotIn("Traceback", response)
@@ -265,7 +265,7 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
         p1, p2, p3, p4 = self._patches(context=context)
         with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True) as mock_save:
             await manager.handle_message(
-                "447818658034", "What is an overdraft?", "t13b", llm_fallback=broken_llm
+                "441111111111", "What is an overdraft?", "t13b", llm_fallback=broken_llm
             )
         self.assertEqual(context.last_error, "turn_failed")
         mock_save.assert_called()
@@ -277,7 +277,7 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
         with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True), \
              self.assertLogs("app.conversation.manager", level="INFO") as logs:
             await manager.handle_message(
-                "447818658034", "What is KYC?", "trace-xyz-123", llm_fallback=_fake_llm_fallback
+                "441111111111", "What is KYC?", "trace-xyz-123", llm_fallback=_fake_llm_fallback
             )
         joined = "\n".join(logs.output)
         self.assertIn("trace-xyz-123", joined)
@@ -297,7 +297,7 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
              patch.object(manager.context_store, "save", return_value=True), \
              self.assertLogs("app.conversation.manager", level="INFO") as logs:
             await manager.handle_message(
-                "447818658034", "ABCDE1234F", "t15", llm_fallback=_fake_llm_fallback
+                "441111111111", "ABCDE1234F", "t15", llm_fallback=_fake_llm_fallback
             )
         self.assertNotIn("pan_number", context.workflow_data)
         self.assertNotIn("otp", context.workflow_data)
@@ -327,7 +327,7 @@ class ConversationManagerArchitectureBoundaryTests(unittest.IsolatedAsyncioTestC
         with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True), \
              patch("app.conversation.manager.route_intent") as mock_route:
             response = await manager.handle_message(
-                "447818658034", "I want a personal loan", "tb1", llm_fallback=_fake_llm_fallback
+                "441111111111", "I want a personal loan", "tb1", llm_fallback=_fake_llm_fallback
             )
         self.assertEqual(response, "continuing transfer")
         mock_route.assert_not_called()
@@ -362,7 +362,7 @@ class ConversationManagerArchitectureBoundaryTests(unittest.IsolatedAsyncioTestC
         p1, p2, p3, p4 = self._patches()
         with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
             response = await manager.handle_message(
-                "447818658034", "Tell me a joke", "tb2", llm_fallback=_fake_llm_fallback
+                "441111111111", "Tell me a joke", "tb2", llm_fallback=_fake_llm_fallback
             )
         self.assertEqual(response, render_out_of_scope())
 
