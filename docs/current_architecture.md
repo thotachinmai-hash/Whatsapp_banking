@@ -1473,6 +1473,112 @@ outbound WhatsApp sends.
 
 ---
 
+## Latency & Concurrency Optimization Pass — Phase 10
+
+Triggered by real Render logs showing turns dominated by overhead
+unrelated to the actual work being done (a rule-based workflow field
+update taking 13-45ms of real logic but ~700-860ms total request time)
+and by discovering the app has no connection pooling, no async-safe
+Redis client, and several synchronous blocking calls sitting directly
+inside `async def` functions — each of which freezes the whole FastAPI
+event loop (every other concurrent customer's in-flight request, not
+just the slow one) for the duration of that call. Executed as 14
+incremental, individually-tested steps; each is summarized here rather
+than as separate entries.
+
+**Fixes that reduce a single turn's own wall-clock time:**
+1. **Postgres connection pooling** (`app/database.py`) — replaced
+   `psycopg2.connect()` per query with a `psycopg2.pool.ThreadedConnectionPool`
+   (`DB_POOL_MIN`/`DB_POOL_MAX` env vars, default 1/10). Every query
+   previously paid a full new TCP+auth handshake.
+2. **`ensure_*_table()` migrations moved to app startup** instead of
+   running on every loan/KYC/beneficiary/transfer request — these tables
+   already exist in `infra/postgres/init.sql`, so this was pure
+   redundant overhead in normal operation.
+3. **Shared `httpx.AsyncClient`** for all WhatsApp Cloud API calls
+   (`app/services/whatsapp.py`) instead of opening a new client (fresh
+   TLS handshake) per send — this was the single largest measured
+   contributor to the ~700-860ms gap seen in real logs.
+4. **Redis caching** for `get_customer_by_phone()` (checked on nearly
+   every message via the registration gate; 5 min TTL, including
+   negative results, invalidated on `create_customer`), the loan
+   product rate card (1 hour TTL, static reference data), and
+   translated template strings (`translate_text()`, 7-day TTL, keyed by
+   exact text+language — most replies are one of a small set of fixed
+   templates, so this transparently skips the LLM call on repeats while
+   still translating fresh, unique text like a real balance figure).
+5. **Deduped one `get_workflow()` call per turn** —
+   `check_registration_gate()` no longer re-fetches workflow state
+   `ConversationManager` already loaded moments earlier building the
+   conversation context (optional `has_active_workflow` parameter).
+6. **Combined session history's two appends into one** — `app/memory.py`'s
+   new `append_turn_to_session()` does one GET+SET for both halves of a
+   turn instead of two independent `append_to_session()` calls (4
+   round-trips reduced to 2).
+
+**Fixes that stop one slow call from freezing every other concurrent
+request (don't shrink any single turn's own time — they fix "the bot
+randomly hangs for everyone" under concurrent load):**
+7. LLM agent call: `llm_with_tools.invoke()` → `await .ainvoke()`
+   (`app/agent/agent.py`).
+8. Speech-to-text: wrapped in `asyncio.to_thread` (`app/services/transcription.py`),
+   matching the pattern `app/services/tts.py` already used correctly.
+9. Language detection/translation/LLM intent classification: wrapped in
+   `asyncio.to_thread`, propagated `async`/`await` through
+   `classify_intent()` and five `ConversationManager` methods.
+10. The conversation lock's poll wait: `time.sleep()` → `asyncio.sleep()`
+    (`app/services/idempotency.py::acquire_conversation_lock`) — this one
+    had the worst blast radius of any single-line fix: it could freeze
+    *every* concurrent customer's request for up to 5s whenever two
+    messages from the same customer arrived close together.
+11. **The workflow-manager/registration-gate call tree** — investigated a
+    full `redis.asyncio` migration, but found via LangChain's own source
+    (`StructuredTool._arun`) that `app/agent/tools.py`'s tools already run
+    their sync functions in a background thread automatically when
+    invoked from an async graph, so they were never actually blocking.
+    The real offenders were `WorkflowManager.handle()`, all 6 workflow
+    processors, `check_registration_gate()`, `build_context()`,
+    `start_workflow_directly()`, and `_handle_bare_document_upload()` —
+    each pure synchronous logic wearing an `async def` shell with zero
+    genuine internal awaits. Stripped the unnecessary async throughout
+    that whole tree and wrapped each external call site with
+    `asyncio.to_thread()` instead, which also deleted a fair amount of
+    now-pointless `async`/`await` boilerplate.
+12. Added an explicit `socket_connect_timeout`/`socket_timeout` (2s) to
+    the shared Redis client (`app/memory.py`) — found while testing #9
+    that an unreachable Redis could otherwise hang far longer than
+    expected before failing, which would turn a brief Redis blip into a
+    multi-call stall instead of the fast, graceful degradation every
+    caller's `except` block already assumes.
+
+**Verification approach.** Beyond the standard test suite (kept at a
+stable 416 passing / 33 pre-existing failures throughout — none of
+this work's own regressions survived to the final commit), several
+steps were verified with targeted concurrency proofs: a slow/blocking
+operation raced against a lightweight `asyncio.sleep`-based ticker task
+via `asyncio.gather`, confirming the ticker kept running the whole time
+(proof the event loop wasn't frozen) where it previously would have
+stalled for the full duration. Two real bugs were caught this way
+during step 9 that unit tests alone hadn't surfaced — `ConversationManager._classify_intent()`'s
+own body still called the newly-async `classify_intent()` without
+`await`, and `message_handler.py::send_voice_reply()` did the same for
+`translate_text()` on the voice-reply choices hint — both would have
+silently broken every single message in production.
+
+**Files touched (production code):** `app/database.py`, `app/memory.py`,
+`app/main.py`, `app/services/whatsapp.py`, `app/services/language.py`,
+`app/services/transcription.py`, `app/services/registration_gate.py`,
+`app/services/message_handler.py`, `app/services/idempotency.py`,
+`app/agent/agent.py`, `app/conversation/manager.py`,
+`app/conversation/intent/classifier.py`, `app/workflows/manager.py`,
+`app/workflows/processors/{cheque,kyc,loan,onboarding,transactions}.py`,
+`app/metrics.py`, `.env.example`. Deliberately untouched:
+`app/agent/tools.py`, `app/agent/workflow_tools.py` (already
+non-blocking via LangChain's own thread delegation), and
+`app/workflows/processors/transfer.py` (was already plain sync).
+
+---
+
 ## 1. Current architecture
 
 ```
