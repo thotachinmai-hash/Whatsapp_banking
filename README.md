@@ -2,7 +2,7 @@
 
 AI-powered WhatsApp banking assistant that accepts voice, text, and document (image/PDF/DOCX) messages, processes them through a LangGraph AI agent and a step-based workflow engine, and responds with real banking information. Built with FastAPI, LangGraph, Groq LLM, Groq Whisper, Groq Vision (OCR), PostgreSQL, Redis, and WhatsApp Business Cloud API.
 
-Every incoming message is first matched against a registered-customer database by WhatsApp number (the "@lid"). Known customers get a personalized greeting and service menu; unknown numbers are guided through an Aadhaar/PAN registration flow before anything else, which also opens their first account. From there, customers can check balances, browse categorized transactions and spend summaries, transfer money with OTP verification, deposit a cheque by photo, apply for a loan, and update KYC — all in natural language over WhatsApp, with every workflow safely cancellable mid-flow.
+Every incoming message is first matched against a registered-customer database by WhatsApp number (the "@lid"). Known customers get a personalized greeting and service menu; unknown numbers are guided through an Aadhaar/PAN registration flow before anything else, which also opens their first account. From there, customers can check balances, browse categorized transactions and spend summaries, transfer money, deposit a cheque by photo, apply for a loan, and update KYC — all in natural language over WhatsApp, with every workflow safely cancellable mid-flow.
 
 ---
 
@@ -14,7 +14,7 @@ Every incoming message is first matched against a registered-customer database b
 - **Interruptible workflows** — any active workflow (registration, cheque, loan, KYC, transfer) can be stopped at any step by replying *Cancel*, *Stop*, or a bare greeting like *Hi* that's out of scope for the current step.
   - For **registration**, this returns to the plain welcome/registration prompt only — an unregistered customer has no accounts or services yet, so the transactional service menu is never shown to them.
   - For every other workflow, it cancels cleanly ("nothing was submitted or changed") and shows the full service menu, since the customer is already registered and that menu is meaningful to them.
-- **Money transfer** — pick a saved beneficiary or add a new one, choose an amount and source account, confirm, and verify with an SMS OTP (Twilio) before the transfer is authorised.
+- **Money transfer** — pick a saved beneficiary or add a new one, choose an amount and source account, then confirm (or edit) before the transfer is executed.
 - **Cheque deposit** — upload a photo of a cheque; Groq Vision OCRs the bank, branch, payee, amount, cheque number, and signatory. Missing/invalid mandatory fields (payee, amount) trigger a correction step — re-upload or reply with `Key: value` text. On success, a unique request ID (`CHQ-XXXXXXXX`) is generated and persisted; ask the assistant to check its status any time.
 - **Loan application & KYC update** — select a loan type or upload a KYC document, fill in the required fields (by document upload or `Field: value` text), confirm, and get a trackable request ID.
 - **Transactions & spend insights** — transactions are tagged with a category (groceries, bills, rent, salary, transport, entertainment, shopping, etc.). Ask for recent transactions filtered by date range/type/category, or a spend summary broken down by category.
@@ -27,8 +27,8 @@ Every incoming message is first matched against a registered-customer database b
 
 ```mermaid
 flowchart TD
-    A[WhatsApp User\nSends text, voice, or document] -->|WhatsApp message| B[OpenWA Gateway\nPort 2785]
-    B -->|Webhook POST| C[ngrok Public HTTPS URL]
+    A[WhatsApp User\nSends text, voice, or document] -->|WhatsApp message| B[WhatsApp Business\nCloud API]
+    B -->|Webhook POST| C[Public HTTPS URL\nngrok for local dev]
     C -->|Forwards to| D[FastAPI App\nPort 8001]
     D --> E[Message Handler]
     E -->|voice message| F[Groq Whisper\nVoice to Text]
@@ -73,7 +73,7 @@ flowchart TD
 
 ```bash
 git clone https://github.com/thotachinmai-hash/Whatsapp_banking.git
-cd whatsapp-banking-agent
+cd Whatsapp_banking
 cp .env.example .env
 ```
 
@@ -134,76 +134,11 @@ Expected response:
 
 ---
 
-### Step 4 — Configure WhatsApp Business Cloud webhook
+### Step 4 — Set up a public HTTPS tunnel
 
-Use the WhatsApp Business Cloud API dashboard to register your webhook URL.
-If you are testing locally, use a public HTTPS tunnel like ngrok to expose your app:
+WhatsApp Business Cloud API requires a public HTTPS webhook endpoint — local URLs aren't reachable from Meta's servers, so use ngrok for local development.
 
-```bash
-ngrok http 8001
-```
-
-Set the webhook URL to your public tunnel root, e.g.:
-
-```
-https://YOUR_NGROK_URL/
-```
-
-Use the same `VERIFY_TOKEN` value from your `.env` when registering the webhook.
-
----
-
-### Step 5 — Test the full flow
-
-Send a WhatsApp message to the registered phone number. Your FastAPI app will receive the webhook at `/` and process it directly.
-
-Check the logs to see the full trace:
-
-```bash
-docker logs whatsapp_app --tail=50
-```
-
----
-
-### Step 6 — Test Without WhatsApp
-
-```bash
-docker compose build app
-docker compose up app -d
-```
-
-Verify it is running:
-
-```bash
-curl http://localhost:8001/health
-```
-
-Expected response:
-
-```json
-{
-  "status": "healthy",
-  "components": {
-    "api": "healthy",
-    "redis": "connected",
-    "postgres": "connected"
-  }
-}
-```
-
----
-
-### Step 5 — Set up ngrok tunnel
-
-WhatsApp Business Cloud API requires a public HTTPS webhook endpoint. Local URLs are not publicly accessible, so use ngrok for local development.
-
-Install ngrok:
-
-```bash
-brew install ngrok
-```
-
-Add your auth token from [dashboard.ngrok.com/get-started/your-authtoken](https://dashboard.ngrok.com/get-started/your-authtoken):
+Install ngrok, then add your auth token from [dashboard.ngrok.com/get-started/your-authtoken](https://dashboard.ngrok.com/get-started/your-authtoken):
 
 ```bash
 ngrok config add-authtoken YOUR_NGROK_TOKEN
@@ -221,19 +156,28 @@ Copy the public URL shown — looks like:
 https://2cb6-5-151-181-20.ngrok-free.app
 ```
 
+(Skip this step if deploying to a server with its own public HTTPS address.)
+
 ---
 
-### Step 6 — Register the webhook
+### Step 5 — Configure the WhatsApp Business Cloud webhook
 
-In the Facebook Developer console for your WhatsApp Business app, configure the webhook callback URL to your public ngrok address:
+In the Facebook Developer console for your WhatsApp Business app, set the webhook callback URL to your public tunnel root:
 
 ```text
 https://YOUR_NGROK_URL/
 ```
 
-Use the `VERIFY_TOKEN` value from `.env` as the verify token. Subscribe to the `messages` and any additional messaging events your app requires.
+Use the same `VERIFY_TOKEN` value from your `.env` as the verify token, and subscribe to the `messages` event (plus any other messaging events your app needs).
 
-If your webhook is configured correctly, Facebook will send a verification request to your app and your app will return the verify token. The application listens on the root path (`/`) for incoming WhatsApp webhook events.
+If configured correctly, Facebook sends a verification request and your app responds with the verify token. The app listens on the root path (`/`) for incoming webhook events.
+
+---
+
+### Step 6 — Test the full flow
+
+Send a WhatsApp message to the registered phone number. Your FastAPI app receives the webhook at `/` and processes it directly.
+
 Check the logs to see the full trace:
 
 ```bash
@@ -270,6 +214,9 @@ curl -X POST http://localhost:8001/api/test/message \
 | http://127.0.0.1:4040 | ngrok inspector |
 
 ---
+
+## Seed Data
+
 `customers.phone_number` must match `accounts.phone_number` for the same person — the registration gate and "which account is linked to this number" lookups both key off it, so a mismatch makes a real customer look unregistered.
 
 Sample cheque requests seeded for testing cheque status lookup (belong to John Smith / Sarah Johnson's numbers above):
@@ -353,7 +300,7 @@ Verified: all tables and their constraints exist as expected (`customers` has un
 - `services/document_parser.py` — Groq Vision OCR for images/PDF/DOCX
 - `services/registration_gate.py` — Looks up the sender in `customers`; greets or starts onboarding; owns `GREETING_KEYWORDS`, reused by the workflow manager to detect a mid-workflow interrupt
 - `services/menu.py` — Shared service-menu and onboarding-welcome text shown across the app
-- `services/sms.py` — Twilio OTP delivery for money transfers
+- `services/receipts.py` — PDF receipt generation for completed cheque/loan/KYC/transfer requests, sent as a WhatsApp document
 - `services/message_handler.py` — Routes voice/text/document, runs agent, sends response
 - `workflows/manager.py` — Routes a message to the active workflow's processor; owns the cancel/interrupt logic (explicit *Cancel*/*Stop* or a bare greeting) and the workflow-boundary/conversational-question handling that lets customers ask questions without losing their place mid-workflow
 - `workflows/memory.py` — Redis-backed workflow state (create/get/update/complete)
@@ -362,7 +309,7 @@ Verified: all tables and their constraints exist as expected (`customers` has un
 - `workflows/processors/cheque.py` — OCR validation, correction loop, cheque request persistence
 - `workflows/processors/loan.py` — Loan type selection, form collection (image or text), confirmation, request persistence
 - `workflows/processors/kyc.py` — KYC document/field collection, confirmation, request persistence
-- `workflows/processors/transfer.py` — Beneficiary selection, amount, source account, confirmation, SMS OTP verification
+- `workflows/processors/transfer.py` — Beneficiary selection, amount, source account, confirmation
 - `api/routes.py` — REST API endpoints (accounts, customers, cheque requests — for testing/debugging)
 - `database.py` — PostgreSQL queries
 - `memory.py` — Redis session memory per phone number, active-account cache
@@ -372,7 +319,7 @@ Verified: all tables and their constraints exist as expected (`customers` has un
 **infra/postgres/init.sql** — Database schema and seed data (`accounts`, `transactions`, `sessions`, `customers`, `cheque_requests`, `loan_requests`, `kyc_requests`)
 
 **Root files**
-- `docker-compose.yml` — All 4 services
+- `docker-compose.yml` — All 3 services (postgres, redis, app)
 - `Dockerfile` — Non-root Python container
 - `.env.example` — Environment variable template
 - `README.md` — This file
