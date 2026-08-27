@@ -7,7 +7,7 @@ kept up to date periodically or whenever your details change.
 # KYC — Documents Accepted
 
 For a KYC update you can submit any one of the following as identity and
-address proof:
+address proof (also called ID proof or KYC papers/documents):
 - Aadhaar card
 - PAN card
 - Passport
@@ -25,4 +25,14 @@ You should update your KYC details if:
 # KYC — How Long It Takes
 
 A KYC update is usually reviewed within 2-3 working days after the
-document is submitted. You will be notified once it is approved.
+document is submitted. You will be notified once it is approved. You
+can check the status of a submitted KYC update at any time by asking,
+for example "check my KYC status" or "is my KYC complete".
+
+# KYC — What Happens If It Is Not Updated
+
+Registration and account opening require completing KYC as part of
+signing up. For an already-registered customer, keeping KYC details
+current (especially after a name, address, or document change) helps
+avoid delays if the bank later needs to verify your identity — update
+it whenever asked or whenever your details change.

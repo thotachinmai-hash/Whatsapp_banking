@@ -12,15 +12,10 @@ account. Registration is required before any account-specific service
 (like checking a balance or applying for a loan) can be carried out, but
 you can ask general questions before registering.
 
-# Money Transfers — How They Work
-
-To send money, tell the assistant who you want to pay and how much. If
-the person is already a saved beneficiary, the transfer can proceed
-straight to choosing the account to send from. If they are new, you will
-be asked for their name and account number once, and they will be saved
-for next time.
-
 # Account Types Offered
 
-This bank offers savings accounts, current accounts, and salary accounts.
-Each new customer chooses their account type during registration.
+This bank offers savings accounts, current accounts, and salary accounts
+(also called account kinds or account categories). Each new customer
+chooses their account type during registration, and an already
+registered customer can open an additional account of a different type
+by asking to create another account.

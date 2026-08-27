@@ -22,6 +22,55 @@ class RagRetrieverTests(unittest.TestCase):
     def test_empty_query_returns_nothing(self) -> None:
         self.assertEqual(search(""), [])
 
+    # ─── new content, added alongside the RAG content enhancement ──────
+
+    def test_finds_loan_process_and_emi_info(self) -> None:
+        results = search("how does the loan application process work")
+        self.assertTrue(results)
+        self.assertIn("Loan Application", results[0]["title"])
+
+        emi_results = search("what is EMI")
+        self.assertTrue(emi_results)
+        self.assertIn("EMI", emi_results[0]["title"])
+
+    def test_finds_transfer_limit_and_fee_info(self) -> None:
+        results = search("is there a fee to transfer money")
+        self.assertTrue(results)
+        self.assertIn("Money Transfer", results[0]["title"])
+
+    def test_finds_beneficiary_info(self) -> None:
+        results = search("what is a beneficiary")
+        self.assertTrue(results)
+        self.assertIn("Beneficiaries", results[0]["title"])
+
+    def test_finds_transaction_category_info(self) -> None:
+        results = search("what categories can I filter my transactions by")
+        self.assertTrue(results)
+        self.assertIn("Transactions", results[0]["title"])
+
+    def test_finds_security_info(self) -> None:
+        results = search("will you ever ask me for my PIN or OTP")
+        self.assertTrue(results)
+        self.assertTrue(any("Security" in r["title"] or "OTP" in r["title"] for r in results))
+
+    def test_finds_services_not_offered_info(self) -> None:
+        results = search("can I withdraw cash from an ATM")
+        self.assertTrue(results)
+        self.assertIn("ATM", results[0]["title"])
+
+    def test_finds_cheque_status_meaning(self) -> None:
+        results = search("what does pending mean for my cheque")
+        self.assertTrue(results)
+        self.assertIn("Status", results[0]["title"])
+
+    def test_no_dollar_figures_invented_for_loan_rates(self) -> None:
+        # RAG must never carry loan rate/fee/limit numbers -- those come
+        # from get_loan_product_info (DB), not indexed documents, so a
+        # rate change never needs a documents update in two places.
+        results = search("what is the interest rate on a personal loan", top_k=5)
+        for r in results:
+            self.assertNotIn("%", r["text"])
+
 
 if __name__ == "__main__":
     unittest.main()

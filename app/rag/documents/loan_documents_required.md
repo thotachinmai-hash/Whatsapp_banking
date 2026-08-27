@@ -42,8 +42,9 @@ To apply for an education loan you will need:
 
 # General Loan Eligibility Notes
 
-Document checklists above are what is needed to apply — they are not a
-guarantee of approval. Final eligibility depends on income, existing
-obligations, and credit profile, and is decided during the actual
-application review. This information is general guidance, not a decision
-for any specific applicant.
+Document checklists above (the required papers, paperwork, or proofs)
+are what is needed to apply — they are not a guarantee of approval.
+Final eligibility depends on income, existing obligations, and credit
+profile, and is decided during the actual application review. This
+information is general guidance, not a decision for any specific
+applicant.
