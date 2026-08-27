@@ -6,11 +6,40 @@ from decimal import Decimal
 import psycopg2
 import psycopg2.errors
 import psycopg2.extras
+import psycopg2.pool
 from dotenv import load_dotenv
 from app.logger import get_logger
 
 load_dotenv()
 logger = get_logger(__name__)
+
+# Postgres now lives on Render (a network hop away, not localhost), so
+# opening a brand-new psycopg2.connect() per query — the old behavior —
+# pays a full TCP+auth handshake on every single call. A pooled connection
+# is reused across calls instead. Sized conservatively (default 10) to
+# stay well under a Render free/starter Postgres plan's connection limit
+# even with headroom for other processes.
+_pool: psycopg2.pool.ThreadedConnectionPool | None = None
+
+
+def _get_pool() -> psycopg2.pool.ThreadedConnectionPool:
+    global _pool
+    if _pool is None:
+        _pool = psycopg2.pool.ThreadedConnectionPool(
+            minconn=int(os.getenv("DB_POOL_MIN", "1")),
+            maxconn=int(os.getenv("DB_POOL_MAX", "10")),
+            dsn=os.getenv("DATABASE_URL"),
+        )
+        logger.info("Database connection pool created")
+    return _pool
+
+
+def close_db_pool() -> None:
+    """Release all pooled connections on app shutdown."""
+    global _pool
+    if _pool is not None:
+        _pool.closeall()
+        _pool = None
 
 
 def normalize_phone_number(phone_number: str | None) -> str:
@@ -39,9 +68,15 @@ def normalize_phone_number(phone_number: str | None) -> str:
 
 
 def get_db_connection():
-    conn = psycopg2.connect(os.getenv("DATABASE_URL"))
-    logger.info("Database connection established")
-    return conn
+    """Borrow a connection from the pool. Callers must release it via
+    release_db_connection() (not conn.close()) when done."""
+    return _get_pool().getconn()
+
+
+def release_db_connection(conn) -> None:
+    """Return a connection to the pool instead of closing the socket."""
+    if conn is not None:
+        _get_pool().putconn(conn)
 
 
 def execute_query(query: str, params: tuple = None) -> list:
@@ -53,11 +88,13 @@ def execute_query(query: str, params: tuple = None) -> list:
         results = [dict(row) for row in cursor.fetchall()]
         return results
     except Exception as e:
+        if conn:
+            conn.rollback()
         logger.error(f"Query failed: {e}")
         raise
     finally:
         if conn:
-            conn.close()
+            release_db_connection(conn)
 
 
 def execute_write(query: str, params: tuple = None) -> bool:
@@ -75,7 +112,7 @@ def execute_write(query: str, params: tuple = None) -> bool:
         raise
     finally:
         if conn:
-            conn.close()
+            release_db_connection(conn)
 
 
 def execute_write_returning(query: str, params: tuple = None) -> dict | None:
@@ -94,7 +131,7 @@ def execute_write_returning(query: str, params: tuple = None) -> dict | None:
         raise
     finally:
         if conn:
-            conn.close()
+            release_db_connection(conn)
 
 
 def get_account_by_number(account_number: str) -> dict | None:
@@ -353,7 +390,7 @@ def create_zero_balance_account(
             raise
         finally:
             if conn:
-                conn.close()
+                release_db_connection(conn)
 
     raise RuntimeError("Unable to generate a unique account number")
 
@@ -697,7 +734,7 @@ def create_transfer(
         raise
     finally:
         if conn:
-            conn.close()
+            release_db_connection(conn)
 
 
 def get_transfer_by_reference(reference: str) -> dict | None:

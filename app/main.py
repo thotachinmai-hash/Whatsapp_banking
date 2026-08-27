@@ -69,8 +69,11 @@ app.include_router(router, prefix="/api")
 
 @app.on_event("shutdown")
 async def _shutdown() -> None:
-    """Release the shared WhatsApp HTTP client's connection pool cleanly."""
+    """Release the shared WhatsApp HTTP client and DB connection pool cleanly."""
+    from app.database import close_db_pool
+
     await close_whatsapp_client()
+    close_db_pool()
 
 
 # ── agent endpoint ──────────────────────────────────────────────
@@ -315,13 +318,13 @@ async def health():
     Check health of all system components.
     """
 
-    from app.database import get_db_connection
+    from app.database import get_db_connection, release_db_connection
 
     db_healthy = False
 
     try:
         conn = get_db_connection()
-        conn.close()
+        release_db_connection(conn)
         db_healthy = True
 
     except Exception:

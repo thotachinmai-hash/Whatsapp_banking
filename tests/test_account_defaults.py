@@ -83,6 +83,10 @@ def test_create_transfer_debits_source_account_balance(monkeypatch):
 
     monkeypatch.setattr(database, "ensure_transfers_table", lambda: None)
     monkeypatch.setattr(database, "get_db_connection", fake_get_db_connection)
+    # database.py now returns connections to a pool (release_db_connection)
+    # instead of closing the socket directly — the fake connection above
+    # isn't a real pooled connection, so this needs its own no-op patch.
+    monkeypatch.setattr(database, "release_db_connection", lambda conn: None)
 
     result = database.create_transfer(
         reference="TRF-123",
