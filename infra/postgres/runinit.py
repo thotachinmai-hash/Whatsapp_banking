@@ -1,8 +1,14 @@
-import psycopg2
 import os
 
-DATABASE_URL = "postgresql://whastapp_banking_db_user:zk958zpvzk6glUkfavq0oHXtTLitoJ42@dpg-d9pdhiu1egvs73f88vj0-a.oregon-postgres.render.com/whastapp_banking_db"
-with open('C:\\Users\\91733\\OneDrive\\Documents\\all_fix\\Whatsapp_banking\\infra\\postgres\\init.sql', 'r') as f:
+import psycopg2
+from dotenv import load_dotenv
+
+load_dotenv()
+
+DATABASE_URL = os.environ["DATABASE_URL"]
+
+_INIT_SQL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "init.sql")
+with open(_INIT_SQL_PATH, "r") as f:
     sql = f.read()
 conn = psycopg2.connect(DATABASE_URL)
 cursor = conn.cursor()

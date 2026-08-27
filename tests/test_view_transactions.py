@@ -11,7 +11,6 @@ from decimal import Decimal
 from unittest.mock import patch
 
 from app.conversation.renderer import ResponseKind, as_structured_response
-from app.workflows import manager as workflow_manager_module
 from app.workflows.constants import STEP_SELECT_TRANSACTIONS_ACCOUNT, WORKFLOW_VIEW_TRANSACTIONS
 from app.workflows.manager import WorkflowManager
 from app.workflows.memory import create_workflow, create_workflow_model, get_workflow

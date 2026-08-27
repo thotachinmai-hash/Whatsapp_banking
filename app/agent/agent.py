@@ -31,13 +31,16 @@ from app.agent.tools import (
     tool_start_kyc_workflow,
 )
 from app.memory import get_session_history
+from app.services.sarvam_client import get_fast_model
+from app.metrics import log_tool_call
 from app.logger import get_logger
 from app.workflows.manager import WorkflowManager
 from app.workflows.memory import get_workflow
 from app.conversation.context_store import ConversationContextStore
 from app.conversation.manager import ConversationManager
-from app.conversation.renderer import ResponseLike, StructuredResponse
+from app.conversation.renderer import InteractiveListRow, InteractiveListSection, ResponseLike, StructuredResponse
 from app.conversation.responses.errors import render_agent_error
+from app.conversation.responses.common import with_nav_buttons
 load_dotenv()
 logger = get_logger(__name__)
 
@@ -55,7 +58,7 @@ class AgentState(TypedDict):
 
 
 def get_llm() -> ChatOpenAI:
-    model = os.getenv("SARVAM_MODEL", "sarvam-105b")
+    model = get_fast_model()
     api_key = os.getenv("SARVAM_API_KEY", "")
     return ChatOpenAI(
         model=model,
@@ -65,34 +68,43 @@ def get_llm() -> ChatOpenAI:
         # `Authorization: Bearer` header the OpenAI SDK sends by default.
         default_headers={"api-subscription-key": api_key},
         temperature=0,
-        # sarvam-105b is a reasoning model — it spends tokens on internal
-        # reasoning_content before emitting the actual answer/tool call, so
-        # max_tokens needs real headroom here or a call can come back with
-        # empty content and zero tool calls (confirmed live: a compound
-        # tool-calling turn with the previous unset default returned "").
-        # Higher than the 800 used for the simpler single-shot calls in
-        # llm_understanding.py/language.py since this agent's replies often
-        # cite multiple tool results in one message.
-        #
-        # reasoning_effort="medium" (raised from "low") — this is the one
-        # call site in the codebase actually worth the extra thinking: the
-        # compound/conditional banking reasoning (check a balance, evaluate
-        # a threshold, decide whether to act) this agent does, unlike the
-        # simple single-shot classification/detection calls elsewhere
-        # (llm_understanding.py, language.py, classifier.py,
-        # document_parser.py), which stay at "low" since more effort there
-        # is just latency with no real quality gain. max_tokens raised
-        # alongside it — medium effort spends more of the budget on
-        # reasoning_content before the answer, so the same headroom
-        # problem this comment already describes gets worse, not better,
-        # if max_tokens isn't raised too.
+        # sarvam-105b-conversations (get_fast_model()) benchmarked 2-3x
+        # faster than sarvam-105b on this exact tool-calling + compound
+        # conditional reasoning shape, with correct tool selection and
+        # correct threshold arithmetic in testing, and without
+        # sarvam-105b's hidden-reasoning-token-starvation failure mode (see
+        # get_fast_model()'s docstring) — so max_tokens=6500 here is a
+        # generous cap for replies that cite multiple tool results, not a
+        # load-bearing workaround the way it was for sarvam-105b.
         max_tokens=6500,
+        # reasoning_effort="medium" — kept for the compound/conditional
+        # banking reasoning this agent does (check a balance, evaluate a
+        # threshold, decide whether to act), unlike the simple single-shot
+        # classification/detection calls elsewhere (llm_understanding.py,
+        # language.py, classifier.py, document_parser.py), which stay at
+        # "low" since more effort there is just latency with no quality
+        # gain. Confirmed in testing that "low" also reasons correctly on
+        # this model, but "medium" was equal-or-faster overall in that same
+        # test, so there's no latency reason to drop it.
         model_kwargs={"reasoning_effort": "medium"},
     )
 
 
+def _timed_tool(name: str, fn, trace_id: str):
+    """Wrap a tool's underlying function so its actual DB/RAG execution
+    time (not the LLM's tool-selection overhead) is measured and fed into
+    /metrics — one choke point here instead of instrumenting all 14 tool
+    functions individually in tools.py."""
+    def wrapped(*args, **kwargs):
+        start = time.time()
+        result = fn(*args, **kwargs)
+        log_tool_call(name, (time.time() - start) * 1000, trace_id)
+        return result
+    return wrapped
+
+
 def make_tools(trace_id: str,phone_number: str,) -> list:
-    return [
+    tools = [
         StructuredTool.from_function(
             func=lambda account_number="": tool_get_account_balance(account_number, phone_number, trace_id),
             name="get_account_balance",
@@ -164,6 +176,13 @@ def make_tools(trace_id: str,phone_number: str,) -> list:
             customer asks what's needed for something, rather than asking
             to actually start it. Returns nothing if there is no indexed
             answer — in that case, say so plainly rather than inventing one.
+            The indexed documents are written in English, and the search is
+            plain keyword matching with no translation step, so ALWAYS pass
+            the `query` argument in English regardless of what language the
+            customer actually asked in — translate the question yourself
+            before calling this tool (e.g. a customer asking in pure Telugu
+            with no English words at all should still produce an English
+            query like "how does KYC work"), or a real match will be missed.
             """,
         ),
         StructuredTool.from_function(
@@ -210,7 +229,10 @@ def make_tools(trace_id: str,phone_number: str,) -> list:
             """,
         ),
         StructuredTool.from_function(
-            func=lambda: tool_list_beneficiaries(phone_number, trace_id),
+            func=lambda: (
+                "Beneficiaries listed — the customer sees a tappable list; do not repeat the names/accounts in your own reply, just briefly acknowledge.",
+                tool_list_beneficiaries(phone_number, trace_id),
+            ),
             name="list_beneficiaries",
             description="""
             List the customer's saved transfer beneficiaries (name and
@@ -219,6 +241,7 @@ def make_tools(trace_id: str,phone_number: str,) -> list:
             Never invent a beneficiary list from memory or from a previous
             transfer's details — always call this tool.
             """,
+            response_format="content_and_artifact",
         ),
         StructuredTool.from_function(
             func=lambda request_id="": tool_check_kyc_status(request_id, phone_number, trace_id),
@@ -287,7 +310,10 @@ def make_tools(trace_id: str,phone_number: str,) -> list:
             this just to check status — use check_kyc_status for that.
             """,
         ),
-        ]
+    ]
+    for t in tools:
+        t.func = _timed_tool(t.name, t.func, trace_id)
+    return tools
 
 
 def build_agent(trace_id: str,phone_number: str,) -> Any:
@@ -313,10 +339,20 @@ any relative date/time reference ("this month", "last week", "today", "this year
 start_date/end_date (YYYY-MM-DD) you pass to get_last_transactions/get_spend_summary. Do not assume
 any other date.
 
+You are friendly and conversational, not rigid — this customer may not be comfortable with
+banking apps or with English. Understand English, English mixed with a native language,
+pure native-language text, romanized native languages (e.g. Hindi written as "mera balance
+kya hai"), and native scripts equally well; never ask the customer to rephrase in English or
+in a different form just because their message mixed languages or used a native script.
+If a request is ambiguous or only partly clear, don't just decline it — ask a warm, specific
+follow-up that helps them get to what they need, the way a helpful bank staff member would,
+rather than a flat "I can't help with that."
+
 Only answer questions related to banking and the services this app supports (accounts,
 balances, transactions, transfers, cheques, loans, KYC). Do not answer unrelated
-general-knowledge questions — if asked something outside banking, politely redirect the
-customer to what you can help with instead.
+general-knowledge questions — if asked something outside banking, warmly redirect the
+customer to what you can help with instead, in a way that invites them to ask something you
+can actually help with rather than just shutting the request down.
 
 GROUNDING RULE — the most important rule in this prompt: for any claim about the customer's
 real data — balance, transactions, beneficiaries, cheque/loan/KYC/transfer status, spend, or
@@ -487,6 +523,58 @@ Important: Keep responses short and suitable for WhatsApp messages.""")
     return graph.compile(checkpointer=None)
 
 
+def _beneficiary_list_response(messages: list, intro_text: str) -> StructuredResponse | None:
+    """Turn a successful list_beneficiaries tool call into a real tappable
+    WhatsApp list instead of the LLM's own prose description — the
+    deferred "agent-built dynamic list" work, now unblocked by a safe row
+    id scheme.
+
+    Row id = "Transfer to {name}" (e.g. "Transfer to Priya"), not a bare
+    digit. This is deliberate: this listing can be shown with NO active
+    workflow, and message_handler.py sends back exactly the row's id as
+    the customer's next message (see get_interactive_reply's docstring
+    in app/services/whatsapp.py) — a bare "1" would be misread by
+    WorkflowManager.start_requested's own main-menu digit map (e.g. "1"
+    = "Transfer money" from scratch) instead of meaning the tapped
+    beneficiary. "Transfer to {name}" has no such collision: it's already
+    exactly the free-text phrasing start_transfer_from_text (used by both
+    the deterministic keyword path and the LLM-intent path — see its own
+    docstring) already parses via _BENEFICIARY_INTENT_RE to pre-fill a
+    transfer with that beneficiary. Tapping a row triggers the EXACT same
+    already-tested code path a typed "transfer to Priya" would — no new
+    routing/handler code needed, no new failure mode introduced.
+
+    Returns None when the tool wasn't called, found nothing, or found no
+    beneficiaries — callers fall back to the LLM's own text response."""
+    for message in messages:
+        if getattr(message, "name", None) != "list_beneficiaries":
+            continue
+        artifact = getattr(message, "artifact", None)
+        if not isinstance(artifact, dict) or not artifact.get("found"):
+            return None
+        beneficiaries = artifact.get("beneficiaries") or []
+        # WhatsApp caps a list at 10 rows — beyond that, fall back to the
+        # LLM's own prose (which has no such limit) rather than silently
+        # hiding some beneficiaries from a tappable list, matching the
+        # same threshold transfer.py's own _beneficiary_prompt uses.
+        if not beneficiaries or len(beneficiaries) > 10:
+            return None
+        rows = [
+            InteractiveListRow(
+                id=f"Transfer to {b['name']}"[:200],
+                title=str(b["name"])[:24],
+                description=str(b.get("account_number_masked", ""))[:72],
+            )
+            for b in beneficiaries
+        ]
+        return StructuredResponse.list_of(
+            intro_text or "Here are your saved beneficiaries:",
+            "Beneficiaries",
+            [InteractiveListSection(title="Saved beneficiaries", rows=rows)],
+        )
+    return None
+
+
 async def _run_llm_agent(
     query: str,
     phone_number: str,
@@ -540,6 +628,10 @@ async def _run_llm_agent(
     duration = (time.time() - start) * 1000
     logger.info(f"[{trace_id}] Agent completed | duration={duration:.2f}ms | tools={tools_called}")
 
+    beneficiary_list = _beneficiary_list_response(result["messages"], response_content)
+    if beneficiary_list is not None:
+        return beneficiary_list
+
     if not response_content:
         # The retry loop in agent_node() already tries again on empty
         # content — this is what's left after every attempt still came
@@ -550,7 +642,10 @@ async def _run_llm_agent(
         # which reads as the bot being broken — an honest apology is a
         # real answer, an empty bubble is not.
         logger.warning(f"[{trace_id}] Agent returned empty content after all retries — using fallback text")
-        return "Sorry, I wasn't able to work that out just now. Could you try asking again?"
+        # A dead-end reply is exactly when a tap-to-reply escape hatch
+        # matters most — give the customer Back/Cancel/Main Menu instead of
+        # only a plain-text apology with no obvious next step.
+        return with_nav_buttons("Sorry, I wasn't able to work that out just now. Could you try asking again?")
 
     # A voice-in customer who asked an informational question that has a
     # matching plain-text menu already in code (e.g. "what loan types do

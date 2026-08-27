@@ -34,15 +34,16 @@ def _get_client():
 
 
 def _model() -> str:
-    return os.getenv("SARVAM_MODEL", "sarvam-105b")
+    from app.services.sarvam_client import get_fast_model
+
+    return get_fast_model()
 
 
-# sarvam-105b is a reasoning model — it burns tokens on reasoning_content
-# before the actual answer, so a tight max_tokens (the old Groq-era values
-# here were 30/60/150) cuts the response off mid-reasoning with
-# content=None instead of an answer. This headroom, combined with
-# reasoning_effort="low", is what it actually takes in practice for these
-# short structured-output prompts to reliably finish.
+# These are short, structured-output prompts (parse a choice, answer a side
+# question, detect a jump) — well within get_fast_model()'s strengths, and
+# it doesn't have sarvam-105b's hidden-reasoning token burn (see
+# get_fast_model()'s docstring), so this headroom is generous rather than
+# load-bearing the way it was for the old reasoning model.
 _MAX_TOKENS = 800
 _REASONING_EFFORT = "low"
 

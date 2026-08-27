@@ -126,16 +126,22 @@ def _llm_fallback(options: list[str], context: str):
 
 
 def loan_type_list_prompt(intro: str) -> StructuredResponse:
-    """Tap-to-reply loan-type list — row ids "1".."4" match LOAN_TYPES'
-    exact dict lookup (see detect_loan_type_from_text), so a typed digit
-    still works exactly as before if the list send falls back to text.
-    Shared by this processor's own re-prompt and by
-    app/workflows/manager.py::start_requested's loan-start branch, so the
-    two can no longer drift out of sync the way their separate hardcoded
-    copies used to."""
+    """Tap-to-reply loan-type list — row ids ("lt_personal", "lt_home",
+    "lt_vehicle", "lt_education") match LOAN_TYPES' exact dict lookup
+    (see detect_loan_type_from_text), so a typed row id still works
+    exactly as before if the list send falls back to text. Deliberately
+    NOT bare digits "1".."4" — unlike the transfer workflow's numbered
+    account/beneficiary lists, this menu can also be reached via
+    app/workflows/manager.py::start_requested's loan-start branch before
+    any workflow is active, where a bare "1"-"4" would collide with the
+    main menu's own digit map (see app/conversation/manager.py's
+    OUT_OF_SCOPE/CLARIFICATION_REQUIRED digit fallback). Shared by this
+    processor's own re-prompt and by start_requested's loan-start branch,
+    so the two can no longer drift out of sync the way their separate
+    hardcoded copies used to."""
     rows = [
-        InteractiveListRow(id=digit, title=LOAN_LABELS[loan_type])
-        for digit, loan_type in LOAN_TYPES.items()
+        InteractiveListRow(id=row_id, title=LOAN_LABELS[loan_type])
+        for row_id, loan_type in LOAN_TYPES.items()
     ]
     return StructuredResponse.list_of(intro, "Choose loan type", [InteractiveListSection(title="Loan types", rows=rows)])
 

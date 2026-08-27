@@ -6,7 +6,6 @@ from app.conversation.intent.models import IntentResult
 from app.conversation.manager import ConversationManager
 from app.conversation.renderer import ResponseKind, as_structured_response
 from app.conversation.responses.common import render_main_menu_list
-from app.workflows.constants import STEP_CONFIRM_TRANSFER
 
 
 def _fresh_context(phone_number="441111111111"):
@@ -488,6 +487,39 @@ class ConversationManagerArchitectureBoundaryTests(unittest.IsolatedAsyncioTestC
         with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
             response = await manager.handle_message(
                 "441111111111", "Tell me a joke", "tb2", llm_fallback=_fake_llm_fallback
+            )
+        self.assertEqual(response, render_out_of_scope())
+
+    async def test_pure_native_language_question_reaches_agent_not_static_rejection(self):
+        """classify_out_of_scope()'s catch-all (rules.py) tags anything with
+        no recognized ENGLISH banking keyword as out_of_scope — including a
+        genuine banking question asked in a native script with no English
+        loanword mixed in. That heuristic is blind to non-English text, so
+        the manager must not trust it there and should let the LLM+tools
+        agent (llm_fallback) actually try to answer instead of returning
+        the static out-of-scope template."""
+        manager, wf = _manager_with()
+        p1, p2, p3, p4 = self._patches()
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
+            response = await manager.handle_message(
+                "441111111111",
+                "నా బ్యాంకు ఖాతాలో ఎంత డబ్బు ఉంది",
+                "tb-te",
+                llm_fallback=_fake_llm_fallback,
+            )
+        self.assertTrue(response.startswith("llm-answer:"))
+
+    async def test_english_out_of_scope_deny_list_is_unaffected(self):
+        """The non-English override must not weaken the existing, reliable
+        English deny-list match (confidence 0.95) — that one still needs to
+        reject before ever reaching the LLM."""
+        from app.conversation.responses.common import render_out_of_scope
+
+        manager, wf = _manager_with()
+        p1, p2, p3, p4 = self._patches()
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
+            response = await manager.handle_message(
+                "441111111111", "what is the capital of France", "tb-en", llm_fallback=_fake_llm_fallback
             )
         self.assertEqual(response, render_out_of_scope())
 

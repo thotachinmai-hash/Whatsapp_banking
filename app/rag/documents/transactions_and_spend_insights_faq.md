@@ -6,6 +6,14 @@ they were money in or money out, or by category — for example "show my
 transactions from last month" or "show my debit transactions this
 week".
 
+# Transactions — Statement Or Passbook
+
+A "statement" or "passbook" is the same thing as your transaction
+history here — ask to see your statement, your passbook, or your
+transactions and you'll get the same result. There is no separate
+downloadable statement document; the transaction list itself is your
+statement.
+
 # Transactions — Spend Summary And Categories
 
 You can ask for a spend summary broken down by category, for example

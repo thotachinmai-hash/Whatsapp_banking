@@ -7,7 +7,7 @@ import time
 
 import httpx
 from dotenv import load_dotenv
-from app.services.sarvam_client import get_sarvam_client
+from app.services.sarvam_client import get_fast_model, get_sarvam_client
 from docx import Document
 from pypdf import PdfReader
 
@@ -16,8 +16,6 @@ from app.logger import get_logger
 load_dotenv()
 
 logger = get_logger(__name__)
-
-CHAT_MODEL = os.getenv("SARVAM_MODEL", "sarvam-105b")
 
 # Images go through Sarvam's Document Intelligence API (doc_ai.extract) —
 # an async job (submit -> poll status -> fetch results), not the chat/
@@ -293,7 +291,7 @@ async def _parse_pdf(
             os.remove(temp_path)
 
     response = get_sarvam_client().chat.completions(
-        model=CHAT_MODEL,
+        model=get_fast_model(),
         temperature=0,
         max_tokens=1500,
         reasoning_effort="low",
@@ -344,7 +342,7 @@ async def _parse_docx(
             os.remove(temp_path)
 
     response = get_sarvam_client().chat.completions(
-        model=CHAT_MODEL,
+        model=get_fast_model(),
         temperature=0,
         max_tokens=1500,
         reasoning_effort="low",

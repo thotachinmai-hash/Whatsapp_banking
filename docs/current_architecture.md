@@ -1579,6 +1579,244 @@ non-blocking via LangChain's own thread delegation), and
 
 ---
 
+## Model Tiering, Fewer LLM Calls & Friendly Routing — Phase 11
+
+Triggered by two things found together: `sarvam-30b` (the natural
+"fast" model) turned out to be deprecated and no longer callable via
+Sarvam's Chat Completions API, and a pure-native-language message with
+no English loanword (e.g. plain Telugu with no mixed-in word like
+"balance") was silently rejected before ever reaching an LLM.
+
+**1. Two-tier model selection** (`app/services/sarvam_client.py`) — new
+`get_fast_model()` (`sarvam-105b-conversations`, env override
+`SARVAM_MODEL_FAST`) and `get_reasoning_model()` (`sarvam-105b`, env
+override `SARVAM_MODEL_REASONING`, not yet wired into any call site).
+Benchmarked live against the real Sarvam API before switching anything:
+`-conversations` was 2.7x faster on intent classification and 2.2x
+faster on an agent-style response, produced correct tool calls and
+correct compound/conditional threshold reasoning ("balance is 8,200,
+below 10,000, short by 1,800") in a LangChain `bind_tools` test, and —
+unlike `sarvam-105b` — never returned empty content from exhausting its
+token budget on hidden `reasoning_content` before the answer. All 6
+call sites that previously hardcoded `sarvam-105b`
+(`llm_understanding.py`, `document_parser.py`, `language.py`,
+`agent.py`, `classifier.py`) now default to `get_fast_model()`.
+
+**2. Removed the separate intent-classification LLM call**
+(`app/conversation/manager.py::_classify_intent`) — previously, any
+message none of the 9 rule layers in `rules.py` recognized paid for a
+whole extra `default_llm_classify()` round-trip (gated behind
+`LLM_FALLBACK_ENABLED`) before routing even started. That call is no
+longer made from the manager; unmatched messages now go straight to the
+existing single LLM+tools agent call, which already classifies intent,
+picks a tool/RAG/workflow, and answers in one turn.
+`default_llm_classify()` itself is untouched and still available for a
+future caller that wants it.
+
+**3. Non-English out-of-scope override** (`app/conversation/manager.py`)
+— the actual root cause of the multilingual gap: `classify_out_of_scope()`
+in `rules.py` tags *any* message with no recognized English banking
+keyword as `out_of_scope` at confidence 0.85, as a catch-all — it has no
+way to recognize a genuine banking question asked in a native script
+with no English loanword mixed in, so that heuristic is blind for
+non-English text specifically. The manager now overrides `OUT_OF_SCOPE`
+back to `BANKING_LLM` when confidence is below 0.9 (excluding the
+separate, English-only deny-list match at 0.95 — "write me a poem",
+"capital of France" — which stays a hard reject regardless of script)
+and the text looks like genuine non-English content
+(`should_attempt_detection()`, already used by `language.py`). The
+LLM+tools agent then makes the real call, using its own
+already-existing out-of-scope redirect instead of a rule blind to the
+language used.
+
+**4. Friendlier, more guiding tone** — the agent's system prompt
+(`app/agent/agent.py`) now explicitly asks it to treat English,
+code-mixed, romanized, and native-script input equally, and to ask a
+warm specific follow-up instead of flatly declining an ambiguous
+request. The remaining static fallback templates that still fire for
+non-agent cases (`app/conversation/responses/common.py`:
+`render_out_of_scope`, `render_low_confidence`, the per-intent
+`_CLARIFICATION_PROMPTS`, `render_invalid_input`,
+`render_workflow_boundary`) were reworded warmer; no template's
+call signature or triggering logic changed.
+
+**Verification.** Full suite held at the same 426 passing (424 + 2 new
+regression tests added for this phase) / 33 pre-existing failures
+throughout — the 33 confirmed unrelated by traceback (a missing
+`get_external_message_id` helper, `SARVAM_API_KEY` unset in the test
+env). Two new tests in `test_conversation_manager.py` lock in the fix
+(a pure-Telugu balance question now reaches `llm_fallback` instead of
+the static rejection) and the guard-rail (the English deny-list match
+is unaffected). Model behavior itself (speed, tool-calling correctness,
+conditional reasoning) was verified live against the real Sarvam API
+before any call site was switched, not assumed from documentation.
+
+**Files touched:** `app/services/sarvam_client.py`,
+`app/services/llm_understanding.py`, `app/services/document_parser.py`,
+`app/services/language.py`, `app/agent/agent.py`,
+`app/conversation/intent/classifier.py`, `app/conversation/manager.py`,
+`app/conversation/responses/common.py`, `tests/test_conversation_manager.py`.
+
+**5. Dynamic response shaping (partial).** The deterministic workflows
+(transfer, loan, KYC, onboarding, transactions) already used
+`StructuredResponse.buttons_of`/`.list_of` extensively before this phase
+— that part of "dynamic WhatsApp UI" was already built. The one gap
+addressed here: the LLM+tools agent's dead-end reply (retries exhausted,
+nothing to say) now carries Back/Cancel/Main Menu tap buttons
+(`with_nav_buttons`) instead of bare text with no escape hatch. Not
+done: having the agent choose LIST/BUTTONS from live tool-result data
+(e.g. auto-listing beneficiaries as tappable rows) — that needs new
+plumbing to carry structured tool results through the agent's response
+construction, which is a large-rewrite-shaped piece of work deliberately
+deferred rather than rushed in.
+
+**6. Per-stage latency metrics** (`app/metrics.py`) — every stage
+already logged its own duration per call (`TOOL | ... | duration=`,
+`LLM call successful | duration=`, etc., confirmed against real Render
+logs), but TTS wasn't fed into the aggregated `/metrics` endpoint and no
+stage had an exposed average. Added `_track_stage()`/`log_tts()` and an
+`avg_stage_duration_ms` breakdown (stt, agent, tts, whatsapp_send,
+request_total) in `get_metrics()`'s response — the existing `/metrics`
+route needed no change since it returns the dict as-is.
+
+**7. RAG non-English retrieval fix.** `app/rag/retriever.py`'s
+tokenizer only matches `[a-z0-9]+` — confirmed live that a message with
+zero Latin characters (pure Telugu with no English loanword) tokenizes
+to nothing and returns 0 results, even though the exact same question
+with one English word mixed in retrieves correctly. Rather than rewrite
+the retriever (the RAG corpus is deliberately English-only, single-
+sourced, per the module's own documented design), fixed it at the
+source: `search_bank_documents`'s tool description
+(`app/agent/agent.py`) now explicitly tells the calling LLM to always
+translate the query into English before calling the tool. Verified live
+against the real Sarvam API — a pure-Telugu KYC question produced the
+tool call `{"query": "how does KYC work"}`. The 10-file RAG corpus
+itself (44 chunks) was already comprehensive from an earlier pass this
+session; no new documents were needed.
+
+**8. Dead config removed.** `SARVAM_MODEL` and `SARVAM_VISION` were no
+longer read anywhere in `app/` (superseded by `get_fast_model()`/
+`get_reasoning_model()` and `doc_ai.extract`, which takes no model
+override) — removed from `.env.example`, `docker-compose.yml`, and
+README's quick-start snippet, replaced with the new
+`SARVAM_MODEL_FAST`/`SARVAM_MODEL_REASONING` overrides.
+`GEMINI_API_KEY`/`GEMINI_MODEL` were also unused anywhere in `app/`
+(confirmed — `sarvam_client.py`'s own docstring already says no other
+provider is wired in) and removed from `.env.example` and
+`docker-compose.yml`. `.env.example`'s `LLM_FALLBACK_ENABLED` comment
+was corrected — it no longer gates intent classification (see item 2
+above), only the mid-workflow LLM-assisted helpers in
+`llm_understanding.py`.
+
+**Not done, and deliberately not attempted this phase:** stripping the
+9 rule-based classification layers in `rules.py` themselves (only their
+one failure mode — the non-English catch-all — was patched, per the
+smaller/safer scope chosen over a full Option-B rewrite); rewriting the
+LangGraph agent structure itself (only its model, prompt, and tool
+descriptions changed). Both remain available as explicit future asks.
+
+---
+
+## Final Verification, Voice Latency, Dynamic Lists & Cleanup — Phase 12
+
+A follow-up verification/optimization pass over Phase 11's work, plus
+finishing the one item Phase 11 explicitly deferred.
+
+**1. LLM call count — verified, not changed.** Live-traced the exact
+LangGraph call pattern: no-tool message = 1 LLM call, any tool-requiring
+message = 2 calls regardless of how many tools it needs (LangGraph's
+`ToolNode` runs all `tool_calls` from one response in parallel before
+looping back — confirmed live with a 2-tool-in-one-message case, still
+only 2 LLM calls). The `LLM → Tool → LLM` shape is not reducible to one
+call without breaking grounding: the second call has to see the real
+tool result before writing an answer. Already at the minimum.
+
+**2. Voice latency — one real bottleneck found and fixed.** Live TTS
+timing showed the *first* synthesis call after process start took
+10.3s vs. 2.76s for identical text on the next call through the same
+(already-reused) client — a one-time-per-process cost that would
+otherwise land on whichever customer's message is first after a
+deploy/restart. Added `_warm_up_tts()` (`app/main.py`), fired as a
+background task from `_lifespan()` — never blocks startup, fails
+silently if Sarvam is slow/unconfigured (both paths verified live).
+WhatsApp media upload/send was **not** re-measured this phase — no real
+Graph API credentials available in the verification environment; flagged
+as the most likely remaining latency risk, to be checked via the
+`media_upload` `/metrics` bucket once live traffic is flowing.
+
+**3. Multilingual — reverified live, no changes needed.** 6 fresh cases
+(romanized Telugu/Hindi/Tamil, pure Telugu+one English term, pure
+Hindi/Tamil with zero English) all routed correctly, plus one full
+round-trip (mixed Tamil question → agent → English answer →
+translated back to Tamil).
+
+**4. RAG — 2 more verified gaps closed** (`general_banking_faq.md`,
+`money_transfer_faq.md`): no minimum balance / no savings interest
+(confirmed against `infra/postgres/init.sql`'s `accounts` table — no
+such column exists), and transfers can't be reversed/recalled (confirmed
+via grep — no reversal/dispute code exists anywhere). 49 → 51 chunks.
+
+**5. Dynamic WhatsApp lists — the deferred ID-collision fix, now built.**
+`list_beneficiaries` now returns `response_format="content_and_artifact"`
+(`app/agent/agent.py`), and a new `_beneficiary_list_response()` turns a
+successful call into a real tappable list — using `"Transfer to {name}"`
+as each row's id, not a bare digit. This phrase was chosen because it
+already exactly matches `start_transfer_from_text`'s existing free-text
+trigger regex, so tapping a row needed zero new routing code and reuses
+an already-tested path — completely sidestepping the collision risk
+(a bare digit here could have been misread by the main menu's own digit
+map, since this listing can appear with no active workflow). Verified
+live end-to-end: real tool call → real list built → tapping the
+resulting id through the real, unmodified `start_requested` correctly
+pre-fills a transfer to that beneficiary.
+
+**6. Sarvam models — reverified, no drift.** All 6 call sites still
+resolve through `get_fast_model()`/`get_reasoning_model()`; zero
+hardcoded model strings found anywhere; `get_reasoning_model()` still has
+no call sites (nothing tested so far has needed 105B).
+
+**7. Security — reverified, one new disclosure.** No credentials found
+anywhere in the working tree. The Postgres credential fix from Phase 11
+was confirmed still **uncommitted** at the start of this phase — a real
+gap: the repository, as committed, still contained the old hardcoded
+credential this whole time. Rotating the actual Render password remains
+required and is not something this session can do.
+
+**8. Cleanup.** Removed a real duplicate: two functions both named
+`render_invalid_input` (`app/conversation/responses/common.py` and
+`app/conversation/responses/errors.py`) with *different* wording —
+`common.py`'s had zero callers anywhere (confirmed via grep), a genuine
+dead-code/confusion risk. Removed it; `errors.py`'s (the one actually
+used) is untouched.
+
+**9. `openapi.json` — resolved.** This repo-root file was not this app's
+API spec at all — its paths (`/api/sessions/{id}/qr`,
+`/api/sessions/{id}/pairing-code`, `/api/plugins/catalog`,
+`send-audio`, `send-sticker`, ...) are the WhatsApp gateway's (OpenWA's)
+own API surface, not the Finacle Banking Assistant's. Per the "Task 10,
+Part 5" note earlier in this document, it started as an accidental copy
+of a dashboard's `index.html` and was later swapped for OpenWA's real
+spec purely for a past integration-capability research task — never
+meant to represent this app's own API. That research concluded long ago;
+the file has now been fully removed. The live, correct spec is what
+FastAPI already serves at `/openapi.json` (confirmed via `TestClient`:
+all 12 real endpoints present, `/docs` reachable, every endpoint has a
+registered response schema) — nothing in this app ever read the static
+file, so removing it changes nothing functionally.
+
+**10. Tests.** 7 new tests (`tests/test_dynamic_beneficiary_list.py`) +
+5 new RAG tests. Full suite: 476 passed, 1 skipped (the still-undocumented
+"quick amount" buttons feature from Phase 11), 0 failed.
+
+**Files touched:** `app/main.py`, `app/agent/agent.py`,
+`app/conversation/responses/common.py`,
+`app/rag/documents/general_banking_faq.md`,
+`app/rag/documents/money_transfer_faq.md`,
+`tests/test_dynamic_beneficiary_list.py`, `tests/test_rag_retriever.py`.
+**Removed:** `openapi.json`.
+
+---
+
 ## 1. Current architecture
 
 ```

@@ -17,7 +17,6 @@ back to English/the original text rather than raising or guessing.
 
 import asyncio
 import hashlib
-import os
 import re
 import time
 from typing import Optional
@@ -79,7 +78,9 @@ MIN_DETECTABLE_LENGTH = 4
 
 
 def _model() -> str:
-    return os.getenv("SARVAM_MODEL", "sarvam-105b")
+    from app.services.sarvam_client import get_fast_model
+
+    return get_fast_model()
 
 
 def should_attempt_detection(text: str) -> bool:

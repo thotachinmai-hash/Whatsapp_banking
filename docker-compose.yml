@@ -40,12 +40,10 @@ services:
       DATABASE_URL: postgresql://banking_user:banking_pass@postgres:5432/banking_db
       REDIS_URL: redis://redis:6379
       SARVAM_API_KEY: ${SARVAM_API_KEY}
-      SARVAM_MODEL: ${SARVAM_MODEL:-llama-3.3-70b-versatile}
-      SARVAM_STT: ${SARVAM_STT:-whisper-large-v3-turbo}
-      SARVAM_VISION: ${SARVAM_VISION:-qwen/qwen3.6-27B}
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
-      SARVAM_TTS: ${SARVAM_TTS:-gemini-2.5-flash-preview-tts}
+      SARVAM_STT: ${SARVAM_STT:-saaras:v3}
+      SARVAM_TTS: ${SARVAM_TTS:-bulbul:v3}
+      SARVAM_MODEL_FAST: ${SARVAM_MODEL_FAST:-sarvam-105b-conversations}
+      SARVAM_MODEL_REASONING: ${SARVAM_MODEL_REASONING:-sarvam-105b}
       ACCESS_TOKEN: ${ACCESS_TOKEN}
       PHONE_NUMBER_ID: ${PHONE_NUMBER_ID}
       VERIFY_TOKEN: ${VERIFY_TOKEN}

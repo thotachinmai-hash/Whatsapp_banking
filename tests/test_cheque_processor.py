@@ -27,7 +27,13 @@ class ChequeProcessorTests(unittest.TestCase):
 
         self.assertTrue(result["handled"])
         response_text = as_structured_response(result["response"]).text.lower()
-        self.assertIn("payee", response_text)
+        # The rejection message was rewritten to be specific and
+        # customer-friendly ("this cheque needs to be made payable to
+        # John Smith...") instead of naming the internal field "payee"
+        # directly -- matches this app's "no internal/technical terms in
+        # customer-facing text" convention (see app/agent/agent.py's
+        # system prompt).
+        self.assertIn("made payable", response_text)
         self.assertIn("john smith", response_text)
         mock_update_workflow_data.assert_called_once()
         mock_set_workflow_step.assert_called_once()

@@ -1,3 +1,6 @@
+import asyncio
+import hashlib
+import hmac
 import time
 import uuid
 import os
@@ -19,6 +22,7 @@ from app.services.whatsapp import (
     get_message_text,
     get_media_filename,
     get_media_mimetype,
+    get_external_message_id,
     close_whatsapp_client,
 )
 from app.services import idempotency
@@ -30,6 +34,35 @@ from app.agent.agent import run_agent
 load_dotenv()
 
 logger = get_logger(__name__)
+
+
+def _webhook_signature_valid(raw_body: bytes, signature_header: str | None) -> bool:
+    """Verify the X-Hub-Signature-256 header Meta sends on every webhook
+    POST, confirming the request genuinely came from Meta (using the
+    exact bytes as sent, not the re-parsed/re-serialized JSON, which can
+    differ in whitespace/key order and would break the HMAC comparison)
+    and wasn't forged by a third party who found the URL.
+
+    Returns True (open) when WEBHOOK_SECRET isn't configured at all —
+    matches this app's existing fail-safe convention elsewhere (e.g.
+    SARVAM_API_KEY missing skips TTS rather than crashing) so a
+    deployment that hasn't set it yet doesn't silently break, but logs a
+    clear warning either way so the gap is visible rather than silent.
+    """
+    secret = os.getenv("WEBHOOK_SECRET", "")
+    if not secret:
+        logger.warning(
+            "WEBHOOK_SECRET not configured — webhook signature is NOT being "
+            "verified; any request to this URL is currently trusted as-is."
+        )
+        return True
+    if not signature_header or not signature_header.startswith("sha256="):
+        return False
+    expected = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
+    provided = signature_header.removeprefix("sha256=")
+    # constant-time compare — a timing side-channel here would let an
+    # attacker recover the signature byte-by-byte.
+    return hmac.compare_digest(expected, provided)
 
 
 def _redact_media_for_log(value):
@@ -46,6 +79,24 @@ def _redact_media_for_log(value):
     return safe
 
 
+async def _warm_up_tts() -> None:
+    """Fire one throwaway synthesis call at startup instead of letting the
+    first real customer's voice reply pay for it. Confirmed live: the
+    first Sarvam TTS call after process start took 10.3s vs. 2.76s for
+    the identical text on the very next call through the same (already
+    shared/reused) client — a real, one-time-per-process cost, not
+    per-request. Runs as a background task, not awaited by startup
+    itself, so a slow/unreachable Sarvam never delays this service
+    becoming ready; any failure here is swallowed since it's purely an
+    optimization, not a required step."""
+    try:
+        from app.services.tts import synthesize_speech
+        await asyncio.wait_for(synthesize_speech("Warming up.", trace_id="startup-warmup"), timeout=20.0)
+        logger.info("TTS warmup complete")
+    except Exception as e:
+        logger.warning(f"TTS warmup skipped/failed (non-fatal) | error={e}")
+
+
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
     from app.database import ensure_all_tables, close_db_pool
@@ -54,6 +105,7 @@ async def _lifespan(_app: FastAPI):
     # every loan/KYC/beneficiary/transfer request (see app/database.py's
     # ensure_all_tables()).
     ensure_all_tables()
+    asyncio.create_task(_warm_up_tts())
 
     yield
 
@@ -99,6 +151,11 @@ async def whatsapp_webhook(request: Request):
     webhook_trace_id = str(uuid.uuid4())[:8]
 
     try:
+        raw_body = await request.body()
+        if not _webhook_signature_valid(raw_body, request.headers.get("X-Hub-Signature-256")):
+            logger.warning(f"[{webhook_trace_id}] webhook.signature_invalid")
+            raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
         payload = await request.json()
         logger.info(f"[{webhook_trace_id}] webhook.received")
         logger.info(f"payload received | payload={_redact_media_for_log(payload)}")
@@ -123,8 +180,7 @@ async def whatsapp_webhook(request: Request):
 
         message_type = message.get("type", "")
         media = message.get(message_type, {}) if message_type else {}
-        # Cloud API: use the message's `id` as the external id
-        external_message_id = message.get("id") or message.get("message_id") or ""
+        external_message_id = get_external_message_id(message)
 
         # Normalize media details using whatsapp service helpers
         media_id = get_media_id(message)
@@ -198,6 +254,11 @@ async def whatsapp_webhook(request: Request):
 
         return result
 
+    except HTTPException:
+        # Let a deliberate HTTP error (e.g. the signature check above)
+        # through with its real status code instead of being re-wrapped
+        # as a 500 by the generic handler below.
+        raise
     except Exception as e:
         logger.error(f"Webhook error | error={e}")
         eid = locals().get("external_message_id")
@@ -366,7 +427,8 @@ async def metrics():
 
 @app.get(
     "/",
-    tags=["System"]
+    tags=["System"],
+    summary="Webhook verification / service metadata",
 )
 async def root(request: Request):
     """

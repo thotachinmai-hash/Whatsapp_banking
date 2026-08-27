@@ -81,8 +81,8 @@ Edit `.env` and fill in your values:
 
 ```env
 SARVAM_API_KEY=your_SARVAM_API_KEY_here
-SARVAM_MODEL=llama-3.3-70b-versatile
-SARVAM_STT=whisper-large-v3-turbo
+SARVAM_STT=saaras:v3
+SARVAM_TTS=bulbul:v3
 
 DATABASE_URL=postgresql://banking_user:banking_pass@localhost:5433/banking_db
 REDIS_URL=redis://localhost:6380

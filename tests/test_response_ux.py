@@ -170,7 +170,7 @@ class ResponseRendererTests(unittest.IsolatedAsyncioTestCase):
             fields,
             {
                 "kind", "text", "template_name", "buttons", "list_button_label", "list_sections",
-                "language", "pdf_bytes", "pdf_filename",
+                "language", "pdf_bytes", "pdf_filename", "voice_menu",
             },
         )
 
@@ -255,11 +255,19 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         button_ids = {b.id for b in structured.buttons}
         self.assertEqual(button_ids, {"back", "cancel", "menu"})
 
-    async def test_active_transfer_balance_question_asks_continue_or_stop(self):
+    async def test_active_transfer_offtopic_question_asks_continue_or_stop(self):
+        # "check my balance" no longer triggers this prompt -- a Task 10
+        # follow-up (see app/workflows/manager.py::_is_allowed_for_workflow)
+        # deliberately made genuine banking questions (any
+        # BANKING_DOMAIN_KEYWORDS match, "balance" included) answerable
+        # mid-workflow without interrupting it. Only text with NO
+        # banking-domain content at all (small talk, general knowledge)
+        # still triggers the continue-or-stop interruption -- verified here
+        # with a genuinely off-topic query instead.
         workflow = create_workflow_model(WORKFLOW_TRANSFER, STEP_SELECT_BENEFICIARY)
         create_workflow(self.phone, workflow)
 
-        result = self.manager.handle(self.phone, "check my balance", trace_id="t2a")
+        result = self.manager.handle(self.phone, "what's the weather today", trace_id="t2a")
 
         self.assertTrue(result["handled"])
         structured = as_structured_response(result["response"])
@@ -271,12 +279,13 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
         result = self.manager.handle(self.phone, "stop", trace_id="t2b")
         self.assertFalse(result["handled"])
-        self.assertEqual(result.get("reprocess_query"), "check my balance")
+        self.assertEqual(result.get("reprocess_query"), "what's the weather today")
+        from app.workflows.memory import get_workflow
         self.assertIsNone(get_workflow(self.phone))
 
         workflow = create_workflow_model(WORKFLOW_TRANSFER, STEP_SELECT_BENEFICIARY)
         create_workflow(self.phone, workflow)
-        result = self.manager.handle(self.phone, "check my balance", trace_id="t2c")
+        result = self.manager.handle(self.phone, "what's the weather today", trace_id="t2c")
         result = self.manager.handle(self.phone, "continue", trace_id="t2d")
         self.assertTrue(result["handled"])
         response = as_structured_response(result["response"]).text.lower()
@@ -582,7 +591,11 @@ class InteractiveListConversionTests(unittest.IsolatedAsyncioTestCase):
         self.manager.start_requested(self.phone, "I want a loan", trace_id="t2")
         with patch("app.workflows.processors.loan.get_accounts_by_phone", return_value=fake_accounts), \
              patch("app.workflows.processors.loan.get_customer_by_phone", return_value={"full_name": "Alex Doe"}):
-            result = self.manager.handle(self.phone, "2", trace_id="t3")
+            # "lt_home", not a bare digit -- the loan-type list is
+            # reachable before any workflow is active (see
+            # loan_type_list_prompt's docstring), where a bare digit would
+            # collide with the main menu's own digit map.
+            result = self.manager.handle(self.phone, "lt_home", trace_id="t3")
         self.assertTrue(result["handled"])
         from app.workflows.memory import get_workflow
         workflow = get_workflow(self.phone)
@@ -607,7 +620,15 @@ class InteractiveListConversionTests(unittest.IsolatedAsyncioTestCase):
         response = as_structured_response(result["response"])
         self.assertEqual(response.kind, ResponseKind.LIST)
         rows = [row for section in response.list_sections for row in section.rows]
-        self.assertEqual([row.id for row in rows], ["ben_1", "ben_2", "ben_new"])
+        # Plain digits + "new" (not "ben_"-prefixed) -- confirmed against
+        # transfer.py::_beneficiary_prompt's actual row construction
+        # (id=str(index)), which the classify_workflow_conversation
+        # rule layer + workflow-first routing already handle safely: an
+        # active workflow gets first refusal on any incoming digit, so
+        # there's no main-menu collision risk here the way there would be
+        # for an out-of-workflow listing (see loan_type_list_prompt's
+        # docstring for the case where that collision risk is real).
+        self.assertEqual([row.id for row in rows], ["1", "2", "new"])
 
     async def test_beneficiary_list_falls_back_to_text_beyond_ten_rows(self):
         beneficiaries = [
@@ -643,15 +664,25 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
         self.addCleanup(patcher.stop)
 
     async def test_cancel_confirms_nothing_was_submitted(self):
+        # "Cancel" mid-workflow now asks "stop or continue?" first (see
+        # app/workflows/manager.py::_resolve_pending_stop) rather than
+        # cancelling immediately, so a typed "cancel" mid-transfer isn't
+        # silently destructive -- confirm with "stop" to actually cancel.
         workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
         create_workflow(self.phone, workflow)
 
         with patch("app.database.get_customer_by_phone", return_value={"full_name": "Alex"}):
-            result = self.manager.handle(self.phone, "Cancel", trace_id="t1")
+            first = self.manager.handle(self.phone, "Cancel", trace_id="t1")
+            self.assertTrue(first["handled"])
+            result = self.manager.handle(self.phone, "stop", trace_id="t1b")
 
         self.assertTrue(result["handled"])
-        self.assertIn("cancelled", result["response"].lower())
-        self.assertIn("nothing was submitted", result["response"].lower())
+        # The confirmed-stop response is a StructuredResponse (a main-menu
+        # list with the cancellation notice as its text prefix), not a
+        # plain string.
+        response_text = as_structured_response(result["response"]).text.lower()
+        self.assertIn("cancelled", response_text)
+        self.assertIn("nothing was submitted", response_text)
 
     async def test_cancel_clears_the_workflow(self):
         from app.workflows.memory import get_workflow
@@ -661,6 +692,9 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
 
         with patch("app.database.get_customer_by_phone", return_value={"full_name": "Alex"}):
             self.manager.handle(self.phone, "Cancel", trace_id="t2")
+            # First "Cancel" only asks for confirmation; the workflow is
+            # still active until "stop" is confirmed.
+            self.manager.handle(self.phone, "stop", trace_id="t2b")
 
         self.assertIsNone(get_workflow(self.phone))
 

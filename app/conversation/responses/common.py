@@ -155,11 +155,6 @@ def render_retry(message: str = "Please try again.") -> str:
     return message
 
 
-def render_invalid_input(hint: Optional[str] = None) -> str:
-    base = "I didn't quite understand that."
-    return f"{base} {hint}" if hint else f"{base} Please try again."
-
-
 def render_processing(what: str = "your request") -> str:
     return f"One moment, I'm checking {what}..."
 
@@ -178,45 +173,46 @@ def render_service_unavailable() -> str:
 
 def render_out_of_scope() -> str:
     return (
-        "I'm here to help with your banking needs — accounts, balances, "
-        "transfers, loans, cheques, KYC and transactions.\n\n"
-        "What would you like to do?"
+        "I'm your banking assistant, so I'll stick to what I can actually help "
+        "with — accounts, balances, transfers, loans, cheques, KYC and "
+        "transactions. \U0001F60A\n\n"
+        "What can I help you with today?"
     )
 
 
 def render_low_confidence() -> str:
     return (
-        "I'm not quite sure I understood that. I can help with balances, "
-        "transfers, loans, cheques, KYC and transactions — could you "
-        "let me know what you'd like to do?"
+        "I'm not 100% sure I followed that — no worries, though! I can help "
+        "with balances, transfers, loans, cheques, KYC and transactions. "
+        "What would you like to do?"
     )
 
 
 _CLARIFICATION_PROMPTS = {
     "transfer_request": (
-        "Would you like to send money to someone? If so, just tell me who "
-        "you'd like to pay and how much."
+        "Sounds like you'd like to send money to someone — just tell me who "
+        "you'd like to pay and how much, and I'll take it from there."
     ),
     "loan_application_request": (
-        "Would you like to start a loan application? If so, let me know "
-        "which type — personal, home, vehicle, or education."
+        "Happy to help you start a loan application — just let me know "
+        "which type: personal, home, vehicle, or education."
     ),
     "cheque_deposit_request": (
-        "Would you like to deposit a cheque? If so, please upload a clear "
-        "photo of it and I'll get started."
+        "Sure, I can help you deposit a cheque — just upload a clear photo "
+        "of it and I'll get started."
     ),
     "kyc_update_request": (
-        "Would you like to update your KYC details? If so, please upload "
-        "your KYC document or let me know what needs to change."
+        "I can help update your KYC details — please upload your KYC "
+        "document, or tell me what needs to change."
     ),
     "registration_request": (
-        "Would you like to register for an account? Just say \"register\" "
-        "and I'll get you set up."
+        "I can get you registered — just say \"register\" and I'll walk you "
+        "through it."
     ),
 }
 _DEFAULT_CLARIFICATION = (
-    "I want to make sure I get this right — could you tell me a bit more "
-    "about what you'd like to do?"
+    "Just want to make sure I get this right for you — could you tell me a "
+    "bit more about what you'd like to do?"
 )
 
 
@@ -263,8 +259,9 @@ def render_workflow_boundary(label: str) -> str:
     reply (Task 10, Parts 9/10) instead of the rigid "I can answer
     questions only about this request here."."""
     return (
-        f"You are currently working on a {label}. I can answer questions only about this request here.\n\n"
-        "Please finish it, or say *Cancel* to stop and return to the main menu."
+        f"I'm still with you on {label} \U0001F60A — let's finish that up first so I can "
+        "help with your other question right after.\n\n"
+        "Or say *Cancel* anytime if you'd rather stop and go back to the main menu."
     )
 
 

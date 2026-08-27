@@ -7,6 +7,20 @@ from app.services.tts import synthesize_speech, synthesize_voice_note
 
 
 class SynthesizeSpeechTests(unittest.IsolatedAsyncioTestCase):
+    """synthesize_speech() checks SARVAM_API_KEY via os.getenv() before it
+    ever touches the Sarvam client, so any test mocking get_sarvam_client
+    (to test the actual request/response handling) needs a real-looking
+    key present too, or it early-returns None regardless of what's
+    mocked -- passing or failing for the wrong reason depending on
+    whether the real environment happens to have a .env file. Setting a
+    fake key here makes every test in this class deterministic
+    regardless of the environment it runs in."""
+
+    def setUp(self) -> None:
+        self._env_patcher = patch.dict("os.environ", {"SARVAM_API_KEY": "test-key"})
+        self._env_patcher.start()
+        self.addCleanup(self._env_patcher.stop)
+
     async def test_returns_none_when_no_api_key(self) -> None:
         with patch("app.services.tts.os.getenv", return_value=""):
             self.assertIsNone(await synthesize_speech("hello"))

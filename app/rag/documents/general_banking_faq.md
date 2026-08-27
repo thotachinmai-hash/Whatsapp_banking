@@ -19,3 +19,10 @@ This bank offers savings accounts, current accounts, and salary accounts
 chooses their account type during registration, and an already
 registered customer can open an additional account of a different type
 by asking to create another account.
+
+# Minimum Balance And Interest On Savings
+
+There is no minimum balance requirement on any account through this
+assistant, and no charge for falling below any particular balance.
+Accounts also do not earn interest through this assistant — there is no
+savings interest rate to check or ask about.

@@ -7,7 +7,6 @@ requiring live infrastructure. Follows the project's unittest convention
 (no pytest is installed in this environment).
 """
 
-import asyncio
 import threading
 import unittest
 from unittest.mock import AsyncMock, patch
@@ -180,30 +179,30 @@ class ConversationLockTests(unittest.IsolatedAsyncioTestCase):
 
 
 class ExternalMessageIdExtractionTests(unittest.TestCase):
-    def test_string_id_field(self):
+    """whatsapp.get_external_message_id() operates on a Cloud API `message`
+    object (payload["entry"][0]["changes"][0]["value"]["messages"][0]) —
+    its `id` is always a flat string like "wamid.HBgM...", never nested or
+    serialized the way an OpenWA message id was. This app fully migrated to
+    the WhatsApp Business Cloud API; there is no remaining code path that
+    produces a nested/serialized id, so those cases were removed rather
+    than kept as dead coverage."""
+
+    def test_flat_id_field(self):
         self.assertEqual(
-            whatsapp.get_external_message_id({"id": "true_447@c.us_ABC123"}),
-            "true_447@c.us_ABC123",
+            whatsapp.get_external_message_id({"id": "wamid.HBgMOTE5Mzg0MTQ4MjM5FQIAEhg="}),
+            "wamid.HBgMOTE5Mzg0MTQ4MjM5FQIAEhg=",
         )
 
-    def test_nested_serialized_id(self):
-        payload = {"id": {"_serialized": "true_447@c.us_XYZ", "fromMe": False}}
-        self.assertEqual(whatsapp.get_external_message_id(payload), "true_447@c.us_XYZ")
-
-    def test_nested_plain_id(self):
-        payload = {"id": {"id": "ABCDEF"}}
-        self.assertEqual(whatsapp.get_external_message_id(payload), "ABCDEF")
-
-    def test_messageid_fallback(self):
-        self.assertEqual(whatsapp.get_external_message_id({"messageId": "M-1"}), "M-1")
+    def test_message_id_fallback(self):
+        self.assertEqual(whatsapp.get_external_message_id({"message_id": "M-1"}), "M-1")
 
     def test_missing_id_returns_empty_string(self):
-        self.assertEqual(whatsapp.get_external_message_id({"body": "hi"}), "")
+        self.assertEqual(whatsapp.get_external_message_id({"type": "text", "text": {"body": "hi"}}), "")
 
     def test_never_derived_from_body_text(self):
         # Same text, no id anywhere -> still empty, never hashed from body.
-        p1 = whatsapp.get_external_message_id({"body": "check balance"})
-        p2 = whatsapp.get_external_message_id({"body": "check balance"})
+        p1 = whatsapp.get_external_message_id({"type": "text", "text": {"body": "check balance"}})
+        p2 = whatsapp.get_external_message_id({"type": "text", "text": {"body": "check balance"}})
         self.assertEqual(p1, "")
         self.assertEqual(p2, "")
 
@@ -211,21 +210,38 @@ class ExternalMessageIdExtractionTests(unittest.TestCase):
 class _FakeRequest:
     def __init__(self, payload):
         self._payload = payload
+        self.headers = {}
 
     async def json(self):
         return self._payload
 
+    async def body(self):
+        import json
+        return json.dumps(self._payload).encode("utf-8")
 
-def _webhook_payload(message_id, phone="910000000000", body="Hi", msg_type="chat", is_group=False):
+
+def _webhook_payload(message_id, phone="910000000000", body="Hi", msg_type="text"):
+    """Build a WhatsApp Business Cloud API webhook payload — the shape
+    app.main.whatsapp_webhook() actually parses today (entry -> changes ->
+    value -> messages). msg_type="text" maps to Cloud API's own "text"
+    type (not OpenWA's "chat"); other types get an empty media object,
+    which is all these dedup-focused tests need since they mock
+    handle_incoming_message rather than actually processing media."""
+    message = {"id": message_id, "from": phone, "type": msg_type}
+    if msg_type == "text":
+        message["text"] = {"body": body}
+    else:
+        message[msg_type] = {}
     return {
-        "event": "message.received",
-        "data": {
-            "id": message_id,
-            "chatId": f"{phone}@c.us",
-            "body": body,
-            "type": msg_type,
-            "isGroup": is_group,
-        },
+        "object": "whatsapp_business_account",
+        "entry": [{
+            "changes": [{
+                "value": {
+                    "metadata": {"phone_number_id": "TEST_PNID"},
+                    "messages": [message],
+                }
+            }]
+        }],
     }
 
 
@@ -266,7 +282,7 @@ class WebhookIdempotencyIntegrationTests(unittest.IsolatedAsyncioTestCase):
         with patch.object(main_module, "handle_incoming_message", new=AsyncMock(return_value={"status": "success"})) as mock_handle, \
              patch.object(main_module, "render_and_send", new=AsyncMock(return_value=True)) as mock_send:
             payload = _webhook_payload("DUP-MSG-2")
-            first = await main_module.whatsapp_webhook(_FakeRequest(payload))
+            await main_module.whatsapp_webhook(_FakeRequest(payload))
             second = await main_module.whatsapp_webhook(_FakeRequest(payload))
 
         self.assertEqual(second.get("status"), "duplicate")
@@ -307,7 +323,7 @@ class WebhookIdempotencyIntegrationTests(unittest.IsolatedAsyncioTestCase):
     async def test_failed_processing_marks_failed_and_allows_retry(self):
         from app import main as main_module
 
-        with patch.object(main_module, "handle_incoming_message", new=AsyncMock(return_value={"status": "error", "error": "boom"})) as mock_handle:
+        with patch.object(main_module, "handle_incoming_message", new=AsyncMock(return_value={"status": "error", "error": "boom"})):
             payload = _webhook_payload("RETRY-MSG-1")
             await main_module.whatsapp_webhook(_FakeRequest(payload))
 
@@ -357,14 +373,81 @@ class WebhookIdempotencyIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(mock_handle.call_count, 2)
 
-    async def test_group_messages_still_ignored_before_idempotency(self):
+    async def test_message_with_no_sender_is_ignored(self):
+        """The Cloud API equivalent boundary check to what used to be
+        OpenWA group-chat filtering: app.main.whatsapp_webhook() must
+        reject a message with no `from` phone number before it ever
+        reaches handle_incoming_message, rather than crashing or
+        forwarding a message with an unusable sender."""
         from app import main as main_module
 
+        payload = _webhook_payload("NO-SENDER-MSG-1")
+        del payload["entry"][0]["changes"][0]["value"]["messages"][0]["from"]
+
         with patch.object(main_module, "handle_incoming_message", new=AsyncMock()) as mock_handle:
-            payload = _webhook_payload("GROUP-MSG-1", is_group=True)
             result = await main_module.whatsapp_webhook(_FakeRequest(payload))
 
-        self.assertEqual(result.get("reason"), "group_chat")
+        self.assertEqual(result.get("reason"), "missing_sender")
+        mock_handle.assert_not_called()
+
+
+class WebhookSignatureVerificationTests(unittest.IsolatedAsyncioTestCase):
+    """app.main._webhook_signature_valid() -- verifies X-Hub-Signature-256
+    against WEBHOOK_SECRET (Task 12 security fix: this was previously
+    documented in .env.example but never actually checked anywhere)."""
+
+    def test_unconfigured_secret_fails_open(self):
+        from app import main as main_module
+
+        with patch.object(main_module.os, "getenv", return_value=""):
+            self.assertTrue(main_module._webhook_signature_valid(b"{}", None))
+
+    def test_valid_signature_accepted(self):
+        import hashlib
+        import hmac as hmac_module
+
+        from app import main as main_module
+
+        body = b'{"a": 1}'
+        secret = "test-secret"
+        signature = "sha256=" + hmac_module.new(secret.encode(), body, hashlib.sha256).hexdigest()
+        with patch.dict("os.environ", {"WEBHOOK_SECRET": secret}):
+            self.assertTrue(main_module._webhook_signature_valid(body, signature))
+
+    def test_invalid_signature_rejected(self):
+        from app import main as main_module
+
+        with patch.dict("os.environ", {"WEBHOOK_SECRET": "test-secret"}):
+            self.assertFalse(main_module._webhook_signature_valid(b'{"a": 1}', "sha256=" + "0" * 64))
+
+    def test_missing_header_rejected_when_configured(self):
+        from app import main as main_module
+
+        with patch.dict("os.environ", {"WEBHOOK_SECRET": "test-secret"}):
+            self.assertFalse(main_module._webhook_signature_valid(b'{"a": 1}', None))
+
+    def test_tampered_body_rejected(self):
+        import hashlib
+        import hmac as hmac_module
+
+        from app import main as main_module
+
+        secret = "test-secret"
+        signature = "sha256=" + hmac_module.new(secret.encode(), b'{"a": 1}', hashlib.sha256).hexdigest()
+        with patch.dict("os.environ", {"WEBHOOK_SECRET": secret}):
+            self.assertFalse(main_module._webhook_signature_valid(b'{"a": 2}', signature))
+
+    async def test_webhook_endpoint_rejects_invalid_signature(self):
+        from app import main as main_module
+
+        payload = _webhook_payload("SIG-TEST-1")
+        with patch.dict("os.environ", {"WEBHOOK_SECRET": "test-secret"}), \
+             patch.object(main_module, "handle_incoming_message", new=AsyncMock()) as mock_handle:
+            request = _FakeRequest(payload)
+            request.headers = {"X-Hub-Signature-256": "sha256=" + "0" * 64}
+            with self.assertRaises(main_module.HTTPException) as ctx:
+                await main_module.whatsapp_webhook(request)
+        self.assertEqual(ctx.exception.status_code, 401)
         mock_handle.assert_not_called()
 
 

@@ -28,7 +28,6 @@ silently become a loan_application_request.
 
 import asyncio
 import json
-import os
 from typing import Any, Awaitable, Callable, Optional
 
 from app.conversation.context import ConversationContext
@@ -188,6 +187,12 @@ def _get_sarvam_client():
     return get_sarvam_client()
 
 
+def _get_fast_model() -> str:
+    from app.services.sarvam_client import get_fast_model
+
+    return get_fast_model()
+
+
 def _parse_json_object(text: str) -> Optional[dict]:
     text = text.strip()
     if "```" in text:
@@ -217,11 +222,12 @@ async def default_llm_classify(
 
     try:
         client = _get_sarvam_client()
-        model = os.getenv("SARVAM_MODEL", "sarvam-105b")
-        # sarvam-105b is a reasoning model — it spends tokens on
-        # reasoning_content before the actual answer, so max_tokens needs
-        # real headroom or the response gets cut off mid-reasoning with
-        # content=None. reasoning_effort="low" keeps that overhead down.
+        model = _get_fast_model()
+        # get_fast_model() (sarvam-105b-conversations) benchmarked ~2.7x
+        # faster than sarvam-105b on this exact classification shape,
+        # including pure-native-language input, with matching output
+        # quality — see app/services/sarvam_client.py::get_fast_model().
+        # reasoning_effort="low" keeps latency down further.
         # Sync SDK call — run off-thread, same reasoning as language.py.
         response = await asyncio.to_thread(
             client.chat.completions,

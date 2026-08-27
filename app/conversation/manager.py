@@ -38,10 +38,8 @@ from app.services.language import (
     should_attempt_detection,
     translate_text,
 )
-from app.services.llm_understanding import is_llm_fallback_enabled
-from app.conversation.intent.classifier import default_llm_classify
 from app.conversation.renderer import ResponseLike, StructuredResponse, as_structured_response
-from app.conversation.responses.common import render_cancelled, render_clarification, render_low_confidence
+from app.conversation.responses.common import render_cancelled, render_clarification
 from app.conversation.responses.common import render_main_menu_list, render_out_of_scope, render_service_unavailable
 from app.conversation.responses.errors import render_agent_error
 from app.conversation.router import route_intent
@@ -331,6 +329,29 @@ class ConversationManager:
             if action == "OUT_OF_SCOPE" and _looks_like_numeric_value(query):
                 action = "BANKING_LLM"
 
+            if (
+                action == "OUT_OF_SCOPE"
+                and intent_result is not None
+                and intent_result.confidence < 0.9
+                and should_attempt_detection(query)
+            ):
+                # classify_out_of_scope()'s catch-all (rules.py) tags
+                # anything with no recognized ENGLISH banking keyword as
+                # out_of_scope at confidence 0.85 -- it has no way to
+                # recognize a genuine banking question asked in a native
+                # script with no English loanword mixed in (e.g. pure
+                # Telugu/Tamil/Hindi), so it isn't a safe signal for
+                # non-English text specifically. The 0.9 cutoff excludes
+                # the separate, English-only deny-list match (confidence
+                # 0.95, e.g. "write me a poem") that's still a reliable
+                # out-of-scope signal regardless of script. Let the
+                # LLM+tools agent -- which understands native-script and
+                # code-mixed input natively and still redirects genuinely
+                # out-of-scope requests per its own system prompt -- make
+                # the real call instead of rejecting on a heuristic that's
+                # blind to the language actually used.
+                action = "BANKING_LLM"
+
             if action == "OUT_OF_SCOPE":
                 return await self._finish(
                     context, phone_number, query, render_out_of_scope(), trace_id, pending_action=None
@@ -338,11 +359,26 @@ class ConversationManager:
 
             if action == "CLARIFICATION_REQUIRED":
                 reason = routing_decision.reason or "unknown"
-                response = render_low_confidence() if reason == "unknown" else render_clarification(reason)
-                self._register_clarification(context)
-                return await self._finish(
-                    context, phone_number, query, response, trace_id, pending_action=f"clarify:{reason}"
-                )
+                if reason == "unknown":
+                    # No rule matched and there's no specific banking intent
+                    # to ask a targeted clarifying question about (that's
+                    # the `else` branch below) -- rather than a static "I
+                    # didn't understand" wall, which especially failed pure
+                    # native-language phrasing with no English loanword for
+                    # the rule layer to key on, let the LLM+tools agent
+                    # itself try to understand and respond or guide
+                    # naturally. It still can't execute a financial action
+                    # without its own tool call plus that workflow's normal
+                    # confirmation step, so this doesn't weaken any safety
+                    # guarantee -- it only gives more messages a real
+                    # attempt at an answer instead of a canned rejection.
+                    action = "BANKING_LLM"
+                else:
+                    response = render_clarification(reason)
+                    self._register_clarification(context)
+                    return await self._finish(
+                        context, phone_number, query, response, trace_id, pending_action=f"clarify:{reason}"
+                    )
 
             if action in ("START_WORKFLOW", "SAFE_FALLBACK"):
                 # START_WORKFLOW: high-confidence request to begin a new
@@ -499,8 +535,17 @@ class ConversationManager:
         if context is None:
             return None
         try:
-            llm_classify = default_llm_classify if is_llm_fallback_enabled() else None
-            result = await classify_intent(message, context=context, trace_id=trace_id, llm_classify=llm_classify)
+            # No separate LLM classification call — the fast rule layers in
+            # app/conversation/intent/rules.py cover the deterministic cases
+            # (navigation, digits, workflow context) essentially for free,
+            # and anything they don't recognize now falls straight through
+            # to the single LLM+tools agent call below (see the
+            # CLARIFICATION_REQUIRED/"unknown" handling further down this
+            # module) instead of paying for a whole extra classify
+            # round-trip first. default_llm_classify remains available in
+            # app/conversation/intent/classifier.py for a caller that wants
+            # it, just not wired in here anymore.
+            result = await classify_intent(message, context=context, trace_id=trace_id, llm_classify=None)
             context.last_intent = result.intent
             context.intent_confidence = result.confidence
             logger.info(
@@ -726,8 +771,14 @@ class ConversationManager:
         # only Redis stores it, under the same TTL/retention as before.
         # Both halves of the turn are appended in one read-modify-write
         # (append_turn_to_session) instead of two independent GET+SET
-        # round-trips.
-        await asyncio.to_thread(append_turn_to_session, phone_number, query, structured.text[:500])
-        await asyncio.to_thread(self._persist, context, phone_number, trace_id, structured.text)
+        # round-trips. This write and _persist() touch different stores
+        # (session history vs. workflow/context state) with no shared
+        # data, and this all runs BEFORE the reply is sent to the customer
+        # — so running them concurrently instead of one-after-another
+        # shaves real tail latency off every single turn.
+        await asyncio.gather(
+            asyncio.to_thread(append_turn_to_session, phone_number, query, structured.text[:500]),
+            asyncio.to_thread(self._persist, context, phone_number, trace_id, structured.text),
+        )
         logger.info(f"[{trace_id}] conversation.turn.completed | phone={phone_number[-4:]}")
         return structured if was_structured else structured.text

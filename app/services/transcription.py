@@ -2,7 +2,6 @@ import asyncio
 import os
 import time
 import tempfile
-import httpx
 from app.services.sarvam_client import get_sarvam_client
 from dotenv import load_dotenv
 from app.logger import get_logger
@@ -12,26 +11,6 @@ load_dotenv()
 logger = get_logger(__name__)
 
 STT_MODEL = os.getenv("SARVAM_STT", "saaras:v3")
-
-
-async def download_audio(media_url: str, api_key: str, trace_id: str) -> bytes | None:
-    """Download audio file from OpenWA media URL."""
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                media_url,
-                headers={"X-API-Key": api_key},
-                timeout=30.0
-            )
-            if response.status_code == 200:
-                logger.info(f"[{trace_id}] Audio downloaded | size={len(response.content)} bytes")
-                return response.content
-            else:
-                logger.error(f"[{trace_id}] Audio download failed | status={response.status_code}")
-                return None
-    except Exception as e:
-        logger.error(f"[{trace_id}] Audio download error | error={e}")
-        return None
 
 
 async def transcribe_audio(audio_data: bytes, trace_id: str) -> tuple[str | None, str | None]:

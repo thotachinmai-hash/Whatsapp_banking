@@ -1,7 +1,9 @@
 import os
+import time
 import httpx
 from dotenv import load_dotenv
 from app.logger import get_logger
+from app.metrics import log_media_upload
 
 load_dotenv()
 logger = get_logger(__name__)
@@ -279,6 +281,7 @@ async def send_voice_message(chat_id: str, audio_bytes: bytes, mimetype: str, tr
     """
     upload_url = f"{GRAPH_API_BASE}/{PHONE_NUMBER_ID}/media"
     send_url = f"{GRAPH_API_BASE}/{PHONE_NUMBER_ID}/messages"
+    start = time.time()
 
     try:
         client = get_whatsapp_client()
@@ -295,11 +298,13 @@ async def send_voice_message(chat_id: str, audio_bytes: bytes, mimetype: str, tr
 
         if upload_resp.status_code not in (200, 201):
             logger.error(f"[{trace_id}] Media upload failed | status={upload_resp.status_code} | body={upload_resp.text[:200]}")
+            log_media_upload(False, (time.time() - start) * 1000, trace_id)
             return False
 
         media_id = upload_resp.json().get("id")
         if not media_id:
             logger.error(f"[{trace_id}] Media upload returned no id | body={upload_resp.text[:200]}")
+            log_media_upload(False, (time.time() - start) * 1000, trace_id)
             return False
 
         # Send audio message referencing uploaded media id
@@ -318,15 +323,20 @@ async def send_voice_message(chat_id: str, audio_bytes: bytes, mimetype: str, tr
             timeout=15.0,
         )
 
+        duration = (time.time() - start) * 1000
         if resp.status_code in (200, 201):
-            logger.info(f"[{trace_id}] Voice message sent | to={chat_id[-4:]}")
+            logger.info(f"[{trace_id}] Voice message sent | to={chat_id[-4:]} | duration={duration:.2f}ms")
+            log_media_upload(True, duration, trace_id)
             return True
 
         logger.error(f"[{trace_id}] Voice message send failed | status={resp.status_code} | body={resp.text[:200]}")
+        log_media_upload(False, duration, trace_id)
         return False
 
     except Exception as e:
+        duration = (time.time() - start) * 1000
         logger.error(f"[{trace_id}] send_voice_message error | error={e}")
+        log_media_upload(False, duration, trace_id)
         return False
 
 
@@ -414,7 +424,25 @@ def detect_message_type(payload: dict) -> str:
         return "document"
     if msg_type == "interactive":
         return "interactive"
+    # Defensive fallback for a missing/unrecognized `type` field on an
+    # embedded-media payload (see get_media_data) -- the mimetype itself
+    # is still a reliable signal this is a voice note even when `type`
+    # isn't, so don't drop it as unsupported.
+    mimetype = str(payload.get("media", {}).get("mimetype", ""))
+    if mimetype.startswith("audio/"):
+        return "voice"
     return "unsupported"
+
+
+def get_external_message_id(message: dict) -> str:
+    """The Cloud API message `id` (e.g. "wamid.XXXX...") used as the
+    idempotency/dedup key in app/main.py — a plain, always-flat string
+    field on the message object. Falls back to `message_id` (never
+    actually seen from the Cloud API in practice, but a harmless extra
+    check), or "" if neither is present. Never derives an id from body
+    text — an id-less message must never silently collide with another
+    id-less message that happens to have the same content."""
+    return message.get("id") or message.get("message_id") or ""
 
 
 def get_message_text(payload: dict) -> str:

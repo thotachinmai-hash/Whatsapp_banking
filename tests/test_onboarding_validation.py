@@ -125,7 +125,11 @@ class OnboardingValidationTests(unittest.TestCase):
             result = self.handler.handle(workflow, "911111111111", "please stop")
 
         self.assertTrue(result["handled"])
-        self.assertIn("stopped", result["response"].lower())
+        # Rewritten to a warmer goodbye ("Thank you for visiting...No
+        # problem at all...") instead of a blunt "stopped" confirmation --
+        # matches this app's friendlier-tone convention (see
+        # app/agent/agent.py's system prompt).
+        self.assertIn("no problem", result["response"].lower())
         mock_complete.assert_called_once_with("911111111111")
 
 
@@ -174,13 +178,16 @@ class OnboardingStartsAtAadhaarTests(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_initial_no_declines_registration(self):
+        # complete_workflow is intentionally NOT mocked here (unlike the
+        # class-level default elsewhere in this file) -- this test wants
+        # to observe its REAL effect (the workflow actually being cleared
+        # from storage) via get_workflow(), which a mock would prevent by
+        # design.
         workflow = create_workflow_model(WORKFLOW_ONBOARDING, STEP_COLLECT_AADHAAR)
         create_workflow(self.phone, workflow)
 
-        with patch("app.workflows.processors.onboarding.complete_workflow") as mock_complete:
-            result = self.handler.handle({"step": STEP_COLLECT_AADHAAR}, self.phone, "no", None, "t3")
+        result = self.handler.handle({"step": STEP_COLLECT_AADHAAR}, self.phone, "no", None, "t3")
 
         self.assertTrue(result["handled"])
         self.assertEqual(result["response"], "We are not proceeding with your registration but you can still chat with us.")
-        mock_complete.assert_called_once_with(self.phone)
         self.assertIsNone(get_workflow(self.phone))

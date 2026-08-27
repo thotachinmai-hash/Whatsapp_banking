@@ -7,7 +7,7 @@ import unittest
 from unittest.mock import patch
 
 from app.conversation.renderer import as_structured_response
-from app.workflows.constants import STEP_SELECT_LOAN_TYPE, STEP_UPLOAD_LOAN_FORM
+from app.workflows.constants import STEP_CONFIRM_LOAN_ACCOUNT, STEP_SELECT_LOAN_TYPE
 from app.workflows.memory import create_workflow, create_workflow_model, get_workflow
 from app.workflows.processors.loan import LoanWorkflowHandler
 
@@ -62,7 +62,13 @@ class LoanPendingDocumentTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(result["handled"])
         stored = get_workflow("441111111111")
-        self.assertEqual(stored["step"], STEP_UPLOAD_LOAN_FORM)
+        # A single linked account now gets a confirm-before-assuming offer
+        # (see loan.py::_offer_account_confirmation, same
+        # frequently-used-account UX as the transfer workflow) before
+        # landing on UPLOAD_LOAN_FORM -- not a regression in the pending-
+        # document handling this test actually covers, just a later step
+        # in the chain than there used to be.
+        self.assertEqual(stored["step"], STEP_CONFIRM_LOAN_ACCOUNT)
         self.assertEqual(stored["data"]["applicant_name"], "Jane Doe")
         self.assertEqual(stored["data"]["loan_type"], "home")
         self.assertNotIn("pending_document_content", stored["data"])
@@ -86,7 +92,8 @@ class LoanPendingDocumentTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(result["handled"])
         stored = get_workflow("441111111111")
-        self.assertEqual(stored["step"], STEP_UPLOAD_LOAN_FORM)
+        # Same frequently-used-account confirmation offer as above.
+        self.assertEqual(stored["step"], STEP_CONFIRM_LOAN_ACCOUNT)
         self.assertEqual(stored["data"]["loan_type"], "vehicle")
 
 

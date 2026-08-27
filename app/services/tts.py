@@ -12,6 +12,7 @@ import time
 from dotenv import load_dotenv
 
 from app.logger import get_logger
+from app.metrics import log_tts
 from app.services.sarvam_client import get_sarvam_client
 
 load_dotenv()
@@ -102,6 +103,7 @@ async def synthesize_speech(
 
         duration = (time.time() - start) * 1000
         logger.info(f"[{trace_id}] TTS synthesis complete | bytes={len(wav_bytes)} | duration={duration:.2f}ms")
+        log_tts(True, duration, trace_id)
         return wav_bytes
 
     except Exception as e:
@@ -113,8 +115,10 @@ async def synthesize_speech(
                 f"[{trace_id}] TTS quota exceeded — pausing voice replies for "
                 f"{_QUOTA_COOLDOWN_SECONDS:.0f}s | error={e}"
             )
+            log_tts(False, duration, trace_id)
             return None
         logger.error(f"[{trace_id}] TTS synthesis failed | error={e} | duration={duration:.2f}ms")
+        log_tts(False, duration, trace_id)
         return None
 
 

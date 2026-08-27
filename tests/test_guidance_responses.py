@@ -295,7 +295,7 @@ class ConversationManagerGuidanceIntegrationTests(unittest.IsolatedAsyncioTestCa
         with _patches(context)[0], _patches(context)[1], _patches(context)[2], _patches(context)[3], \
              patch.object(manager.context_store, "save", return_value=True), \
              patch("app.conversation.manager.start_workflow_directly") as mock_start:
-            response = await manager.handle_message(
+            await manager.handle_message(
                 "441111111111", "Back", "t13", llm_fallback=_fake_llm_fallback
             )
 
