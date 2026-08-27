@@ -45,6 +45,14 @@ class SendTextMessageTests(unittest.IsolatedAsyncioTestCase):
         self._token_patcher.start()
         self.addCleanup(self._token_patcher.stop)
         _TrackingAsyncClient.last_request = None
+        # whatsapp.py now reuses one shared client across calls (see
+        # get_whatsapp_client()) instead of constructing httpx.AsyncClient()
+        # fresh per send — reset the cached instance so each test's
+        # httpx.AsyncClient patch actually takes effect instead of an
+        # earlier test's cached client (built under a different patch)
+        # sticking around.
+        whatsapp._client = None
+        self.addCleanup(setattr, whatsapp, "_client", None)
 
     async def test_send_text_message_uses_full_chat_id_for_numeric_phone(self):
         result = await whatsapp.send_text_message("910000000000", "Hello", "trace-1")

@@ -20,6 +20,7 @@ from app.services.whatsapp import (
     get_media_filename,
     get_media_mimetype,
     download_whatsapp_media,
+    close_whatsapp_client,
 )
 from app.services import idempotency
 from app.conversation.renderer import render_and_send
@@ -64,6 +65,12 @@ app.add_middleware(
 
 
 app.include_router(router, prefix="/api")
+
+
+@app.on_event("shutdown")
+async def _shutdown() -> None:
+    """Release the shared WhatsApp HTTP client's connection pool cleanly."""
+    await close_whatsapp_client()
 
 
 # ── agent endpoint ──────────────────────────────────────────────

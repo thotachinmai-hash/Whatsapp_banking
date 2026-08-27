@@ -11,26 +11,49 @@ PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID", "")
 GRAPH_API_VERSION = os.getenv("GRAPH_API_VERSION", "v25.0")
 GRAPH_API_BASE = f"https://graph.facebook.com/{GRAPH_API_VERSION}"
 
+# Single shared client, reused across every call in this module instead of
+# opening a new httpx.AsyncClient() (and paying a fresh TCP+TLS handshake to
+# graph.facebook.com) on every single send. Real Render logs showed a
+# consistent ~650-800ms gap on turns where the agent itself took <50ms —
+# this is the fix for that. Per-call timeouts are still passed explicitly
+# to each request below, overriding this client-level default.
+_client: httpx.AsyncClient | None = None
+
+
+def get_whatsapp_client() -> httpx.AsyncClient:
+    global _client
+    if _client is None:
+        _client = httpx.AsyncClient(timeout=15.0)
+    return _client
+
+
+async def close_whatsapp_client() -> None:
+    """Release the shared client's connection pool on app shutdown."""
+    global _client
+    if _client is not None:
+        await _client.aclose()
+        _client = None
+
 
 async def send_text_message(phone_number: str, message: str, trace_id: str) -> bool:
     url = f"{GRAPH_API_BASE}/{PHONE_NUMBER_ID}/messages"
 
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                url,
-                headers={
-                    "Authorization": f"Bearer {ACCESS_TOKEN}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "messaging_product": "whatsapp",
-                    "to": phone_number,
-                    "type": "text",
-                    "text": {"body": message}
-                },
-                timeout=15.0
-            )
+        client = get_whatsapp_client()
+        response = await client.post(
+            url,
+            headers={
+                "Authorization": f"Bearer {ACCESS_TOKEN}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "messaging_product": "whatsapp",
+                "to": phone_number,
+                "type": "text",
+                "text": {"body": message}
+            },
+            timeout=15.0
+        )
 
         if response.status_code in [200, 201]:
             logger.info(f"[{trace_id}] WhatsApp message sent | phone={phone_number[-4:]}")
@@ -70,13 +93,13 @@ async def send_button_message(phone_number: str, body_text: str, buttons: list[d
         },
     }
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                url,
-                headers={"Authorization": f"Bearer {ACCESS_TOKEN}", "Content-Type": "application/json"},
-                json=payload,
-                timeout=15.0,
-            )
+        client = get_whatsapp_client()
+        response = await client.post(
+            url,
+            headers={"Authorization": f"Bearer {ACCESS_TOKEN}", "Content-Type": "application/json"},
+            json=payload,
+            timeout=15.0,
+        )
 
         if response.status_code in [200, 201]:
             logger.info(f"[{trace_id}] WhatsApp button message sent | phone={phone_number[-4:]}")
@@ -130,13 +153,13 @@ async def send_list_message(
         },
     }
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                url,
-                headers={"Authorization": f"Bearer {ACCESS_TOKEN}", "Content-Type": "application/json"},
-                json=payload,
-                timeout=15.0,
-            )
+        client = get_whatsapp_client()
+        response = await client.post(
+            url,
+            headers={"Authorization": f"Bearer {ACCESS_TOKEN}", "Content-Type": "application/json"},
+            json=payload,
+            timeout=15.0,
+        )
 
         if response.status_code in [200, 201]:
             logger.info(f"[{trace_id}] WhatsApp list message sent | phone={phone_number[-4:]}")
@@ -171,13 +194,13 @@ def get_interactive_reply(payload: dict) -> dict | None:
 async def get_media_url(media_id: str, trace_id: str) -> str | None:
     url = f"{GRAPH_API_BASE}/{media_id}"
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                url,
-                headers={"Authorization": f"Bearer {ACCESS_TOKEN}"},
-                params={"fields": "url"},
-                timeout=15.0
-            )
+        client = get_whatsapp_client()
+        response = await client.get(
+            url,
+            headers={"Authorization": f"Bearer {ACCESS_TOKEN}"},
+            params={"fields": "url"},
+            timeout=15.0
+        )
 
         if response.status_code != 200:
             logger.error(
@@ -198,12 +221,12 @@ async def download_whatsapp_media(media_id: str, trace_id: str) -> tuple[bytes |
         return None, ""
 
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                media_url,
-                headers={"Authorization": f"Bearer {ACCESS_TOKEN}"},
-                timeout=60.0
-            )
+        client = get_whatsapp_client()
+        response = await client.get(
+            media_url,
+            headers={"Authorization": f"Bearer {ACCESS_TOKEN}"},
+            timeout=60.0
+        )
 
         if response.status_code != 200:
             logger.error(
@@ -258,17 +281,17 @@ async def send_voice_message(chat_id: str, audio_bytes: bytes, mimetype: str, tr
     send_url = f"{GRAPH_API_BASE}/{PHONE_NUMBER_ID}/messages"
 
     try:
-        async with httpx.AsyncClient() as client:
-            # Upload media as multipart/form-data
-            files = {"file": ("audio.webm", audio_bytes, mimetype)}
-            data = {"messaging_product": "whatsapp"}
-            upload_resp = await client.post(
-                upload_url,
-                headers={"Authorization": f"Bearer {ACCESS_TOKEN}"},
-                data=data,
-                files=files,
-                timeout=30.0,
-            )
+        client = get_whatsapp_client()
+        # Upload media as multipart/form-data
+        files = {"file": ("audio.webm", audio_bytes, mimetype)}
+        data = {"messaging_product": "whatsapp"}
+        upload_resp = await client.post(
+            upload_url,
+            headers={"Authorization": f"Bearer {ACCESS_TOKEN}"},
+            data=data,
+            files=files,
+            timeout=30.0,
+        )
 
         if upload_resp.status_code not in (200, 201):
             logger.error(f"[{trace_id}] Media upload failed | status={upload_resp.status_code} | body={upload_resp.text[:200]}")
@@ -280,21 +303,20 @@ async def send_voice_message(chat_id: str, audio_bytes: bytes, mimetype: str, tr
             return False
 
         # Send audio message referencing uploaded media id
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                send_url,
-                headers={
-                    "Authorization": f"Bearer {ACCESS_TOKEN}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "messaging_product": "whatsapp",
-                    "to": chat_id,
-                    "type": "audio",
-                    "audio": {"id": media_id},
-                },
-                timeout=15.0,
-            )
+        resp = await client.post(
+            send_url,
+            headers={
+                "Authorization": f"Bearer {ACCESS_TOKEN}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "messaging_product": "whatsapp",
+                "to": chat_id,
+                "type": "audio",
+                "audio": {"id": media_id},
+            },
+            timeout=15.0,
+        )
 
         if resp.status_code in (200, 201):
             logger.info(f"[{trace_id}] Voice message sent | to={chat_id[-4:]}")
@@ -318,16 +340,16 @@ async def send_document_message(chat_id: str, file_bytes: bytes, filename: str, 
     send_url = f"{GRAPH_API_BASE}/{PHONE_NUMBER_ID}/messages"
 
     try:
-        async with httpx.AsyncClient() as client:
-            files = {"file": (filename, file_bytes, "application/pdf")}
-            data = {"messaging_product": "whatsapp"}
-            upload_resp = await client.post(
-                upload_url,
-                headers={"Authorization": f"Bearer {ACCESS_TOKEN}"},
-                data=data,
-                files=files,
-                timeout=30.0,
-            )
+        client = get_whatsapp_client()
+        files = {"file": (filename, file_bytes, "application/pdf")}
+        data = {"messaging_product": "whatsapp"}
+        upload_resp = await client.post(
+            upload_url,
+            headers={"Authorization": f"Bearer {ACCESS_TOKEN}"},
+            data=data,
+            files=files,
+            timeout=30.0,
+        )
 
         if upload_resp.status_code not in (200, 201):
             logger.error(f"[{trace_id}] Document upload failed | status={upload_resp.status_code} | body={upload_resp.text[:200]}")
@@ -338,21 +360,20 @@ async def send_document_message(chat_id: str, file_bytes: bytes, filename: str, 
             logger.error(f"[{trace_id}] Document upload returned no id | body={upload_resp.text[:200]}")
             return False
 
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                send_url,
-                headers={
-                    "Authorization": f"Bearer {ACCESS_TOKEN}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "messaging_product": "whatsapp",
-                    "to": chat_id,
-                    "type": "document",
-                    "document": {"id": media_id, "filename": filename, "caption": caption},
-                },
-                timeout=15.0,
-            )
+        resp = await client.post(
+            send_url,
+            headers={
+                "Authorization": f"Bearer {ACCESS_TOKEN}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "messaging_product": "whatsapp",
+                "to": chat_id,
+                "type": "document",
+                "document": {"id": media_id, "filename": filename, "caption": caption},
+            },
+            timeout=15.0,
+        )
 
         if resp.status_code in (200, 201):
             logger.info(f"[{trace_id}] Document message sent | to={chat_id[-4:]} | filename={filename}")
