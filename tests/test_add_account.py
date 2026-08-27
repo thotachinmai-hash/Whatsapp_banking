@@ -7,7 +7,6 @@ _handle_collect_aadhaar/_handle_collect_pan/_handle_confirm_registration/
 _handle_select_account_type) and app/workflows/manager.py (menu row "8"),
 app/conversation/workflow_adapter.py (natural-language trigger)."""
 
-import asyncio
 import unittest
 from unittest.mock import patch
 

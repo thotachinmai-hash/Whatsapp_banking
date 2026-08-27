@@ -21,7 +21,6 @@ import re
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from app.logger import get_logger
 

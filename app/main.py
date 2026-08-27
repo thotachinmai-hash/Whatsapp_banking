@@ -1,6 +1,7 @@
 import time
 import uuid
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,12 +15,10 @@ from app.metrics import get_metrics
 from app.services.message_handler import handle_incoming_message
 from app.services.document_parser import parse_document
 from app.services.whatsapp import (
-    extract_phone_number,
     get_media_id,
     get_message_text,
     get_media_filename,
     get_media_mimetype,
-    download_whatsapp_media,
     close_whatsapp_client,
 )
 from app.services import idempotency
@@ -47,10 +46,28 @@ def _redact_media_for_log(value):
     return safe
 
 
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    from app.database import ensure_all_tables, close_db_pool
+
+    # Startup: run the ensure_*_table() migrations once here instead of on
+    # every loan/KYC/beneficiary/transfer request (see app/database.py's
+    # ensure_all_tables()).
+    ensure_all_tables()
+
+    yield
+
+    # Shutdown: release the shared WhatsApp HTTP client and DB connection
+    # pool cleanly.
+    await close_whatsapp_client()
+    close_db_pool()
+
+
 app = FastAPI(
     title="Finacle Banking WhatsApp Assistant",
     description="AI-powered banking assistant via WhatsApp — accepts voice and text messages",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=_lifespan,
 )
 
 
@@ -65,25 +82,6 @@ app.add_middleware(
 
 
 app.include_router(router, prefix="/api")
-
-
-@app.on_event("startup")
-async def _startup() -> None:
-    """Run the ensure_*_table() migrations once here instead of on every
-    loan/KYC/beneficiary/transfer request (see app/database.py's
-    ensure_all_tables())."""
-    from app.database import ensure_all_tables
-
-    ensure_all_tables()
-
-
-@app.on_event("shutdown")
-async def _shutdown() -> None:
-    """Release the shared WhatsApp HTTP client and DB connection pool cleanly."""
-    from app.database import close_db_pool
-
-    await close_whatsapp_client()
-    close_db_pool()
 
 
 # ── agent endpoint ──────────────────────────────────────────────

@@ -8,7 +8,7 @@ workflow state — see app/conversation/intent/classifier.py for the
 enforcement of that boundary.
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 

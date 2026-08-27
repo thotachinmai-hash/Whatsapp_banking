@@ -23,10 +23,10 @@ from app.services.whatsapp import (
 from app.conversation.renderer import ResponseKind, as_structured_response, render_and_send, spoken_choices_hint
 from app.conversation.responses.loan import render_loan_menu
 from app.services.language import translate_text
-from app.services.transcription import download_audio, transcribe_audio
+from app.services.transcription import transcribe_audio
 from app.services.tts import synthesize_voice_note
 from app.services.whatsapp import send_voice_message, send_document_message
-from app.services.document_parser import GENERIC_DOCUMENT_SCHEMA, download_document, parse_document
+from app.services.document_parser import GENERIC_DOCUMENT_SCHEMA, parse_document
 from app.workflows.constants import (
     STEP_COLLECT_AADHAAR,
     STEP_COLLECT_PAN,
@@ -44,7 +44,6 @@ from app.workflows.processors.kyc import KYCWorkflowHandler
 from app.database import get_customer_by_phone
 from app.agent.agent import run_agent
 from app.conversation.responses import errors as error_templates
-import os
 import base64
 
 logger = get_logger(__name__)
