@@ -116,7 +116,7 @@ class OnboardingStartsAtAadhaarTests(unittest.IsolatedAsyncioTestCase):
         patcher = patch("app.workflows.memory.redis_client", self.fake_redis)
         patcher.start()
         self.addCleanup(patcher.stop)
-        self.phone = "447700900120"
+        self.phone = "441111111111"
         self.handler = OnboardingWorkflowHandler()
 
     async def test_aadhaar_upload_derives_full_name_with_no_prior_name_step(self):
