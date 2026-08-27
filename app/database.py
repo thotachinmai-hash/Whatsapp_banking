@@ -17,7 +17,7 @@ def normalize_phone_number(phone_number: str | None) -> str:
     """Normalize WhatsApp-style phone forms to the canonical digits-only
     format used in the bank database.
 
-    This handles values such as "+91 98765 43210", "911111111111",
+    This handles values such as "+91 11111 11111", "911111111111",
     "447818658034", and numbers with leading zeros or formatting noise.
     """
     if phone_number is None:
