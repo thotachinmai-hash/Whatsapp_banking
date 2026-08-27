@@ -1,3 +1,4 @@
+import asyncio
 import os
 import time
 import tempfile
@@ -66,7 +67,14 @@ async def transcribe_audio(audio_data: bytes, trace_id: str) -> tuple[str | None
             # was also simply more accurate in testing, not just
             # differently-scripted — no observed downside for pure-English
             # or pure-native-language speech.
-            transcription = get_sarvam_client().speech_to_text.transcribe(
+            # get_sarvam_client().speech_to_text.transcribe(...) is a
+            # synchronous SDK call — run it in a thread (same pattern
+            # app/services/tts.py already uses for its Sarvam call)
+            # instead of blocking the event loop for the whole STT
+            # round-trip, which would otherwise freeze every other
+            # concurrent request while this one transcribes.
+            transcription = await asyncio.to_thread(
+                get_sarvam_client().speech_to_text.transcribe,
                 file=audio_file,
                 model=STT_MODEL,
                 mode="codemix",
