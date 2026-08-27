@@ -30,9 +30,9 @@ class _FakeRedis:
 
 class ConversationContextModelTests(unittest.TestCase):
     def test_new_context_creation_has_expected_defaults(self) -> None:
-        context = ConversationContext(phone_number="447000000000")
+        context = ConversationContext(phone_number="441111111111")
 
-        self.assertEqual(context.phone_number, "447000000000")
+        self.assertEqual(context.phone_number, "441111111111")
         self.assertIsNone(context.customer_id)
         self.assertFalse(context.is_registered)
         self.assertIsNone(context.current_workflow)
@@ -45,7 +45,7 @@ class ConversationContextModelTests(unittest.TestCase):
 
     def test_sensitive_fields_not_included_in_serialized_context(self) -> None:
         context = ConversationContext(
-            phone_number="447000000000",
+            phone_number="441111111111",
             workflow_data={"full_name": "John Smith", "loan_type": "personal"},
         )
         serialized = context.model_dump_json()
@@ -69,46 +69,46 @@ class ConversationContextStoreTests(unittest.TestCase):
         self.store = ConversationContextStore()
 
     def test_save_and_retrieval_round_trips(self) -> None:
-        context = ConversationContext(phone_number="447111111111", last_intent="check_balance")
+        context = ConversationContext(phone_number="441111111111", last_intent="check_balance")
 
         self.assertTrue(self.store.save(context))
-        loaded = self.store.get("447111111111")
+        loaded = self.store.get("441111111111")
 
         self.assertIsNotNone(loaded)
-        self.assertEqual(loaded.phone_number, "447111111111")
+        self.assertEqual(loaded.phone_number, "441111111111")
         self.assertEqual(loaded.last_intent, "check_balance")
 
     def test_update_merges_fields_into_existing_context(self) -> None:
-        context = ConversationContext(phone_number="447222222222")
+        context = ConversationContext(phone_number="441111111111")
         self.store.save(context)
 
-        updated = self.store.update("447222222222", last_intent="transfer_money", retry_count=2)
+        updated = self.store.update("441111111111", last_intent="transfer_money", retry_count=2)
 
         self.assertIsNotNone(updated)
         self.assertEqual(updated.last_intent, "transfer_money")
         self.assertEqual(updated.retry_count, 2)
 
-        reloaded = self.store.get("447222222222")
+        reloaded = self.store.get("441111111111")
         self.assertEqual(reloaded.last_intent, "transfer_money")
         self.assertEqual(reloaded.retry_count, 2)
 
     def test_update_with_no_existing_context_is_a_safe_noop(self) -> None:
-        result = self.store.update("447000000099", last_intent="check_balance")
+        result = self.store.update("441111111111", last_intent="check_balance")
         self.assertIsNone(result)
 
     def test_clear_removes_context(self) -> None:
-        context = ConversationContext(phone_number="447333333333")
+        context = ConversationContext(phone_number="441111111111")
         self.store.save(context)
-        self.assertTrue(self.store.exists("447333333333"))
+        self.assertTrue(self.store.exists("441111111111"))
 
-        self.store.clear("447333333333")
+        self.store.clear("441111111111")
 
-        self.assertIsNone(self.store.get("447333333333"))
-        self.assertFalse(self.store.exists("447333333333"))
+        self.assertIsNone(self.store.get("441111111111"))
+        self.assertFalse(self.store.exists("441111111111"))
 
     def test_missing_or_expired_context_returns_none(self) -> None:
-        self.assertIsNone(self.store.get("447999999999"))
-        self.assertFalse(self.store.exists("447999999999"))
+        self.assertIsNone(self.store.get("441111111111"))
+        self.assertFalse(self.store.exists("441111111111"))
 
 
 class BuildContextTests(unittest.TestCase):
@@ -125,7 +125,7 @@ class BuildContextTests(unittest.TestCase):
         mock_get_customer.return_value = {"id": 1, "full_name": "John Smith"}
         mock_get_workflow.return_value = None
 
-        context = build_context("447000000001")
+        context = build_context("441111111111")
 
         self.assertTrue(context.is_registered)
         self.assertIsNone(context.current_workflow)
@@ -149,7 +149,7 @@ class BuildContextTests(unittest.TestCase):
             },
         }
 
-        context = build_context("447000000002")
+        context = build_context("441111111111")
 
         self.assertEqual(context.current_workflow, "onboarding")
         self.assertEqual(context.current_step, "CONFIRM_REGISTRATION")
@@ -175,7 +175,7 @@ class BuildContextTests(unittest.TestCase):
             },
         }
 
-        context = build_context("447000000003")
+        context = build_context("441111111111")
 
         self.assertEqual(context.current_workflow, "transfer")
         self.assertEqual(context.workflow_data.get("beneficiary_name"), "Priya Sharma")
@@ -194,7 +194,7 @@ class BuildContextTests(unittest.TestCase):
             "data": {},
         }
 
-        context = build_context("447000000004")
+        context = build_context("441111111111")
 
         self.assertEqual(context.current_workflow, "cheque")
         self.assertEqual(context.current_step, "UPLOAD_CHEQUE")
@@ -216,7 +216,7 @@ class BuildContextTests(unittest.TestCase):
             },
         }
 
-        context = build_context("447000000005")
+        context = build_context("441111111111")
 
         self.assertEqual(context.current_workflow, "loan")
         self.assertEqual(context.workflow_data.get("monthly_income"), "3000")
@@ -240,7 +240,7 @@ class BuildContextTests(unittest.TestCase):
             },
         }
 
-        context = build_context("447000000006")
+        context = build_context("441111111111")
 
         self.assertEqual(context.current_workflow, "kyc")
         self.assertEqual(context.workflow_data.get("address"), "1 Test Street")
@@ -256,14 +256,14 @@ class BuildContextTests(unittest.TestCase):
 
         # First turn: customer is confirmed registered and persisted.
         mock_get_customer.return_value = {"id": 7, "full_name": "John Smith"}
-        first = build_context("447000000007")
+        first = build_context("441111111111")
         self.assertTrue(first.is_registered)
         self.store.save(first)
 
         # Second turn: the DB lookup blows up. Registration must NOT flip
         # to False just because the lookup failed this time.
         mock_get_customer.side_effect = Exception("connection reset")
-        second = build_context("447000000007")
+        second = build_context("441111111111")
 
         self.assertTrue(second.is_registered)
 
@@ -275,7 +275,7 @@ class BuildContextTests(unittest.TestCase):
         mock_get_workflow.return_value = None
         mock_get_customer.side_effect = Exception("connection reset")
 
-        context = build_context("447000000008")
+        context = build_context("441111111111")
 
         # No prior knowledge to fall back on — defaults to an unregistered
         # state, but the failure (not a confirmed "unregistered" fact) is

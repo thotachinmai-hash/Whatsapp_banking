@@ -4756,14 +4756,14 @@ LINE 5:      AND created_at >= '1 month ago' AND created_at <= 'toda...
 2026-08-10 10:07:08 | INFO | app.main | data={'id': 'false_33741984534700@lid_3B0648DA627467E6E170', 'from': '33741984534700@lid', 'to': '911111111111@c.us', 'chatId': '33741984534700@lid', 'body': 'https://www.postgresql.org/about/news/pgvector-070-released-2852/', 'type': 'text', 'timestamp': 1786356427, 'fromMe': False, 'isGroup': False, 'kind': 'individual', 'isStatusBroadcast': False, 'isLidSender': True, 'contact': {'pushName': '.', 'name': 'Dinny'}}
 2026-08-10 10:07:08 | INFO | app.main | [80924d0f] message.idempotency.claimed | external_message_id=false_33741984534700@lid_3B0648DA627467E6E170
 2026-08-10 10:07:08 | INFO | app.services.whatsapp | Phone lookup status: 200
-2026-08-10 10:07:08 | INFO | app.services.whatsapp | Phone lookup body: {"contactId":"33741984534700@lid","phone":"447818658034"}
+2026-08-10 10:07:08 | INFO | app.services.whatsapp | Phone lookup body: {"contactId":"33741984534700@lid","phone":"441111111111"}
 2026-08-10 10:07:08 | INFO | app.main | Chat ID: 33741984534700@lid
-2026-08-10 10:07:08 | INFO | app.main | Resolved sender phone: 447818658034
-2026-08-10 10:07:08 | INFO | app.main | Processed message | phone=447818658034 | type=text
+2026-08-10 10:07:08 | INFO | app.main | Resolved sender phone: 441111111111
+2026-08-10 10:07:08 | INFO | app.main | Processed message | phone=441111111111 | type=text
 2026-08-10 10:07:08 | INFO | app.main | [80924d0f] message.processing.started | external_message_id=false_33741984534700@lid_3B0648DA627467E6E170
-2026-08-10 10:07:08 | INFO | app.services.message_handler | [a0a7d97e] Extracted phone number: 447818658034
+2026-08-10 10:07:08 | INFO | app.services.message_handler | [a0a7d97e] Extracted phone number: 441111111111
 2026-08-10 10:07:08 | INFO | app.services.message_handler | [a0a7d97e] Extracted to person: 911111111111@c.us
-2026-08-10 10:07:08 | INFO | app.services.message_handler | [a0a7d97e] Extracted from person: 447818658034
+2026-08-10 10:07:08 | INFO | app.services.message_handler | [a0a7d97e] Extracted from person: 441111111111
 2026-08-10 10:07:08 | INFO | app.services.message_handler | [a0a7d97e] Detected message type: text
 2026-08-10 10:07:08 | INFO | app.metrics | [a0a7d97e] METRIC | message_received | type=text
 2026-08-10 10:07:08 | INFO | app.services.message_handler | [a0a7d97e] Message received | phone=8034 | type=text
@@ -4776,7 +4776,7 @@ LINE 5:      AND created_at >= '1 month ago' AND created_at <= 'toda...
 2026-08-10 10:07:08 | INFO | app.database | Database connection established
 2026-08-10 10:07:08 | INFO | app.services.registration_gate | [a0a7d97e] Registration gate | greeting shown | phone=8034
 2026-08-10 10:07:08 | INFO | app.database | Database connection established
-2026-08-10 10:07:08 | INFO | app.memory | Session history retrieved | phone=447818658034 | messages=1
+2026-08-10 10:07:08 | INFO | app.memory | Session history retrieved | phone=441111111111 | messages=1
 2026-08-10 10:07:08 | INFO | app.conversation.manager | [a0a7d97e] conversation.turn.completed | phone=8034
 2026-08-10 10:07:08 | INFO | app.metrics | [a0a7d97e] METRIC | agent_call | success=True | duration=38.38ms | tools=[]
 2026-08-10 10:07:11 | INFO | app.main | [073f7105] webhook.received
@@ -7189,14 +7189,14 @@ Which account would you
 2026-08-10 12:12:35 | INFO | app.conversation.manager | [03dc57c4] conversation.turn.completed | phone=2909
 2026-08-10 12:12:35 | INFO | app.metrics | [03dc57c4] METRIC | agent_call | success=True | duration=30.51ms | tools=[]
 2026-08-10 12:12:35 | INFO | app.services.whatsapp | Phone lookup status: 200
-2026-08-10 12:12:35 | INFO | app.services.whatsapp | Phone lookup body: {"contactId":"33741984534700@lid","phone":"447818658034"}
+2026-08-10 12:12:35 | INFO | app.services.whatsapp | Phone lookup body: {"contactId":"33741984534700@lid","phone":"441111111111"}
 2026-08-10 12:12:35 | INFO | app.main | Chat ID: 33741984534700@lid
-2026-08-10 12:12:35 | INFO | app.main | Resolved sender phone: 447818658034
-2026-08-10 12:12:35 | INFO | app.main | Processed message | phone=447818658034 | type=text
+2026-08-10 12:12:35 | INFO | app.main | Resolved sender phone: 441111111111
+2026-08-10 12:12:35 | INFO | app.main | Processed message | phone=441111111111 | type=text
 2026-08-10 12:12:35 | INFO | app.main | [12b31f0a] message.processing.started | external_message_id=false_33741984534700@lid_3A35FC5DD0A07F9A1586
-2026-08-10 12:12:35 | INFO | app.services.message_handler | [496d92a0] Extracted phone number: 447818658034
+2026-08-10 12:12:35 | INFO | app.services.message_handler | [496d92a0] Extracted phone number: 441111111111
 2026-08-10 12:12:35 | INFO | app.services.message_handler | [496d92a0] Extracted to person: 911111111111@c.us
-2026-08-10 12:12:35 | INFO | app.services.message_handler | [496d92a0] Extracted from person: 447818658034
+2026-08-10 12:12:35 | INFO | app.services.message_handler | [496d92a0] Extracted from person: 441111111111
 2026-08-10 12:12:35 | INFO | app.services.message_handler | [496d92a0] Detected message type: text
 2026-08-10 12:12:35 | INFO | app.metrics | [496d92a0] METRIC | message_received | type=text
 2026-08-10 12:12:35 | INFO | app.services.message_handler | [496d92a0] Message received | phone=8034 | type=text
@@ -7209,7 +7209,7 @@ Which account would you
 2026-08-10 12:12:35 | INFO | app.database | Database connection established
 2026-08-10 12:12:35 | INFO | app.services.registration_gate | [496d92a0] Registration gate | greeting shown | phone=8034
 2026-08-10 12:12:35 | INFO | app.database | Database connection established
-2026-08-10 12:12:35 | INFO | app.memory | Session history retrieved | phone=447818658034 | messages=1
+2026-08-10 12:12:35 | INFO | app.memory | Session history retrieved | phone=441111111111 | messages=1
 2026-08-10 12:12:35 | INFO | app.conversation.manager | [496d92a0] conversation.turn.completed | phone=8034
 2026-08-10 12:12:35 | INFO | app.metrics | [496d92a0] METRIC | agent_call | success=True | duration=90.47ms | tools=[]
 2026-08-10 12:12:35 | ERROR | app.services.whatsapp | [8209861c] WhatsApp send failed | status=429 | body={"statusCode":429,"message":"ThrottlerException: Too Many Requests"}
