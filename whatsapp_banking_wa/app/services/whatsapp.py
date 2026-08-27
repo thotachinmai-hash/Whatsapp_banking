@@ -14,7 +14,7 @@ OPENWA_SESSION_ID = os.getenv("OPENWA_SESSION_ID")
 async def send_text_message(phone_number: str, message: str, trace_id: str) -> bool:
     """
     Send text message back to WhatsApp user via OpenWA API.
-    phone_number format: 447812345678 (without @c.us)
+    phone_number format: 441111111111 (without @c.us)
     """
     chat_id = phone_number
     url = f"{OPENWA_URL}/api/sessions/{OPENWA_SESSION_ID}/messages/send-text"
@@ -75,7 +75,7 @@ async def get_sender_phone(contact_id: str):
         return None
 
 def extract_phone_number(chat_id: str) -> str:
-    """Extract phone number from WhatsApp chat ID format: 447812345678@c.us"""
+    """Extract phone number from WhatsApp chat ID format: 441111111111@c.us"""
     return chat_id.replace("@c.us", "").replace("@g.us", "").replace("@lid", "")
 
 
