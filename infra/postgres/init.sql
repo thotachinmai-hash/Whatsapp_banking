@@ -145,9 +145,9 @@ INSERT INTO loan_products (loan_type, display_name, interest_rate_min, interest_
 
 -- Seed data — 3 test accounts
 INSERT INTO accounts (account_number, account_holder, phone_number, account_type, balance, currency) VALUES
-('FNCL000000000001', 'Aditya',  '919579145784', 'savings', 20000.00, 'INR'),
-('FNCL000000000002', 'Veena',   '917012821406', 'savings', 20000.00, 'INR'),
-('FNCL000000000003', 'Lavanya', '919384148239', 'savings', 20000.00, 'INR');
+('FNCL000000000001', 'Aditya',  '911111111111', 'savings', 20000.00, 'INR'),
+('FNCL000000000002', 'Veena',   '911111111111', 'savings', 20000.00, 'INR'),
+('FNCL000000000003', 'Lavanya', '911111111111', 'savings', 20000.00, 'INR');
 
 
 -- Registered customers — John Smith and Sarah Johnson are registered so the
@@ -156,61 +156,61 @@ INSERT INTO accounts (account_number, account_holder, phone_number, account_type
 -- Phone numbers here must match the accounts row above for each person —
 -- the registration gate and get_accounts_by_phone() both key off this
 -- number, so a mismatch makes a "registered" customer look unregistered.
-INSERT INTO customers (id, phone_number, full_name, aadhaar_number, pan_number, date_of_birth, guardian_name, address, status, created_at) VALUES (1, '919579145784', 'Aditya', '111122223333', 'ADITY1234A', '1995-05-15', 'Ramesh Kumar', 'Visakhapatnam, Andhra Pradesh, India', 'active', NOW()), (2, '917012821406', 'Veena', '222233334444', 'VEENA1234B', '1996-08-20', 'Suresh Kumar', 'Visakhapatnam, Andhra Pradesh, India', 'active', NOW()), (3, '919384148239', 'Lavanya', '333344445555', 'LAVAN1234C', '1997-11-10', 'Ravi Kumar', 'Visakhapatnam, Andhra Pradesh, India', 'active', NOW());
+INSERT INTO customers (id, phone_number, full_name, aadhaar_number, pan_number, date_of_birth, guardian_name, address, status, created_at) VALUES (1, '911111111111', 'Aditya', '111122223333', 'ADITY1234A', '1995-05-15', 'Ramesh Kumar', 'Visakhapatnam, Andhra Pradesh, India', 'active', NOW()), (2, '911111111111', 'Veena', '222233334444', 'VEENA1234B', '1996-08-20', 'Suresh Kumar', 'Visakhapatnam, Andhra Pradesh, India', 'active', NOW()), (3, '911111111111', 'Lavanya', '333344445555', 'LAVAN1234C', '1997-11-10', 'Ravi Kumar', 'Visakhapatnam, Andhra Pradesh, India', 'active', NOW());
 
 -- Aditya: 15 transactions, ending balance = 20,000.00
 INSERT INTO transactions (account_id, transaction_type, category, amount, description, reference, balance_after, created_at) VALUES
-((SELECT id FROM accounts WHERE phone_number = '919579145784'), 'credit', 'salary',      5000.00, 'Salary Credit',              'ADI-SAL-001', 25000.00, NOW() - INTERVAL '90 days'),
-((SELECT id FROM accounts WHERE phone_number = '919579145784'), 'debit',  'rent',        3000.00, 'House Rent',                  'ADI-REN-001', 22000.00, NOW() - INTERVAL '85 days'),
-((SELECT id FROM accounts WHERE phone_number = '919579145784'), 'debit',  'groceries',    850.00, 'Grocery Shopping',            'ADI-GRC-001', 21150.00, NOW() - INTERVAL '80 days'),
-((SELECT id FROM accounts WHERE phone_number = '919579145784'), 'credit', 'transfer',     1500.00, 'Transfer Received',           'ADI-TRF-001', 22650.00, NOW() - INTERVAL '75 days'),
-((SELECT id FROM accounts WHERE phone_number = '919579145784'), 'debit',  'bills',         650.00, 'Utility Bill Payment',        'ADI-BIL-001', 22000.00, NOW() - INTERVAL '70 days'),
-((SELECT id FROM accounts WHERE phone_number = '919579145784'), 'debit',  'shopping',      900.00, 'Online Shopping',             'ADI-SHP-001', 21100.00, NOW() - INTERVAL '65 days'),
-((SELECT id FROM accounts WHERE phone_number = '919579145784'), 'credit', 'salary',       5000.00, 'Salary Credit',              'ADI-SAL-002', 26100.00, NOW() - INTERVAL '60 days'),
-((SELECT id FROM accounts WHERE phone_number = '919579145784'), 'debit',  'rent',        3000.00, 'House Rent',                  'ADI-REN-002', 23100.00, NOW() - INTERVAL '55 days'),
-((SELECT id FROM accounts WHERE phone_number = '919579145784'), 'debit',  'transport',    700.00, 'Transport Expenses',          'ADI-TRN-001', 22400.00, NOW() - INTERVAL '50 days'),
-((SELECT id FROM accounts WHERE phone_number = '919579145784'), 'debit',  'groceries',   1100.00, 'Grocery Shopping',            'ADI-GRC-002', 21300.00, NOW() - INTERVAL '40 days'),
-((SELECT id FROM accounts WHERE phone_number = '919579145784'), 'credit', 'transfer',     800.00, 'Transfer Received',           'ADI-TRF-002', 22100.00, NOW() - INTERVAL '30 days'),
-((SELECT id FROM accounts WHERE phone_number = '919579145784'), 'debit',  'bills',         600.00, 'Utility Bill Payment',        'ADI-BIL-002', 21500.00, NOW() - INTERVAL '25 days'),
-((SELECT id FROM accounts WHERE phone_number = '919579145784'), 'debit',  'shopping',      750.00, 'Online Shopping',             'ADI-SHP-002', 20750.00, NOW() - INTERVAL '18 days'),
-((SELECT id FROM accounts WHERE phone_number = '919579145784'), 'credit', 'transfer',     1000.00, 'Transfer Received',           'ADI-TRF-003', 21750.00, NOW() - INTERVAL '10 days'),
-((SELECT id FROM accounts WHERE phone_number = '919579145784'), 'debit',  'other',        1750.00, 'Miscellaneous Payment',       'ADI-OTH-001', 20000.00, NOW() - INTERVAL '2 days');
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'credit', 'salary',      5000.00, 'Salary Credit',              'ADI-SAL-001', 25000.00, NOW() - INTERVAL '90 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'rent',        3000.00, 'House Rent',                  'ADI-REN-001', 22000.00, NOW() - INTERVAL '85 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'groceries',    850.00, 'Grocery Shopping',            'ADI-GRC-001', 21150.00, NOW() - INTERVAL '80 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'credit', 'transfer',     1500.00, 'Transfer Received',           'ADI-TRF-001', 22650.00, NOW() - INTERVAL '75 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'bills',         650.00, 'Utility Bill Payment',        'ADI-BIL-001', 22000.00, NOW() - INTERVAL '70 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'shopping',      900.00, 'Online Shopping',             'ADI-SHP-001', 21100.00, NOW() - INTERVAL '65 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'credit', 'salary',       5000.00, 'Salary Credit',              'ADI-SAL-002', 26100.00, NOW() - INTERVAL '60 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'rent',        3000.00, 'House Rent',                  'ADI-REN-002', 23100.00, NOW() - INTERVAL '55 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'transport',    700.00, 'Transport Expenses',          'ADI-TRN-001', 22400.00, NOW() - INTERVAL '50 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'groceries',   1100.00, 'Grocery Shopping',            'ADI-GRC-002', 21300.00, NOW() - INTERVAL '40 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'credit', 'transfer',     800.00, 'Transfer Received',           'ADI-TRF-002', 22100.00, NOW() - INTERVAL '30 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'bills',         600.00, 'Utility Bill Payment',        'ADI-BIL-002', 21500.00, NOW() - INTERVAL '25 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'shopping',      750.00, 'Online Shopping',             'ADI-SHP-002', 20750.00, NOW() - INTERVAL '18 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'credit', 'transfer',     1000.00, 'Transfer Received',           'ADI-TRF-003', 21750.00, NOW() - INTERVAL '10 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'other',        1750.00, 'Miscellaneous Payment',       'ADI-OTH-001', 20000.00, NOW() - INTERVAL '2 days');
 
 -- Veena: 15 transactions, ending balance = 20,000.00
 INSERT INTO transactions (account_id, transaction_type, category, amount, description, reference, balance_after, created_at) VALUES
-((SELECT id FROM accounts WHERE phone_number = '917012821406'), 'credit', 'salary',      6000.00, 'Salary Credit',              'VEE-SAL-001', 26000.00, NOW() - INTERVAL '90 days'),
-((SELECT id FROM accounts WHERE phone_number = '917012821406'), 'debit',  'rent',        3500.00, 'House Rent',                  'VEE-REN-001', 22500.00, NOW() - INTERVAL '85 days'),
-((SELECT id FROM accounts WHERE phone_number = '917012821406'), 'debit',  'groceries',   1000.00, 'Grocery Shopping',            'VEE-GRC-001', 21500.00, NOW() - INTERVAL '80 days'),
-((SELECT id FROM accounts WHERE phone_number = '917012821406'), 'credit', 'transfer',     2000.00, 'Transfer Received',           'VEE-TRF-001', 23500.00, NOW() - INTERVAL '75 days'),
-((SELECT id FROM accounts WHERE phone_number = '917012821406'), 'debit',  'bills',         800.00, 'Utility Bill Payment',        'VEE-BIL-001', 22700.00, NOW() - INTERVAL '70 days'),
-((SELECT id FROM accounts WHERE phone_number = '917012821406'), 'debit',  'shopping',     1200.00, 'Online Shopping',             'VEE-SHP-001', 21500.00, NOW() - INTERVAL '65 days'),
-((SELECT id FROM accounts WHERE phone_number = '917012821406'), 'credit', 'salary',      6000.00, 'Salary Credit',              'VEE-SAL-002', 27500.00, NOW() - INTERVAL '60 days'),
-((SELECT id FROM accounts WHERE phone_number = '917012821406'), 'debit',  'rent',        3500.00, 'House Rent',                  'VEE-REN-002', 24000.00, NOW() - INTERVAL '55 days'),
-((SELECT id FROM accounts WHERE phone_number = '917012821406'), 'debit',  'transport',    900.00, 'Transport Expenses',          'VEE-TRN-001', 23100.00, NOW() - INTERVAL '50 days'),
-((SELECT id FROM accounts WHERE phone_number = '917012821406'), 'debit',  'groceries',   1300.00, 'Grocery Shopping',            'VEE-GRC-002', 21800.00, NOW() - INTERVAL '40 days'),
-((SELECT id FROM accounts WHERE phone_number = '917012821406'), 'credit', 'transfer',     700.00, 'Transfer Received',           'VEE-TRF-002', 22500.00, NOW() - INTERVAL '30 days'),
-((SELECT id FROM accounts WHERE phone_number = '917012821406'), 'debit',  'bills',         500.00, 'Utility Bill Payment',        'VEE-BIL-002', 22000.00, NOW() - INTERVAL '25 days'),
-((SELECT id FROM accounts WHERE phone_number = '917012821406'), 'debit',  'shopping',     1000.00, 'Online Shopping',             'VEE-SHP-002', 21000.00, NOW() - INTERVAL '18 days'),
-((SELECT id FROM accounts WHERE phone_number = '917012821406'), 'credit', 'transfer',     1500.00, 'Transfer Received',           'VEE-TRF-003', 22500.00, NOW() - INTERVAL '10 days'),
-((SELECT id FROM accounts WHERE phone_number = '917012821406'), 'debit',  'other',        2500.00, 'Miscellaneous Payment',       'VEE-OTH-001', 20000.00, NOW() - INTERVAL '2 days');
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'credit', 'salary',      6000.00, 'Salary Credit',              'VEE-SAL-001', 26000.00, NOW() - INTERVAL '90 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'rent',        3500.00, 'House Rent',                  'VEE-REN-001', 22500.00, NOW() - INTERVAL '85 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'groceries',   1000.00, 'Grocery Shopping',            'VEE-GRC-001', 21500.00, NOW() - INTERVAL '80 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'credit', 'transfer',     2000.00, 'Transfer Received',           'VEE-TRF-001', 23500.00, NOW() - INTERVAL '75 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'bills',         800.00, 'Utility Bill Payment',        'VEE-BIL-001', 22700.00, NOW() - INTERVAL '70 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'shopping',     1200.00, 'Online Shopping',             'VEE-SHP-001', 21500.00, NOW() - INTERVAL '65 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'credit', 'salary',      6000.00, 'Salary Credit',              'VEE-SAL-002', 27500.00, NOW() - INTERVAL '60 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'rent',        3500.00, 'House Rent',                  'VEE-REN-002', 24000.00, NOW() - INTERVAL '55 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'transport',    900.00, 'Transport Expenses',          'VEE-TRN-001', 23100.00, NOW() - INTERVAL '50 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'groceries',   1300.00, 'Grocery Shopping',            'VEE-GRC-002', 21800.00, NOW() - INTERVAL '40 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'credit', 'transfer',     700.00, 'Transfer Received',           'VEE-TRF-002', 22500.00, NOW() - INTERVAL '30 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'bills',         500.00, 'Utility Bill Payment',        'VEE-BIL-002', 22000.00, NOW() - INTERVAL '25 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'shopping',     1000.00, 'Online Shopping',             'VEE-SHP-002', 21000.00, NOW() - INTERVAL '18 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'credit', 'transfer',     1500.00, 'Transfer Received',           'VEE-TRF-003', 22500.00, NOW() - INTERVAL '10 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'other',        2500.00, 'Miscellaneous Payment',       'VEE-OTH-001', 20000.00, NOW() - INTERVAL '2 days');
 
 -- Lavanya: 15 transactions, ending balance = 20,000.00
 INSERT INTO transactions (account_id, transaction_type, category, amount, description, reference, balance_after, created_at) VALUES
-((SELECT id FROM accounts WHERE phone_number = '919384148239'), 'credit', 'salary',      4500.00, 'Salary Credit',              'LAV-SAL-001', 24500.00, NOW() - INTERVAL '90 days'),
-((SELECT id FROM accounts WHERE phone_number = '919384148239'), 'debit',  'rent',        2800.00, 'House Rent',                  'LAV-REN-001', 21700.00, NOW() - INTERVAL '85 days'),
-((SELECT id FROM accounts WHERE phone_number = '919384148239'), 'debit',  'groceries',    900.00, 'Grocery Shopping',            'LAV-GRC-001', 20800.00, NOW() - INTERVAL '80 days'),
-((SELECT id FROM accounts WHERE phone_number = '919384148239'), 'credit', 'transfer',     1800.00, 'Transfer Received',           'LAV-TRF-001', 22600.00, NOW() - INTERVAL '75 days'),
-((SELECT id FROM accounts WHERE phone_number = '919384148239'), 'debit',  'bills',         700.00, 'Utility Bill Payment',        'LAV-BIL-001', 21900.00, NOW() - INTERVAL '70 days'),
-((SELECT id FROM accounts WHERE phone_number = '919384148239'), 'debit',  'shopping',      600.00, 'Online Shopping',             'LAV-SHP-001', 21300.00, NOW() - INTERVAL '65 days'),
-((SELECT id FROM accounts WHERE phone_number = '919384148239'), 'credit', 'salary',      4500.00, 'Salary Credit',              'LAV-SAL-002', 25800.00, NOW() - INTERVAL '60 days'),
-((SELECT id FROM accounts WHERE phone_number = '919384148239'), 'debit',  'rent',        2800.00, 'House Rent',                  'LAV-REN-002', 23000.00, NOW() - INTERVAL '55 days'),
-((SELECT id FROM accounts WHERE phone_number = '919384148239'), 'debit',  'transport',    650.00, 'Transport Expenses',          'LAV-TRN-001', 22350.00, NOW() - INTERVAL '50 days'),
-((SELECT id FROM accounts WHERE phone_number = '919384148239'), 'debit',  'groceries',   1050.00, 'Grocery Shopping',            'LAV-GRC-002', 21300.00, NOW() - INTERVAL '40 days'),
-((SELECT id FROM accounts WHERE phone_number = '919384148239'), 'credit', 'transfer',     900.00, 'Transfer Received',           'LAV-TRF-002', 22200.00, NOW() - INTERVAL '30 days'),
-((SELECT id FROM accounts WHERE phone_number = '919384148239'), 'debit',  'bills',         550.00, 'Utility Bill Payment',        'LAV-BIL-002', 21650.00, NOW() - INTERVAL '25 days'),
-((SELECT id FROM accounts WHERE phone_number = '919384148239'), 'debit',  'shopping',      850.00, 'Online Shopping',             'LAV-SHP-002', 20800.00, NOW() - INTERVAL '18 days'),
-((SELECT id FROM accounts WHERE phone_number = '919384148239'), 'credit', 'transfer',     1200.00, 'Transfer Received',           'LAV-TRF-003', 22000.00, NOW() - INTERVAL '10 days'),
-((SELECT id FROM accounts WHERE phone_number = '919384148239'), 'debit',  'other',        2000.00, 'Miscellaneous Payment',       'LAV-OTH-001', 20000.00, NOW() - INTERVAL '2 days');
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'credit', 'salary',      4500.00, 'Salary Credit',              'LAV-SAL-001', 24500.00, NOW() - INTERVAL '90 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'rent',        2800.00, 'House Rent',                  'LAV-REN-001', 21700.00, NOW() - INTERVAL '85 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'groceries',    900.00, 'Grocery Shopping',            'LAV-GRC-001', 20800.00, NOW() - INTERVAL '80 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'credit', 'transfer',     1800.00, 'Transfer Received',           'LAV-TRF-001', 22600.00, NOW() - INTERVAL '75 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'bills',         700.00, 'Utility Bill Payment',        'LAV-BIL-001', 21900.00, NOW() - INTERVAL '70 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'shopping',      600.00, 'Online Shopping',             'LAV-SHP-001', 21300.00, NOW() - INTERVAL '65 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'credit', 'salary',      4500.00, 'Salary Credit',              'LAV-SAL-002', 25800.00, NOW() - INTERVAL '60 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'rent',        2800.00, 'House Rent',                  'LAV-REN-002', 23000.00, NOW() - INTERVAL '55 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'transport',    650.00, 'Transport Expenses',          'LAV-TRN-001', 22350.00, NOW() - INTERVAL '50 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'groceries',   1050.00, 'Grocery Shopping',            'LAV-GRC-002', 21300.00, NOW() - INTERVAL '40 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'credit', 'transfer',     900.00, 'Transfer Received',           'LAV-TRF-002', 22200.00, NOW() - INTERVAL '30 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'bills',         550.00, 'Utility Bill Payment',        'LAV-BIL-002', 21650.00, NOW() - INTERVAL '25 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'shopping',      850.00, 'Online Shopping',             'LAV-SHP-002', 20800.00, NOW() - INTERVAL '18 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'credit', 'transfer',     1200.00, 'Transfer Received',           'LAV-TRF-003', 22000.00, NOW() - INTERVAL '10 days'),
+((SELECT id FROM accounts WHERE phone_number = '911111111111'), 'debit',  'other',        2000.00, 'Miscellaneous Payment',       'LAV-OTH-001', 20000.00, NOW() - INTERVAL '2 days');
 
 -- Sample cheque deposit requests, in different statuses, tied to John Smith
 INSERT INTO cheque_requests (request_id, phone_number, bank_name, branch, payee, amount_in_figures, amount_in_words, cheque_number, signatory, status, created_at) VALUES

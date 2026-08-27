@@ -32,7 +32,7 @@ def test_get_accounts_by_phone_normalizes_phone_variants(monkeypatch):
     result = database.get_accounts_by_phone("+91 98765 43210")
 
     assert result[0]["account_number"] == "FNCL000000000001"
-    assert calls["params"] == ("919876543210",)
+    assert calls["params"] == ("911111111111",)
 
 
 def test_create_transfer_debits_source_account_balance(monkeypatch):
@@ -49,7 +49,7 @@ def test_create_transfer_debits_source_account_balance(monkeypatch):
             if "INSERT INTO transfers" in query:
                 return {
                     "reference": "TRF-123",
-                    "phone_number": "919999999999",
+                    "phone_number": "911111111111",
                     "source_account": "GB12FNCL00010001234567",
                     "beneficiary_name": "Amit",
                     "beneficiary_account": "GB90FNCL11112222333344",
@@ -86,7 +86,7 @@ def test_create_transfer_debits_source_account_balance(monkeypatch):
 
     result = database.create_transfer(
         reference="TRF-123",
-        phone_number="919999999999",
+        phone_number="911111111111",
         source_account="GB12FNCL00010001234567",
         beneficiary_name="Amit",
         beneficiary_account="GB90FNCL11112222333344",
