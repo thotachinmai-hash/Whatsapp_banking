@@ -1,0 +1,298 @@
+[
+  {
+    "trace_id": "a134b4e3",
+    "query": "Hi",
+    "rule_intent": "greeting",
+    "rule_confidence": 0.97,
+    "workflow": "none",
+    "step": "none"
+  },
+  {
+    "trace_id": "f912a6d3",
+    "query": "2",
+    "rule_intent": "out_of_scope",
+    "rule_confidence": 0.85,
+    "workflow": "none",
+    "step": "none"
+  },
+  {
+    "trace_id": "8ddf0a62",
+    "query": "நான் ஒரு bank loan account-ஐ create பண்ணனும்",
+    "rule_intent": "loan_application_request",
+    "rule_confidence": 0.85,
+    "workflow": "none",
+    "step": "none"
+  },
+  {
+    "trace_id": "dc5a2139",
+    "query": "இல்ல என்னோட transaction எவ்வளவு இருக்கு என்னோட ban",
+    "rule_intent": "transaction_request",
+    "rule_confidence": 0.88,
+    "workflow": "loan",
+    "step": "SELECT_LOAN_TYPE"
+  },
+  {
+    "trace_id": "37ea59b1",
+    "query": "இல்ல என்னோட transactions எவ்ளோ இருக்கு?",
+    "rule_intent": "transaction_request",
+    "rule_confidence": 0.88,
+    "workflow": "loan",
+    "step": "SELECT_LOAN_TYPE"
+  },
+  {
+    "trace_id": "2ce7d81c",
+    "query": "What's my transaction history",
+    "rule_intent": "transaction_request",
+    "rule_confidence": 0.88,
+    "workflow": "loan",
+    "step": "SELECT_LOAN_TYPE"
+  },
+  {
+    "trace_id": "09a7f4ad",
+    "query": "Hi",
+    "rule_intent": "greeting",
+    "rule_confidence": 0.97,
+    "workflow": "loan",
+    "step": "SELECT_LOAN_TYPE"
+  },
+  {
+    "trace_id": "5c4fc5e8",
+    "query": "Hi",
+    "rule_intent": "greeting",
+    "rule_confidence": 0.97,
+    "workflow": "none",
+    "step": "none"
+  },
+  {
+    "trace_id": "3644f1ea",
+    "query": "3",
+    "rule_intent": "out_of_scope",
+    "rule_confidence": 0.85,
+    "workflow": "none",
+    "step": "none"
+  },
+  {
+    "trace_id": "52fbc52c",
+    "query": "menu",
+    "rule_intent": "main_menu",
+    "rule_confidence": 0.95,
+    "workflow": "none",
+    "step": "none"
+  },
+  {
+    "trace_id": "5f283ca2",
+    "query": "என்னோடு வங்கிக் கணக்கில் எவ்வளவு ரூபாய் இருக்கிறது",
+    "rule_intent": "out_of_scope",
+    "rule_confidence": 0.85,
+    "workflow": "none",
+    "step": "none"
+  },
+  {
+    "trace_id": "d57eb06c",
+    "query": "நான் 1 loan account-அ process பண்ணனும்.",
+    "rule_intent": "loan_application_request",
+    "rule_confidence": 0.85,
+    "workflow": "none",
+    "step": "none"
+  },
+  {
+    "trace_id": "f4859f22",
+    "query": "ஆ இல்லை என்னோட வங்கியில் பணம் போக்குவரத்து எப்படி",
+    "rule_intent": "out_of_scope",
+    "rule_confidence": 0.85,
+    "workflow": "loan",
+    "step": "SELECT_LOAN_TYPE"
+  },
+  {
+    "trace_id": "455a79e9",
+    "query": "What's my transaction history?",
+    "rule_intent": "transaction_request",
+    "rule_confidence": 0.88,
+    "workflow": "loan",
+    "step": "SELECT_LOAN_TYPE"
+  },
+  {
+    "trace_id": "60b6966b",
+    "query": "What's my transaction history",
+    "rule_intent": "transaction_request",
+    "rule_confidence": 0.88,
+    "workflow": "loan",
+    "step": "SELECT_LOAN_TYPE"
+  },
+  {
+    "trace_id": "8fa349fc",
+    "query": "Naa bank khatalo entha dabbu undi",
+    "rule_intent": "unknown",
+    "rule_confidence": 0.3,
+    "workflow": "loan",
+    "step": "SELECT_LOAN_TYPE"
+  },
+  {
+    "trace_id": "553b0524",
+    "query": "..",
+    "rule_intent": "out_of_scope",
+    "rule_confidence": 0.85,
+    "workflow": "loan",
+    "step": "SELECT_LOAN_TYPE"
+  },
+  {
+    "trace_id": "466337f2",
+    "query": "I want to know what's my transaction history.",
+    "rule_intent": "transaction_request",
+    "rule_confidence": 0.88,
+    "workflow": "loan",
+    "step": "SELECT_LOAN_TYPE"
+  },
+  {
+    "trace_id": "b82f361d",
+    "query": "Hi",
+    "rule_intent": "greeting",
+    "rule_confidence": 0.97,
+    "workflow": "loan",
+    "step": "SELECT_LOAN_TYPE"
+  },
+  {
+    "trace_id": "0461f4d5",
+    "query": "3",
+    "rule_intent": "out_of_scope",
+    "rule_confidence": 0.85,
+    "workflow": "none",
+    "step": "none"
+  },
+  {
+    "trace_id": "aa716dbe",
+    "query": "menu",
+    "rule_intent": "main_menu",
+    "rule_confidence": 0.95,
+    "workflow": "none",
+    "step": "none"
+  },
+  {
+    "trace_id": "5a9bec39",
+    "query": "2",
+    "rule_intent": "out_of_scope",
+    "rule_confidence": 0.85,
+    "workflow": "none",
+    "step": "none"
+  },
+  {
+    "trace_id": "09774e41",
+    "query": "நான் ஒரு loan process-ஆ ஆரம்பிக்கணும்",
+    "rule_intent": "loan_application_request",
+    "rule_confidence": 0.85,
+    "workflow": "none",
+    "step": "none"
+  },
+  {
+    "trace_id": "1c711765",
+    "query": "నా bank ఖాతాలో ఎంత డబ్బు ఉంది?",
+    "rule_intent": "banking_question",
+    "rule_confidence": 0.7,
+    "workflow": "loan",
+    "step": "SELECT_LOAN_TYPE"
+  },
+  {
+    "trace_id": "212f67ca",
+    "query": "What's my transaction history",
+    "rule_intent": "transaction_request",
+    "rule_confidence": 0.88,
+    "workflow": "loan",
+    "step": "SELECT_LOAN_TYPE"
+  },
+  {
+    "trace_id": "4c813588",
+    "query": "Wanna deposit a cheque",
+    "rule_intent": "cheque_deposit_request",
+    "rule_confidence": 0.9,
+    "workflow": "loan",
+    "step": "SELECT_LOAN_TYPE"
+  },
+  {
+    "trace_id": "fde9ce2a",
+    "query": "",
+    "rule_intent": "beneficiary_information",
+    "rule_confidence": 0.85,
+    "workflow": "cheque",
+    "step": "UPLOAD_CHEQUE"
+  },
+  {
+    "trace_id": "3e78a036",
+    "query": "How to deposit a cheque",
+    "rule_intent": "cheque_question",
+    "rule_confidence": 0.8,
+    "workflow": "cheque",
+    "step": "CORRECT_CHEQUE"
+  },
+  {
+    "trace_id": "088a1f06",
+    "query": "Okay now what's my account balance",
+    "rule_intent": "balance_request",
+    "rule_confidence": 0.92,
+    "workflow": "cheque",
+    "step": "CORRECT_CHEQUE"
+  },
+  {
+    "trace_id": "894ffdba",
+    "query": "Deposit a cheque",
+    "rule_intent": "cheque_deposit_request",
+    "rule_confidence": 0.9,
+    "workflow": "cheque",
+    "step": "CORRECT_CHEQUE"
+  },
+  {
+    "trace_id": "bdc0a8f0",
+    "query": "What's my transaction history",
+    "rule_intent": "transaction_request",
+    "rule_confidence": 0.88,
+    "workflow": "cheque",
+    "step": "CORRECT_CHEQUE"
+  },
+  {
+    "trace_id": "623cdcee",
+    "query": "What this",
+    "rule_intent": "out_of_scope",
+    "rule_confidence": 0.85,
+    "workflow": "cheque",
+    "step": "CORRECT_CHEQUE"
+  },
+  {
+    "trace_id": "f270f011",
+    "query": "menu",
+    "rule_intent": "main_menu",
+    "rule_confidence": 0.95,
+    "workflow": "cheque",
+    "step": "CORRECT_CHEQUE"
+  },
+  {
+    "trace_id": "4ac91176",
+    "query": "3",
+    "rule_intent": "out_of_scope",
+    "rule_confidence": 0.85,
+    "workflow": "none",
+    "step": "none"
+  },
+  {
+    "trace_id": "4fbab703",
+    "query": "Hi",
+    "rule_intent": "greeting",
+    "rule_confidence": 0.97,
+    "workflow": "none",
+    "step": "none"
+  },
+  {
+    "trace_id": "2722e232",
+    "query": "What's my transaction",
+    "rule_intent": "transaction_request",
+    "rule_confidence": 0.88,
+    "workflow": "none",
+    "step": "none"
+  },
+  {
+    "trace_id": "68d92234",
+    "query": "Transaction",
+    "rule_intent": "transaction_request",
+    "rule_confidence": 0.88,
+    "workflow": "none",
+    "step": "none"
+  }
+]

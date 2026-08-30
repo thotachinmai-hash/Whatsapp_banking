@@ -5,8 +5,10 @@ do. It must never execute a banking transaction, modify account balances,
 create/modify a cheque, loan, KYC, or customer record, call a banking
 tool, or change workflow state. It returns a structured IntentResult;
 whichever future routing layer reads that value stays responsible for
-actually doing anything about it. Today (Phase 2 / shadow mode), nothing
-reads it for routing at all — see app/agent/agent.py's run_agent().
+actually doing anything about it. This result IS read for real routing —
+app/conversation/manager.py::handle_message() calls classify_intent() on
+every turn and feeds the result into route_intent() and
+WorkflowManager.handle() — this is not a shadow-mode/inert classification.
 
 Layered strategy (checked in this order, first confident match wins):
   0. prompt-injection / role-override detection            (rule)
@@ -16,8 +18,19 @@ Layered strategy (checked in this order, first confident match wins):
   4. status / lookup requests                                (rule)
   5. personalized guidance / eligibility                     (rule)
   6. direct banking workflow requests                        (rule)
-  7. banking questions / knowledge                            (rule)
-  8. out-of-scope heuristic                                    (rule)
+  7. banking questions / knowledge — kept (Step 7 tried removing this and
+     reverted it: its output feeds a zero-LLM-call curated-guidance
+     shortcut, app/conversation/manager.py::_INTERCEPT_GUIDANCE_TYPES via
+     app/conversation/guidance/policy.py::build_guidance() — removing it
+     cost real latency on common KYC/cheque/transfer/account questions)
+                                                                  (rule)
+  8. out-of-scope: deterministic deny-list only (Step 7 of the LLM-first
+     routing migration removed the keyword-absence out-of-scope guess —
+     pure semantic NLU confirmed to misfire on non-English text with no
+     downstream shortcut depending on it; everything it used to catch
+     correctly still reaches BANKING_LLM via the existing
+     "unknown -> CLARIFICATION_REQUIRED -> BANKING_LLM" fallback in
+     app/conversation/manager.py, at the same LLM call count)     (rule)
   9. optional LLM fallback (only if the caller supplies one)   (llm)
   10. unknown (low confidence)
 
@@ -116,12 +129,22 @@ async def _classify(
     if result:
         return result
 
-    # 7. Banking questions / knowledge.
+    # 7. Banking questions / knowledge — kept; see this module's docstring
+    # for why (feeds a zero-LLM-call curated-guidance shortcut).
     result = rules.classify_banking_question(stripped)
     if result:
         return result
 
-    # 8. Out-of-scope heuristic.
+    # 8. Out-of-scope: only the deterministic deny-list match now (Step 7 of
+    # the LLM-first routing migration removed the keyword-ABSENCE guess —
+    # pure semantic NLU with no downstream shortcut depending on it,
+    # confirmed live (scripts/shadow_eval.py) to misfire on non-English
+    # text with no English loanword. Every case it used to catch correctly
+    # already falls through to the same BANKING_LLM outcome via the
+    # existing "unknown -> CLARIFICATION_REQUIRED -> BANKING_LLM" fallback
+    # in app/conversation/manager.py, at the SAME LLM call count (one agent
+    # call, not a new/second one) — see rules.classify_out_of_scope's
+    # docstring for the full before/after reasoning.
     result = rules.classify_out_of_scope(stripped)
     if result:
         return result

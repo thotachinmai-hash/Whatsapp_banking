@@ -21,10 +21,21 @@ async def _route(text, workflow=None, step=None):
 class RouterRequiredCaseTests(unittest.IsolatedAsyncioTestCase):
     """The 17 routing cases Task 4 requires."""
 
-    async def test_01_sky_is_blue_out_of_scope(self):
+    async def test_01_sky_is_blue_reaches_clarification_then_the_agent(self):
+        # Step 7 of the LLM-first routing migration removed
+        # classify_out_of_scope()'s keyword-ABSENCE guess (pure semantic
+        # NLU, confirmed to misfire on non-English text) — a message with
+        # no banking keyword and no deny-list match is now "unknown" at the
+        # rule layer, which route_intent() alone (tested here) reports as
+        # CLARIFICATION_REQUIRED. app/conversation/manager.py's existing
+        # "unknown -> BANKING_LLM" override (tested at that layer in
+        # tests/test_conversation_manager.py) is what actually gets it to
+        # the single agent call — see that test for the full-pipeline
+        # outcome. This is the deliberate, accepted, previously-documented
+        # tradeoff, not a regression.
         intent_result, decision = await _route("Why is the sky blue?")
-        self.assertEqual(intent_result.intent, "out_of_scope")
-        self.assertEqual(decision.action, "OUT_OF_SCOPE")
+        self.assertEqual(intent_result.intent, "unknown")
+        self.assertEqual(decision.action, "CLARIFICATION_REQUIRED")
 
     async def test_02_joke_out_of_scope(self):
         intent_result, decision = await _route("Tell me a joke")
@@ -208,7 +219,7 @@ class RunAgentRoutingIntegrationTests(unittest.IsolatedAsyncioTestCase):
             patch("app.conversation.manager.append_turn_to_session"),
         ]
 
-    async def test_out_of_scope_message_never_calls_the_llm(self):
+    async def test_deny_list_out_of_scope_message_never_calls_the_llm(self):
         from app.agent import agent as agent_module
 
         patches = self._patches()
@@ -218,7 +229,7 @@ class RunAgentRoutingIntegrationTests(unittest.IsolatedAsyncioTestCase):
              patch("app.agent.agent.build_agent") as mock_build_agent:
 
             response = await agent_module.run_agent(
-                query="Why is the sky blue?", phone_number="441111111111", trace_id="rt1"
+                query="tell me a joke", phone_number="441111111111", trace_id="rt1"
             )
 
         mock_build_agent.assert_not_called()

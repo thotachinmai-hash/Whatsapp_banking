@@ -152,7 +152,22 @@ def classify_hard_navigation(text: str) -> Optional[IntentResult]:
     normalized = _normalize(text)
     if not normalized:
         return None
-    if normalized in _CANCEL_WORDS or normalized.startswith(("cancel ", "stop ")):
+    if (
+        (normalized in _CANCEL_WORDS or normalized.startswith(("cancel ", "stop ")))
+        and not any(ord(ch) > 127 for ch in text)
+    ):
+        # _normalize() strips every non-Latin character, so a compound
+        # message like "never mind, मुझे लोन चाहिए" collapses to exactly
+        # "never mind" and would match here even though the customer named
+        # a real, different request in native script that the stripping
+        # silently discarded — confirmed live. Pure-ASCII "never mind" and
+        # its siblings still match deterministically and instantly, exactly
+        # as before; a message with non-Latin content this rule can't
+        # safely interpret defers instead of confidently guessing, so later
+        # layers (including the mid-workflow LLM-based switch check in
+        # app/workflows/manager.py) get a real chance to understand the
+        # full sentence — not a new keyword, and not a rule that pretends
+        # to understand a language it can't read.
         return IntentResult(intent="cancel", confidence=0.99, method="rule")
     if normalized in _BACK_WORDS:
         return IntentResult(intent="back", confidence=0.98, method="rule")
@@ -262,6 +277,13 @@ def classify_status_request(text: str) -> Optional[IntentResult]:
         "cheque" in normalized and normalized.strip().startswith("check")
     ) or ("cheque" in normalized and any(k in normalized for k in (
         "where is", "where's", "been processed", "has it been", "track",
+        # "did the cheque I deposited last week go through" is a STATUS
+        # question about a PAST deposit, not a request to start a new one —
+        # confirmed live (scripts/shadow_eval.py's chqstat_vs_deposit_no_confusion
+        # case) that without these, the substring "deposit" in "deposited"
+        # let classify_workflow_request()'s cheque-deposit rule win instead,
+        # sending a status question into starting a brand new deposit flow.
+        "go through", "gone through", "went through", "cleared", "clear yet",
     ))):
         entities = {"cheque_request_id": chq_match.group(0).upper()} if chq_match else {}
         # Deliberately the same intent name as the category-B request —
@@ -470,6 +492,20 @@ def classify_workflow_request(text: str) -> Optional[IntentResult]:
 
 
 # ─── C. banking questions / knowledge ───────────────────────────────────
+#
+# NOT removed, despite being on the original Step 7 candidate list: this
+# looked like pure semantic NLU with no other role, but its output
+# (kyc_question/cheque_question/transfer_question/account_question) feeds a
+# genuine, currently-load-bearing zero-LLM-call shortcut —
+# app/conversation/manager.py::_INTERCEPT_GUIDANCE_TYPES routes these
+# straight to a curated static guidance answer via
+# app/conversation/guidance/policy.py::build_guidance(), with NO LLM call
+# at all. Removing this rule was tried and reverted after the full test
+# suite showed it broke that shortcut, sending these (currently common)
+# questions through the full agent LLM call instead — a real latency
+# regression the migration was explicitly told to avoid. Revisit only
+# alongside a redesign of the guidance-interception mechanism itself, not
+# as a standalone rule removal.
 
 _QUESTION_DOMAIN_RULES = (
     (("kyc",), "kyc_question"),
@@ -508,8 +544,10 @@ _DENY_REGEX = re.compile(
     re.I,
 )
 
-# Same domain-signal vocabulary the "generic banking question" fallback
-# above uses, widened slightly for the out-of-scope gate.
+# Still used elsewhere (app/workflows/manager.py's _is_allowed_for_workflow
+# and side-question detection) even though classify_out_of_scope() below no
+# longer uses it for its own keyword-absence guess (see the REMOVED note
+# above) -- do not delete.
 BANKING_DOMAIN_KEYWORDS = {
     "bank", "account", "balance", "transfer", "loan", "cheque", "kyc",
     "transaction", "transactions", "deposit", "aadhaar", "aadhar", "pan",
@@ -520,14 +558,16 @@ BANKING_DOMAIN_KEYWORDS = {
 }
 
 
-def _has_banking_keyword(normalized: str) -> bool:
-    return any(k in normalized for k in BANKING_DOMAIN_KEYWORDS)
-
-
 def classify_out_of_scope(text: str) -> Optional[IntentResult]:
+    """Deterministic deny-list only (Step 7 of the LLM-first routing
+    migration removed the keyword-ABSENCE guess this used to also make —
+    see the REMOVED note above _DENY_REGEX). This deny-list match stays: a
+    handful of precise, reliable, language-independent patterns ("write me
+    a poem", "tell me a joke", "capital of", "who won") that are genuinely
+    always out of scope regardless of banking vocabulary, unlike the old
+    "no banking keyword found" heuristic which was blind to non-English
+    banking questions with no English loanword."""
     normalized = text.lower()
     if _DENY_REGEX.search(normalized):
         return IntentResult(intent="out_of_scope", confidence=0.95, method="rule")
-    if not _has_banking_keyword(normalized):
-        return IntentResult(intent="out_of_scope", confidence=0.85, method="rule")
     return None

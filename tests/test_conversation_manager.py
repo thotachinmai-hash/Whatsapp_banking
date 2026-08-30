@@ -73,8 +73,9 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
             )
         self.assertEqual(response, "llm-answer:What is an overdraft?")
 
-    # 2. Out-of-scope request
-    async def test_02_out_of_scope_never_reaches_llm(self):
+    # 2. Out-of-scope request — deny-list match (still deterministic, still
+    # zero LLM calls after Step 7 of the LLM-first routing migration).
+    async def test_02_out_of_scope_deny_list_never_reaches_llm(self):
         manager, wf = _manager_with()
         p1, p2, p3, p4 = self._patches()
         llm_calls = []
@@ -85,15 +86,41 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
 
         with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
             response = await manager.handle_message(
-                "441111111111", "Why is the sky blue?", "t2", llm_fallback=tracking_llm
+                "441111111111", "tell me a joke", "t2", llm_fallback=tracking_llm
             )
         self.assertEqual(llm_calls, [])
+        self.assertIn("banking", response.lower())
+
+    # Step 7 removed classify_out_of_scope()'s keyword-ABSENCE guess (pure
+    # semantic NLU, confirmed to misfire on non-English text) — a message
+    # with no banking keyword and no deny-list match now reaches the SAME
+    # single agent call every other "unknown" message does (not a NEW
+    # second call), relying on the agent's own system prompt to redirect
+    # genuinely off-topic questions. This is the deliberate, accepted
+    # tradeoff documented throughout the migration's shadow-eval reports.
+    async def test_02b_ambiguous_off_topic_text_now_reaches_the_single_agent_call(self):
+        manager, wf = _manager_with()
+        p1, p2, p3, p4 = self._patches()
+
+        async def fake_llm(*args, **kwargs):
+            return "I'm your banking assistant — happy to help with banking questions!"
+
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
+            response = await manager.handle_message(
+                "441111111111", "Why is the sky blue?", "t2", llm_fallback=fake_llm
+            )
         self.assertIn("banking", response.lower())
 
     async def test_02a_non_string_message_is_normalized_before_stripping(self):
         manager, wf = _manager_with()
         p1, p2, p3, p4 = self._patches()
-        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
+        # "2000" alone is rule intent=unknown -> reaches the LLM-rescue
+        # branch; mocked to None (LLM has no extra opinion either) so this
+        # test is deterministic regardless of whether a real API key is
+        # configured in the environment, exercising the exact original
+        # "unknown, LLM unavailable" fallback path.
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True), \
+             patch("app.conversation.manager.classify_and_route_llm", return_value=None):
             response = await manager.handle_message(
                 "441111111111", 2000, "t2a", llm_fallback=_fake_llm_fallback
             )
@@ -134,7 +161,11 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
     async def test_03_low_confidence_request_asks_for_clarification(self):
         manager, wf = _manager_with()
         p1, p2, p3, p4 = self._patches()
-        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
+        # Deterministic regardless of environment -- see
+        # NoWorkflowLlmRescueTests for the case where the LLM DOES have an
+        # opinion on a hedged request like this one.
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True), \
+             patch("app.conversation.manager.classify_and_route_llm", return_value=None):
             response = await manager.handle_message(
                 "441111111111", "Maybe send some money to Rahul", "t3", llm_fallback=_fake_llm_fallback
             )
@@ -209,7 +240,8 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
         manager, wf = _manager_with()
         context = _fresh_context()
         p1, p2, p3, p4 = self._patches(context=context)
-        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True), \
+             patch("app.conversation.manager.classify_and_route_llm", return_value=None):
             await manager.handle_message(
                 "441111111111", "Maybe send some money to Rahul", "t9", llm_fallback=_fake_llm_fallback
             )
@@ -256,7 +288,8 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
         )
         context = _fresh_context()
         p1, p2, p3, p4 = self._patches(context=context)
-        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True):
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True), \
+             patch("app.conversation.manager.classify_and_route_llm", return_value=None):
             await manager.handle_message(
                 "441111111111", "Maybe send some money to Rahul", "t12a", llm_fallback=_fake_llm_fallback
             )
@@ -346,6 +379,201 @@ class ConversationManagerTests(unittest.IsolatedAsyncioTestCase):
         joined = "\n".join(logs.output)
         self.assertNotIn("ABCDE1234F", joined)
         self.assertNotIn("123456", joined)
+
+
+class NoWorkflowLlmRescueTests(unittest.IsolatedAsyncioTestCase):
+    """The final migration step: when classify_intent()'s rule layers
+    have NO opinion at all (intent=unknown) and there's no active
+    workflow, classify_and_route_llm() -- the same schema-based call
+    already live in shadow mode for every turn -- becomes AUTHORITATIVE
+    instead of blindly forwarding to the general LLM+tools agent (which
+    has no tool to actually START a workflow). Confirmed live this session:
+    a native-script "నాకు లోన్ కావాలి" used to get a plausible-sounding
+    reply that never actually began the loan application.
+
+    This never overrides a confident RULE decision (reason != "unknown"
+    skips this branch entirely, unaffected -- see the many pre-existing
+    ConversationManagerTests that keep passing unchanged), and a
+    START_WORKFLOW/SWITCH decision here still only reaches
+    start_workflow_directly() -- the exact same generic starter a
+    rule-confident START_WORKFLOW already uses -- so it still requires its
+    own STEP_CONFIRM_* gate before anything is committed."""
+
+    def _patches(self, context=None):
+        context = context if context is not None else _fresh_context()
+        return (
+            patch("app.conversation.manager.build_context", return_value=context),
+            patch("app.conversation.manager.check_registration_gate", return_value=None),
+            patch("app.conversation.manager.get_workflow", return_value=None),
+            patch("app.conversation.manager.append_turn_to_session"),
+        )
+
+    async def test_native_script_loan_request_starts_the_loan_workflow(self):
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
+
+        manager, wf = _manager_with()  # start_requested_result defaults to handled=False
+        p1, p2, p3, p4 = self._patches()
+        llm_decision = LLMRoutingDecision(
+            intent="loan_application_request", action="START_WORKFLOW", certainty="high", target_workflow="loan",
+        )
+        # translate_text() legitimately translates the response to match
+        # the customer's detected language (Telugu here) further down the
+        # pipeline -- mocked as a pass-through so this test asserts the
+        # routing decision, not an unrelated real/absent translation call.
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True), \
+             patch("app.conversation.manager.classify_and_route_llm", return_value=llm_decision), \
+             patch("app.conversation.manager.translate_text", side_effect=lambda text, *a, **kw: text), \
+             patch("app.conversation.manager.start_workflow_directly",
+                   return_value={"handled": True, "response": "Let's get your loan application going!"}) as mock_start:
+            response = await manager.handle_message(
+                "441111111111", "నాకు లోన్ కావాలి", "t_native_loan", llm_fallback=_fake_llm_fallback
+            )
+        self.assertEqual(response, "Let's get your loan application going!")
+        mock_start.assert_called_once()
+        self.assertEqual(mock_start.call_args[0][0], "loan")
+        self.assertNotIn("llm-answer", response)  # never reached the general agent
+
+    async def test_native_script_create_account_request_starts_add_account_workflow(self):
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
+
+        manager, wf = _manager_with()
+        p1, p2, p3, p4 = self._patches()
+        llm_decision = LLMRoutingDecision(
+            intent="add_account_request", action="START_WORKFLOW", certainty="high", target_workflow="add_account",
+        )
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True), \
+             patch("app.conversation.manager.classify_and_route_llm", return_value=llm_decision), \
+             patch("app.conversation.manager.translate_text", side_effect=lambda text, *a, **kw: text), \
+             patch("app.conversation.manager.start_workflow_directly",
+                   return_value={"handled": True, "response": "Let's set up your new account!"}) as mock_start:
+            response = await manager.handle_message(
+                "441111111111", "मुझे नया बैंक अकाउंट खोलना है", "t_native_acct", llm_fallback=_fake_llm_fallback
+            )
+        self.assertEqual(response, "Let's set up your new account!")
+        self.assertEqual(mock_start.call_args[0][0], "add_account")
+
+    async def test_out_of_scope_llm_decision_skips_the_agent_entirely(self):
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
+
+        manager, wf = _manager_with()
+        p1, p2, p3, p4 = self._patches()
+        llm_decision = LLMRoutingDecision(intent="out_of_scope", action="OUT_OF_SCOPE", certainty="high")
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True), \
+             patch("app.conversation.manager.classify_and_route_llm", return_value=llm_decision):
+            response = await manager.handle_message(
+                "441111111111", "asdkfjhaslkdfj random gibberish", "t_oos", llm_fallback=_fake_llm_fallback
+            )
+        self.assertNotIn("llm-answer", response)  # the general agent was never called
+
+    async def test_tool_decision_falls_through_to_the_single_existing_agent_call(self):
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
+
+        manager, wf = _manager_with()
+        p1, p2, p3, p4 = self._patches()
+        llm_decision = LLMRoutingDecision(intent="balance_request", action="TOOL", certainty="high")
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True), \
+             patch("app.conversation.manager.classify_and_route_llm", return_value=llm_decision):
+            response = await manager.handle_message(
+                "441111111111", "some ambiguous phrasing", "t_tool", llm_fallback=_fake_llm_fallback
+            )
+        # TOOL/RAG still need the real agent's tools/grounding -- same
+        # single call BANKING_LLM already made, not a new call site.
+        self.assertEqual(response, "llm-answer:some ambiguous phrasing")
+
+    async def test_llm_call_failure_falls_back_to_the_original_safety_net(self):
+        manager, wf = _manager_with()
+        p1, p2, p3, p4 = self._patches()
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True), \
+             patch("app.conversation.manager.classify_and_route_llm", return_value=None):
+            response = await manager.handle_message(
+                "441111111111", "asdkfjhaslkdfj random gibberish", "t_fail", llm_fallback=_fake_llm_fallback
+            )
+        # Exact original behavior when nothing else has an opinion.
+        self.assertEqual(response, "llm-answer:asdkfjhaslkdfj random gibberish")
+
+    async def test_low_certainty_start_workflow_does_not_bypass_agent_fallback(self):
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
+
+        manager, wf = _manager_with()
+        p1, p2, p3, p4 = self._patches()
+        llm_decision = LLMRoutingDecision(
+            intent="loan_application_request", action="START_WORKFLOW", certainty="medium", target_workflow="loan",
+        )
+        message = "asdkfjhaslkdfj random gibberish"  # rule intent=unknown, so this branch actually runs
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True), \
+             patch("app.conversation.manager.classify_and_route_llm", return_value=llm_decision), \
+             patch("app.conversation.manager.start_workflow_directly") as mock_start:
+            response = await manager.handle_message(
+                "441111111111", message, "t_medium", llm_fallback=_fake_llm_fallback
+            )
+        mock_start.assert_not_called()  # certainty gate respected -- no workflow started on a guess
+        self.assertEqual(response, f"llm-answer:{message}")
+
+    async def test_hedged_workflow_request_resolved_confidently_by_llm(self):
+        # "Maybe I should apply for a loan" -- classify_workflow_request()
+        # dampens this to a non-CONFIDENCE_HIGH match (a hedge word), so
+        # the rule alone can't safely start a workflow (reason != "unknown"
+        # -- this is the SECOND bucket this migration step adds LLM
+        # authority over, not just the no-opinion-at-all "unknown" case).
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
+
+        manager, wf = _manager_with()
+        p1, p2, p3, p4 = self._patches()
+        llm_decision = LLMRoutingDecision(
+            intent="loan_application_request", action="START_WORKFLOW", certainty="high", target_workflow="loan",
+        )
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True), \
+             patch("app.conversation.manager.classify_and_route_llm", return_value=llm_decision), \
+             patch("app.conversation.manager.start_workflow_directly",
+                   return_value={"handled": True, "response": "Let's get your loan application going!"}) as mock_start:
+            response = await manager.handle_message(
+                "441111111111", "Maybe I should apply for a loan", "t_hedged", llm_fallback=_fake_llm_fallback
+            )
+        self.assertEqual(response, "Let's get your loan application going!")
+        self.assertEqual(mock_start.call_args[0][0], "loan")
+
+    async def test_hedged_request_llm_also_uncertain_falls_to_static_clarification(self):
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
+
+        manager, wf = _manager_with()
+        p1, p2, p3, p4 = self._patches()
+        llm_decision = LLMRoutingDecision(intent="loan_application_request", action="CLARIFY", certainty="low")
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True), \
+             patch("app.conversation.manager.classify_and_route_llm", return_value=llm_decision):
+            response = await manager.handle_message(
+                "441111111111", "Maybe I should apply for a loan", "t_hedged_clarify", llm_fallback=_fake_llm_fallback
+            )
+        # Falls back to the existing targeted clarification copy -- not
+        # invented new text, and never reaches the general agent.
+        self.assertNotIn("llm-answer", response)
+
+    async def test_hedged_request_llm_call_fails_falls_to_static_clarification(self):
+        # The exact original safety net for the "reason != unknown" bucket:
+        # if the LLM call itself fails, behave exactly as before this
+        # migration step (static targeted clarification, not a silent
+        # agent hand-off, since the router's original reason still applies).
+        manager, wf = _manager_with()
+        p1, p2, p3, p4 = self._patches()
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True), \
+             patch("app.conversation.manager.classify_and_route_llm", return_value=None):
+            response = await manager.handle_message(
+                "441111111111", "Maybe send some money to Rahul", "t_hedged_fail", llm_fallback=_fake_llm_fallback
+            )
+        self.assertIn("who", response.lower())
+        self.assertNotIn("llm-answer", response)
+
+    async def test_confident_rule_decision_never_reaches_this_llm_rescue(self):
+        # "send 500 to Priya" is a confident RULE match (transfer_request,
+        # high confidence) -- reason != "unknown", so classify_and_route_llm
+        # must never even be called for this turn.
+        manager, wf = _manager_with(start_requested_result={"handled": True, "response": "Who would you like to pay?"})
+        p1, p2, p3, p4 = self._patches()
+        with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True), \
+             patch("app.conversation.manager.classify_and_route_llm") as mock_llm:
+            await manager.handle_message(
+                "441111111111", "send 500 to Priya", "t_confident", llm_fallback=_fake_llm_fallback
+            )
+        mock_llm.assert_not_called()
 
 
 class LanguageStickinessTests(unittest.IsolatedAsyncioTestCase):

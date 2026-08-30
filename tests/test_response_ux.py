@@ -349,12 +349,21 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         # field input that happens to contain a banking word ("send 500"
         # is not a question, so it must still reach the transfer
         # processor, not get reprocessed as if it were a question).
+        #
+        # Mocks classify_and_route_llm_sync with the exact low-certainty
+        # TOOL decision confirmed live for this input (the real call is
+        # borderline/non-deterministic at this confidence boundary), so
+        # this test asserts the structural low-certainty guard
+        # deterministically rather than depending on live LLM variance.
         from app.workflows.constants import STEP_SELECT_BENEFICIARY, WORKFLOW_TRANSFER
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
 
         workflow = create_workflow_model(WORKFLOW_TRANSFER, STEP_SELECT_BENEFICIARY)
         create_workflow(self.phone, workflow)
 
-        with patch("app.workflows.processors.transfer.get_beneficiaries_by_phone", return_value=[]):
+        low_certainty_decision = LLMRoutingDecision(intent="transfer_request", action="TOOL", certainty="low")
+        with patch("app.workflows.processors.transfer.get_beneficiaries_by_phone", return_value=[]), \
+             patch("app.workflows.manager.classify_and_route_llm_sync", return_value=low_certainty_decision):
             result = self.manager.handle(self.phone, "send 500", trace_id="t6")
 
         self.assertNotEqual(result.get("reprocess_query"), "send 500")
@@ -472,7 +481,7 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
         # via the more specific jump-detection path (offering "Switch to
         # Loan"), not the generic decline path — the two must not fight
         # over the same message.
-        from app.services.llm_understanding import JumpTarget
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
         from app.workflows.constants import STEP_UPLOAD_CHEQUE, WORKFLOW_CHEQUE
 
         workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
@@ -480,8 +489,10 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
 
         with patch("app.workflows.manager.detect_soft_decline") as mock_decline, \
              patch(
-                "app.workflows.manager.detect_step_or_workflow_jump",
-                return_value=JumpTarget(target_workflow="loan", confidence=0.9),
+                "app.workflows.manager.classify_and_route_llm_sync",
+                return_value=LLMRoutingDecision(
+                    intent="loan_application_request", action="SWITCH", certainty="high", target_workflow="loan",
+                ),
              ):
             result = self.manager.handle(
                 self.phone, "actually let me apply for a loan instead", trace_id="t11"
@@ -504,14 +515,16 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.get("reprocess_query"), "What's the interest rate on a personal loan?")
 
     async def test_confident_workflow_jump_asks_confirmation_first(self):
-        from app.services.llm_understanding import JumpTarget
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
 
         workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
         create_workflow(self.phone, workflow)
 
         with patch(
-            "app.workflows.manager.detect_step_or_workflow_jump",
-            return_value=JumpTarget(target_workflow="loan", confidence=0.9),
+            "app.workflows.manager.classify_and_route_llm_sync",
+            return_value=LLMRoutingDecision(
+                intent="loan_application_request", action="SWITCH", certainty="high", target_workflow="loan",
+            ),
         ):
             result = self.manager.handle(self.phone, "actually let me apply for a loan instead", trace_id="t4")
 
@@ -527,15 +540,17 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(get_workflow(self.phone)["data"].get("pending_stop_confirmation"))
 
     async def test_confirming_the_jump_starts_the_target_workflow(self):
-        from app.services.llm_understanding import JumpTarget
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
         from app.workflows.memory import get_workflow
 
         workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
         create_workflow(self.phone, workflow)
 
         with patch(
-            "app.workflows.manager.detect_step_or_workflow_jump",
-            return_value=JumpTarget(target_workflow="loan", confidence=0.9),
+            "app.workflows.manager.classify_and_route_llm_sync",
+            return_value=LLMRoutingDecision(
+                intent="loan_application_request", action="SWITCH", certainty="high", target_workflow="loan",
+            ),
         ):
             self.manager.handle(self.phone, "actually let me apply for a loan instead", trace_id="t5")
 
@@ -545,15 +560,17 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(get_workflow(self.phone)["type"], "loan")
 
     async def test_declining_the_jump_resumes_the_original_workflow(self):
-        from app.services.llm_understanding import JumpTarget
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
         from app.workflows.memory import get_workflow
 
         workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
         create_workflow(self.phone, workflow)
 
         with patch(
-            "app.workflows.manager.detect_step_or_workflow_jump",
-            return_value=JumpTarget(target_workflow="loan", confidence=0.9),
+            "app.workflows.manager.classify_and_route_llm_sync",
+            return_value=LLMRoutingDecision(
+                intent="loan_application_request", action="SWITCH", certainty="high", target_workflow="loan",
+            ),
         ):
             self.manager.handle(self.phone, "actually let me apply for a loan instead", trace_id="t7")
 

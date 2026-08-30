@@ -29,6 +29,7 @@ from app.conversation.guidance.models import GuidanceAction, GuidanceType
 from app.conversation.guidance.policy import build_guidance
 from app.conversation.guidance.responses import render_action_info, render_guidance
 from app.conversation.intent import classify_intent
+from app.conversation.intent.llm_routing import classify_and_route_llm, is_shadow_llm_routing_enabled
 from app.conversation.intent.text_clean import clean_noisy_text
 from app.services.language import (
     DEFAULT_LANGUAGE,
@@ -42,7 +43,7 @@ from app.conversation.renderer import ResponseLike, StructuredResponse, as_struc
 from app.conversation.responses.common import render_cancelled, render_clarification
 from app.conversation.responses.common import render_main_menu_list, render_out_of_scope, render_service_unavailable
 from app.conversation.responses.errors import render_agent_error
-from app.conversation.router import route_intent
+from app.conversation.router import RoutingDecision, route_intent
 from app.conversation.workflow_adapter import start_workflow_directly
 from app.logger import get_logger
 from app.memory import append_turn_to_session
@@ -169,6 +170,10 @@ class ConversationManager:
     ) -> None:
         self.workflow_manager = workflow_manager or WorkflowManager()
         self.context_store = context_store or ConversationContextStore()
+        # Step 2 (LLM-first routing migration): strong refs to in-flight
+        # shadow-comparison background tasks so asyncio can't garbage-collect
+        # them mid-flight -- see _fire_shadow_llm_routing().
+        self._shadow_tasks: set[asyncio.Task] = set()
 
     async def handle_message(
         self,
@@ -209,6 +214,7 @@ class ConversationManager:
             await self._update_language(context, message, detected_language, is_voice, trace_id)
 
         intent_result = await self._classify_intent(context, message, trace_id)
+        self._fire_shadow_llm_routing(context, message, intent_result, phone_number, trace_id)
         query = message
         reprocess_query = None
 
@@ -360,26 +366,77 @@ class ConversationManager:
 
             if action == "CLARIFICATION_REQUIRED":
                 reason = routing_decision.reason or "unknown"
-                if reason == "unknown":
-                    # No rule matched and there's no specific banking intent
-                    # to ask a targeted clarifying question about (that's
-                    # the `else` branch below) -- rather than a static "I
-                    # didn't understand" wall, which especially failed pure
-                    # native-language phrasing with no English loanword for
-                    # the rule layer to key on, let the LLM+tools agent
-                    # itself try to understand and respond or guide
-                    # naturally. It still can't execute a financial action
-                    # without its own tool call plus that workflow's normal
-                    # confirmation step, so this doesn't weaken any safety
-                    # guarantee -- it only gives more messages a real
-                    # attempt at an answer instead of a canned rejection.
-                    action = "BANKING_LLM"
-                else:
+                # classify_workflow_request() and its rule siblings are
+                # English-keyword-led: CLARIFICATION_REQUIRED means they
+                # either had NO opinion at all (reason="unknown" -- pure
+                # native-script, romanized, or indirect phrasing like
+                # "నాకు లోన్ కావాలి") OR matched a workflow-request/banking
+                # intent without enough confidence to trust (a hedged
+                # phrase, e.g. "maybe I should get a loan"). Both used to
+                # mean the same static "did you mean X?" wall (or, for
+                # "unknown", a blind hand-off to an agent with no tool to
+                # actually START a workflow). classify_and_route_llm() --
+                # the SAME single schema-based call, not a second one --
+                # is now authoritative across this WHOLE ambiguous surface,
+                # not just the no-opinion-at-all slice: this is the
+                # semantic-understanding decision itself moving from
+                # keyword matching to the LLM, while a genuinely
+                # high-confidence rule match (the vast majority of English
+                # traffic) still never reaches this branch and costs
+                # nothing extra.
+                llm_decision = await classify_and_route_llm(query, context=context, trace_id=trace_id)
+                if llm_decision is None:
+                    # Call failed/unavailable -- exact original fallback:
+                    # "unknown" forwards to the agent, everything else gets
+                    # the static targeted clarification, same as before
+                    # this change ever existed.
+                    if reason == "unknown":
+                        action = "BANKING_LLM"
+                    else:
+                        response = render_clarification(reason)
+                        self._register_clarification(context)
+                        return await self._finish(
+                            context, phone_number, query, response, trace_id, pending_action=f"clarify:{reason}"
+                        )
+                elif llm_decision.action == "OUT_OF_SCOPE":
+                    return await self._finish(
+                        context, phone_number, query, render_out_of_scope(), trace_id, pending_action=None
+                    )
+                elif (
+                    llm_decision.action in ("START_WORKFLOW", "SWITCH")
+                    and llm_decision.certainty == "high"
+                    and llm_decision.resolved_target_workflow()
+                ):
+                    # Reuse the EXACT existing START_WORKFLOW pipeline
+                    # (start_requested() then start_workflow_directly())
+                    # below rather than duplicating "how a workflow
+                    # begins" -- a high-certainty LLM decision is treated
+                    # exactly like a high-confidence rule decision from
+                    # here on, including still requiring its own
+                    # STEP_CONFIRM_* gate before anything is committed.
+                    action = "START_WORKFLOW"
+                    routing_decision = RoutingDecision(
+                        action="START_WORKFLOW",
+                        workflow=llm_decision.resolved_target_workflow(),
+                        reason=f"llm_rescue:{llm_decision.intent}",
+                    )
+                elif llm_decision.action == "CLARIFY":
+                    # The LLM agrees this is genuinely ambiguous -- fall
+                    # back to the existing targeted clarification (keyed
+                    # off the rule's own `reason` when it had one) rather
+                    # than inventing new clarification copy.
                     response = render_clarification(reason)
                     self._register_clarification(context)
                     return await self._finish(
                         context, phone_number, query, response, trace_id, pending_action=f"clarify:{reason}"
                     )
+                else:
+                    # TOOL / RAG / low-certainty START_WORKFLOW/SWITCH --
+                    # the agent actually has the tools and grounding to
+                    # answer these; matches the "2 calls when data
+                    # grounding is needed" tier already accepted for
+                    # BANKING_LLM turns, not a new latency tier.
+                    action = "BANKING_LLM"
 
             if action in ("START_WORKFLOW", "SAFE_FALLBACK"):
                 # START_WORKFLOW: high-confidence request to begin a new
@@ -560,6 +617,67 @@ class ConversationManager:
                 f"phone={context.phone_number[-4:]} | error={e}"
             )
             return None
+
+    def _fire_shadow_llm_routing(
+        self,
+        context: Optional[ConversationContext],
+        message: str,
+        rule_intent_result: Any,
+        phone_number: str,
+        trace_id: str,
+    ) -> None:
+        """Step 2 of the LLM-first routing migration: kick off a purely
+        observational LLM routing call in the background and return
+        immediately. Never awaited by the live turn, so it cannot add
+        latency or change what the customer sees -- see
+        _shadow_llm_routing_comparison() for what it actually does. Gated
+        off by default (is_shadow_llm_routing_enabled())."""
+        if context is None or not is_shadow_llm_routing_enabled():
+            return
+        task = asyncio.create_task(
+            self._shadow_llm_routing_comparison(context, message, rule_intent_result, phone_number, trace_id)
+        )
+        self._shadow_tasks.add(task)
+        task.add_done_callback(self._shadow_tasks.discard)
+
+    async def _shadow_llm_routing_comparison(
+        self,
+        context: ConversationContext,
+        message: str,
+        rule_intent_result: Any,
+        phone_number: str,
+        trace_id: str,
+    ) -> None:
+        """Runs the candidate LLM routing call and logs it next to what the
+        existing rule pipeline decided for the same message, so the two can
+        be diffed offline (Step 3) before anything becomes authoritative.
+        Never raises, never touches workflow state, never influences the
+        response already sent for this turn."""
+        try:
+            llm_decision = await classify_and_route_llm(message, context=context, trace_id=trace_id)
+            if llm_decision is None:
+                return
+            rule_routing = route_intent(rule_intent_result, context=context) if rule_intent_result else None
+            llm_routing = llm_decision.to_routing_decision()
+            agree = bool(
+                rule_routing
+                and rule_routing.action == llm_routing.action
+                and rule_routing.workflow == llm_routing.workflow
+            )
+            rule_intent = rule_intent_result.intent if rule_intent_result else "none"
+            rule_confidence = rule_intent_result.confidence if rule_intent_result else 0.0
+            logger.info(
+                f"[{trace_id}] shadow.llm_routing | phone={phone_number[-4:]} | "
+                f"workflow={context.current_workflow or 'none'} | step={context.current_step or 'none'} | "
+                f"rule_intent={rule_intent} | rule_confidence={rule_confidence:.2f} | "
+                f"rule_action={rule_routing.action if rule_routing else 'none'} | "
+                f"llm_intent={llm_decision.intent} | llm_action={llm_decision.action} | "
+                f"llm_certainty={llm_decision.certainty} | "
+                f"llm_target_workflow={llm_decision.target_workflow or 'none'} | "
+                f"language={llm_decision.language or 'unknown'} | agree={'yes' if agree else 'no'}"
+            )
+        except Exception as e:
+            logger.error(f"[{trace_id}] shadow.llm_routing.failed | phone={phone_number[-4:]} | error={e}")
 
     async def _try_pending_action_handoff(
         self,

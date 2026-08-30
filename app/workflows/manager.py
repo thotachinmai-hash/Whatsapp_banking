@@ -28,11 +28,11 @@ from app.conversation.intent.rules import BANKING_DOMAIN_KEYWORDS
 from app.services.llm_understanding import (
     answer_side_question,
     detect_soft_decline,
-    detect_step_or_workflow_jump,
     is_llm_fallback_enabled,
 )
 from app.conversation.renderer import InteractiveButton, StructuredResponse
 from app.conversation.workflow_adapter import start_workflow_directly
+from app.conversation.intent.llm_routing import classify_and_route_llm_sync
 from app.conversation.intent.models import CONFIDENCE_HIGH, WORKFLOW_EXECUTING_INTENTS
 from app.conversation.router import get_workflow_for_intent
 
@@ -123,6 +123,32 @@ class WorkflowManager:
         if workflow.get("data", {}).get("pending_stop_confirmation"):
             return _resolve_pending_stop(workflow, workflow_type, phone_number, query, trace_id, self.transfer_handler)
 
+        # Context-aware cancellation: "never mind, apply for a loan for me"
+        # must NOT read as pure cancellation just because it starts with a
+        # cancel phrase — the rest of the sentence names a clear, different
+        # request. Confirmed live (this is the exact reported regression):
+        # _is_cancel_command()'s "never mind" match used to fire
+        # unconditionally, before the generic switch check below ever got a
+        # chance to see the loan request that followed it.
+        #
+        # The fix reuses the SAME already-computed intent_result and the
+        # SAME confidence/workflow-mapping logic the generic switch check
+        # below already applies — not a new keyword or a pairwise rule, and
+        # not English-specific (once classify_workflow_request is replaced
+        # by LLM-based classification in a future step, intent_result comes
+        # from that instead, and this check keeps working unchanged). Only
+        # when the message ALSO confidently names a different workflow does
+        # cancellation defer to the switch path; a bare "never mind, don't
+        # open the account" (naming no new request) still cancels exactly
+        # as before.
+        has_confident_switch_intent = (
+            intent_result is not None
+            and intent_result.intent in WORKFLOW_EXECUTING_INTENTS
+            and intent_result.confidence >= CONFIDENCE_HIGH
+            and not _is_current_workflow_input(workflow, query)
+            and get_workflow_for_intent(intent_result.intent) not in (None, workflow_type)
+        )
+
         # An explicit stop/cancel word, or a natural closing phrase ("thanks,
         # that's all", "bye"), must not silently abandon real in-progress
         # work (a beneficiary already picked, a document already uploaded).
@@ -143,7 +169,7 @@ class WorkflowManager:
             and _looks_like_possible_decline(query)
             and detect_soft_decline(query, workflow_type, trace_id)
         )
-        if _is_cancel_command(query) or _is_closing_word(query) or is_soft_decline:
+        if (_is_cancel_command(query) or _is_closing_word(query) or is_soft_decline) and not has_confident_switch_intent:
             if workflow_type == WORKFLOW_ONBOARDING:
                 complete_workflow(phone_number)
                 logger.info(
@@ -205,41 +231,31 @@ class WorkflowManager:
         if _is_back_command(query) and workflow_type != WORKFLOW_TRANSFER:
             return _handle_back_for_workflow(workflow, phone_number)
 
-        # Generic, any-workflow-to-any-workflow switch: the SAME
-        # intent_result app/conversation/manager.py already computed for
-        # this message via classify_intent() (before it even knew a
-        # workflow was active) is reused here — not a second, separate
-        # classification, and not a per-workflow-pair keyword table. If
-        # the classifier confidently recognized a DIFFERENT workflow-
-        # starting request than the one currently active (e.g. "I want to
-        # create another bank account" mid-loan-application), switch
-        # immediately: no confirmation round-trip, no need to say
-        # "cancel" first. This runs BEFORE the older, narrower jump
-        # detection below (which stays as a fallback for phrasing the
-        # fast rules don't catch) and before the free-text
-        # question/side-answer handling, since a clear new request should
-        # win over both.
+        # Generic, any-workflow-to-any-workflow switch: reuses
+        # has_confident_switch_intent (computed above, before the
+        # cancellation check, so a message like "never mind, apply for a
+        # loan for me" resolves as a switch rather than a cancellation) —
+        # the SAME intent_result app/conversation/manager.py already
+        # computed for this message via classify_intent() (before it even
+        # knew a workflow was active), not a second, separate
+        # classification, and not a per-workflow-pair keyword table. This
+        # runs BEFORE the older, narrower jump detection below (which stays
+        # as a fallback for phrasing the fast rules don't catch) and before
+        # the free-text question/side-answer handling, since a clear new
+        # request should win over both.
         #
         # CONFIDENCE_HIGH matches the exact bar a fresh (no-workflow)
         # START_WORKFLOW decision already requires (see router.py) — this
         # doesn't lower the bar for starting a financial workflow, it only
         # extends the SAME bar to also apply while a different one is
-        # active. _is_current_workflow_input still guards against a
-        # genuine field answer that happens to contain a workflow keyword
-        # being misread as a switch.
-        if (
-            intent_result is not None
-            and intent_result.intent in WORKFLOW_EXECUTING_INTENTS
-            and intent_result.confidence >= CONFIDENCE_HIGH
-            and not _is_current_workflow_input(workflow, query)
-        ):
+        # active.
+        if has_confident_switch_intent:
             target_workflow = get_workflow_for_intent(intent_result.intent)
-            if target_workflow and target_workflow != workflow_type:
-                switched = _switch_workflow(
-                    phone_number, workflow_type, target_workflow, query, trace_id, self.transfer_handler
-                )
-                if switched is not None:
-                    return switched
+            switched = _switch_workflow(
+                phone_number, workflow_type, target_workflow, query, trace_id, self.transfer_handler
+            )
+            if switched is not None:
+                return switched
 
         # Questions and general banking requests are allowed during every
         # workflow. Answer them without losing the active flow or asking the
@@ -303,36 +319,70 @@ class WorkflowManager:
                 # the original behavior: let the router/LLM answer it next,
                 # workflow state left untouched, resuming on the next message.
                 return {"handled": False, "response": None, "reprocess_query": query}
-
-        # An incomplete document workflow must not swallow unrelated requests.
-        # Ask for explicit confirmation before abandoning the customer's data.
-        pending = workflow.get("data", {}).get("pending_interrupt")
-        if pending:
-            # Older sessions may still contain this field from the previous
-            # interruption-confirmation behavior. Workflow isolation no
-            # longer uses it, so remove it before handling this message.
-            from app.workflows.memory import clear_workflow_data
-            clear_workflow_data(phone_number, "pending_interrupt")
-
-        if (
+        elif (
             workflow_type in {WORKFLOW_CHEQUE, WORKFLOW_LOAN, WORKFLOW_KYC, WORKFLOW_TRANSFER}
             and not _is_current_workflow_input(workflow, query)
-            and _looks_like_new_service_request(query, workflow_type)
+            and not _looks_like_protocol_id(query)
         ):
-            if is_llm_fallback_enabled():
-                jump = detect_step_or_workflow_jump(query, workflow_type, workflow.get("step"), trace_id)
-                if jump and jump.target_workflow:
+            # _is_conversational_query() above is deliberately English-
+            # question-marker-led ("?", "what", "how", ...), so a genuine
+            # side question with no "?" and no English question word --
+            # native script ("நா bank ఖాతాలో ఎంత...") OR fully-ASCII
+            # romanized text ("Naa bank khatalo entha dabbu undi") -- fails
+            # it completely and used to fall straight through to the step
+            # processor as literal field input. Confirmed live via a real
+            # test conversation (scripts/_real_log_cases.json).
+            #
+            # This ALSO absorbs what used to be a separate pivot-detection
+            # call further down in this method (Step 6/7): one LLM
+            # consultation now answers both "is this a side question?" and
+            # "does this want a different workflow?" -- two separate call
+            # sites here would have meant two LLM calls for the same
+            # message once Step 7 removed the keyword pre-filter that used
+            # to (accidentally) keep them from both firing together.
+            #
+            # Deliberately unconditional (no LLM_FALLBACK_ENABLED gate,
+            # unlike answer_side_question/detect_soft_decline below/above,
+            # which stay opt-in -- they're a separate concern this
+            # migration didn't validate). This mechanism specifically WAS
+            # validated this session (scripts/shadow_eval.py's 101-case
+            # corpus + real traffic replay) and is the actual target of
+            # this migration step, so it is now the live, authoritative
+            # behavior rather than a shadow/opt-in one. Gating this with a
+            # keyword/script/length heuristic instead of just the
+            # structural guards above would reintroduce a differently-
+            # shaped blind spot -- not a new keyword table.
+            decision = classify_and_route_llm_sync(query, workflow_type, workflow.get("step"), trace_id)
+
+            if decision and decision.action in ("TOOL", "RAG") and decision.certainty != "low":
+                # certainty != "low" mirrors the same gate the SWITCH branch
+                # below already applies (there: == "high"). Confirmed live
+                # this was a real gap: "send 500" mid-transfer at
+                # SELECT_BENEFICIARY (an ordinary amount-shaped answer, not
+                # a question) got classified TOOL at certainty="low" by the
+                # LLM itself -- diverting it as a side question would have
+                # silently swallowed a real field answer instead of letting
+                # the transfer processor parse it.
+                logger.info(
+                    f"[{trace_id}] Non-English/unmarked side question recognized via LLM fallback | "
+                    f"workflow={workflow_type} | phone={phone_number[-4:]}"
+                )
+                return {"handled": False, "response": None, "reprocess_query": query}
+
+            if decision and decision.action == "SWITCH":
+                candidate = decision.resolved_target_workflow()
+                if candidate and candidate != workflow_type:
                     label = _WORKFLOW_LABELS.get(workflow_type, "request")
-                    target_label = _WORKFLOW_LABELS.get(jump.target_workflow, jump.target_workflow)
+                    target_label = _WORKFLOW_LABELS.get(candidate, candidate)
                     update_workflow_data(phone_number, {
                         "pending_stop_confirmation": True,
                         "pending_stop_was_closing": False,
-                        "pending_jump_workflow": jump.target_workflow,
+                        "pending_jump_workflow": candidate,
                         "pending_jump_query": query,
                     })
                     logger.info(
                         f"[{trace_id}] Workflow jump requested, confirming | from={workflow_type} | "
-                        f"to={jump.target_workflow} | phone={phone_number[-4:]}"
+                        f"to={candidate} | phone={phone_number[-4:]}"
                     )
                     return {
                         "handled": True,
@@ -345,7 +395,25 @@ class WorkflowManager:
                             ],
                         ),
                     }
-            return {"handled": True, "response": _workflow_boundary_message(workflow_type, workflow.get("step"))}
+            # Not recognized as a side question or a genuine pivot
+            # (CONTINUE/CORRECT/CANCEL/CLARIFY/low certainty/no decision) --
+            # fall through to normal step-processor handling for this
+            # workflow, exactly as before either of these two fixes. This
+            # is deliberately NOT a boundary-message rejection: once Step 7
+            # removed the keyword pre-filter that used to narrowly gate
+            # this check, treating every non-match as an off-topic boundary
+            # violation would have wrongly rejected ordinary free-text
+            # field answers the LLM correctly recognized as CONTINUE.
+
+        # An incomplete document workflow must not swallow unrelated requests.
+        # Ask for explicit confirmation before abandoning the customer's data.
+        pending = workflow.get("data", {}).get("pending_interrupt")
+        if pending:
+            # Older sessions may still contain this field from the previous
+            # interruption-confirmation behavior. Workflow isolation no
+            # longer uses it, so remove it before handling this message.
+            from app.workflows.memory import clear_workflow_data
+            clear_workflow_data(phone_number, "pending_interrupt")
 
         logger.info(
             f"[{trace_id}] Active workflow found | "
@@ -564,25 +632,35 @@ def _insufficient_balance_message() -> str:
     return render_insufficient_balance()
 
 
-def _looks_like_new_service_request(query: str, workflow_type: str | None = None) -> bool:
-    """A generic banking word alone isn't enough to conclude the customer
-    wants to abandon their active workflow for something else — "account"
-    and "transfer" are exactly the vocabulary a transfer's own beneficiary/
-    amount answers naturally use ("account number 12345"), so matching
-    them unconditionally used to reject perfectly valid workflow input with
-    the boundary message instead of ever reaching the processor. Only a
-    term that ISN'T already part of the active workflow's own topic (see
-    _WORKFLOW_ON_TOPIC_TERMS, shared with _is_allowed_for_workflow below)
-    counts as a genuine pivot to a different service."""
-    text = query.strip().lower()
-    on_topic = _WORKFLOW_ON_TOPIC_TERMS.get(workflow_type, ()) if workflow_type else ()
-    return any(
-        term in text and not any(topic_term in term or term in topic_term for topic_term in on_topic)
-        for term in (
-            "balance", "transaction", "statement", "loan", "kyc", "cheque", "menu",
-            "help", "account", "transfer", "service",
-        )
-    )
+# REMOVED (Step 7 of the LLM-first routing migration): _looks_like_new_service_request()
+# and _looks_non_ascii(), the two English-keyword-ish pre-filters that used
+# to gate whether a pivot check even ran (see the jump-detection block
+# above, which now runs classify_and_route_llm_sync() directly behind only
+# structural guards -- workflow type, not-already-literal-field-input, and
+# LLM_FALLBACK_ENABLED). Both were confirmed live to miss real pivots
+# (scripts/shadow_eval.py's en_te_mixed_switch case) since gating an LLM
+# understanding step with a semantic keyword guess just reintroduces the
+# same blind spot one layer up. _WORKFLOW_ON_TOPIC_TERMS below is still
+# used by _is_allowed_for_workflow() -- not removed.
+
+
+def _looks_like_protocol_id(query: str) -> bool:
+    """Button/list taps and other menu-generated ids ("lt_home",
+    "acct_yes") are a fixed machine protocol, not natural language -- they
+    must never reach an LLM classification call (button/list/menu/digit
+    handling is required to stay deterministic). Confirmed live: a real
+    "lt_home" loan-type tap reaching the mid-workflow LLM check produced
+    flaky, non-deterministic results because there is no natural-language
+    meaning for the model to actually classify.
+
+    A single whitespace-free token containing an underscore is the
+    structural signature every such id already shares in this codebase
+    (WhatsApp interactive replies are always exactly one id, never a
+    sentence, and every namespaced id here uses "prefix_value") -- this is
+    a protocol-shape check, not a keyword table: it says nothing about
+    what the id means, only that it isn't prose."""
+    text = query.strip()
+    return bool(text) and " " not in text and "_" in text
 
 
 def _is_current_workflow_input(workflow: dict[str, Any], query: str) -> bool:
@@ -648,13 +726,12 @@ def _is_workflow_help_query(workflow_type: str, query: str) -> bool:
     return False
 
 
-# Shared by _is_allowed_for_workflow (keep a conversational question inside
-# the active workflow's subject area) and _looks_like_new_service_request
-# (decide whether workflow input that ISN'T phrased as a question is a
-# pivot to a different service) — one table of what each workflow's own
-# vocabulary is, so the two checks can't disagree with each other the way
-# they used to (the boundary check didn't know "account" is normal transfer
-# vocabulary and was rejecting valid "account number 12345" answers).
+# Used by _is_allowed_for_workflow (keep a conversational question inside
+# the active workflow's subject area) — one table of what each workflow's
+# own vocabulary is. Previously also shared with the now-removed
+# _looks_like_new_service_request() (see the REMOVED note above
+# _is_current_workflow_input) — kept here since _is_allowed_for_workflow
+# still needs it.
 _WORKFLOW_ON_TOPIC_TERMS = {
     WORKFLOW_TRANSFER: (
         "transfer", "send", "pay", "payment", "beneficiar", "recipient", "amount",
@@ -727,6 +804,21 @@ def _is_greeting_word(query: str) -> bool:
 
 def _is_cancel_command(query: str) -> bool:
     """Recognize short stop commands consistently across every workflow."""
+    if any(ord(ch) > 127 for ch in query):
+        # The a-z stripping below discards every non-Latin character, so a
+        # compound message like "never mind, मुझे लोन चाहिए" would otherwise
+        # collapse to exactly "never mind" and match the broad "never mind"
+        # substring check below even though a real, different request
+        # follows in native script -- the same class of bug just fixed in
+        # classify_hard_navigation() (app/conversation/intent/rules.py) for
+        # the pre-workflow case. This rule was never able to recognize a
+        # PURE native-script cancel phrase anyway (every pattern below is
+        # English), so deferring here loses nothing that used to work --
+        # it only stops a false-positive on content this function can't
+        # read. Later mechanisms (the mid-workflow LLM-based switch check
+        # a few lines below in handle(), when enabled) get a real chance to
+        # understand the full sentence instead.
+        return False
     text = re.sub(r"[^a-z ]", "", query.strip().lower())
     # Word-boundary matching (Task 10) — a naive substring check here
     # false-positived on ordinary banking questions: "spend" contains
@@ -736,7 +828,15 @@ def _is_cancel_command(query: str) -> bool:
     action_words = re.search(
         r"\b(process|application|request|cheque|check|loan|transfer|this|it)\b", text
     )
-    broad_stop = bool(stop_words and action_words)
+    # "never mind" alone is already in the exact-match set below, but only
+    # when it's the ENTIRE message — "never mind, don't open the account"
+    # (confirmed live, scripts/shadow_eval.py's acct_cancel case) has more
+    # text after it and fell through both checks. "never mind" is an
+    # unambiguous abandonment signal in this context regardless of what
+    # follows, and — unlike a financial confirmation — a false positive
+    # here only means re-asking, not an unauthorized action, so a plain
+    # substring match is an acceptable, low-risk widening.
+    broad_stop = bool((stop_words and action_words) or "never mind" in text)
     return broad_stop or text in {
         "cancel", "cancel it", "cancel this", "stop", "stop it", "exit",
         "quit", "end", "end this", "never mind", "no thanks",

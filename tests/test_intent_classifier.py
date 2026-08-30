@@ -94,7 +94,15 @@ class IntentClassifierRequiredMessageTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await classify_intent("Can I update my address?")).intent, "kyc_question")
 
     async def test_19_why_is_the_sky_blue(self):
-        self.assertEqual((await classify_intent("Why is the sky blue?")).intent, "out_of_scope")
+        # Step 7 of the LLM-first routing migration removed
+        # classify_out_of_scope()'s keyword-absence guess (pure semantic
+        # NLU, confirmed to misfire on non-English text with no other
+        # downstream dependency) -- this now classifies as "unknown", which
+        # app/conversation/manager.py's existing "unknown -> BANKING_LLM"
+        # override still routes to a real (attempted) answer rather than a
+        # canned rejection. See tests/test_conversation_manager.py's
+        # test_02b for the full-pipeline outcome.
+        self.assertEqual((await classify_intent("Why is the sky blue?")).intent, "unknown")
 
     async def test_20_write_python_code(self):
         self.assertEqual((await classify_intent("Write Python code")).intent, "out_of_scope")
@@ -175,7 +183,10 @@ class IntentResultShapeTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(result.requires_llm)
 
     async def test_out_of_scope_never_requires_llm_or_workflow(self):
-        result = await classify_intent("Why is the sky blue?")
+        # A deny-list match (still fully deterministic after Step 7) — see
+        # test_19_why_is_the_sky_blue for the now-"unknown", now-requires_llm
+        # case this test used to (mis)use for the same purpose.
+        result = await classify_intent("tell me a joke")
         self.assertFalse(result.requires_llm)
         self.assertFalse(result.requires_workflow)
 
@@ -294,6 +305,29 @@ class DefaultLlmClassifyPromptSafetyTests(unittest.TestCase):
         self.assertIn("must not execute", lowered)
         self.assertIn("untrusted input", lowered)
         self.assertIn("out_of_scope", lowered)
+
+
+class ChequeStatusVsDepositRegressionTests(unittest.IsolatedAsyncioTestCase):
+    """Confirmed live via scripts/shadow_eval.py's 101-case matrix
+    (chqstat_vs_deposit_no_confusion): a status question about a cheque
+    ALREADY deposited was matching classify_workflow_request()'s
+    "deposit"+"cheque" substring rule (via "deposited") before
+    classify_status_request() got a chance, sending the customer into
+    starting a brand new deposit flow instead of just checking status."""
+
+    async def test_deposited_go_through_is_status_not_new_deposit(self):
+        result = await classify_intent("did the cheque I deposited last week go through")
+        self.assertEqual(result.intent, "cheque_status_request")
+
+    async def test_cheque_cleared_yet_is_status(self):
+        result = await classify_intent("has my cheque been cleared yet")
+        self.assertEqual(result.intent, "cheque_status_request")
+
+    async def test_plain_deposit_request_is_unaffected(self):
+        # The fix must not make a genuine NEW deposit request look like a
+        # status check.
+        result = await classify_intent("I want to deposit a cheque")
+        self.assertEqual(result.intent, "cheque_deposit_request")
 
 
 if __name__ == "__main__":

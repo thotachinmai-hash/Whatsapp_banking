@@ -184,7 +184,14 @@ class GuidancePolicyBoundaryTests(unittest.IsolatedAsyncioTestCase):
             self.assertFalse(hasattr(result, forbidden_attr))
 
     async def test_out_of_scope_never_becomes_guidance(self):
-        intent_result, guidance = await _guidance("Why is the sky blue?")
+        # Step 7 of the LLM-first routing migration removed
+        # classify_out_of_scope()'s keyword-absence guess, so a message
+        # like "why is the sky blue" is now "unknown" rather than
+        # "out_of_scope" (see tests/test_conversation_router.py's
+        # test_01_sky_is_blue_reaches_clarification_then_the_agent for that
+        # change). Use a deny-list phrase here instead, so this test keeps
+        # protecting the invariant it's named for.
+        intent_result, guidance = await _guidance("tell me a joke")
         self.assertEqual(intent_result.intent, "out_of_scope")
         self.assertIsNone(guidance)
 
