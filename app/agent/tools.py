@@ -697,8 +697,12 @@ def tool_start_loan_workflow(
     condition against a real tool result (e.g. checked
     tool_get_loan_product_info's interest rate and confirmed it actually
     meets the condition). This tool does not approve or submit a loan —
-    the loan workflow still requires the customer to upload supporting
-    documents and confirm before anything is actually submitted.
+    the loan workflow collects the remaining details by asking the
+    customer a question at a time and confirms before anything is
+    actually submitted. Never tell the customer a document upload is
+    required to apply — the workflow only asks questions; uploading a
+    loan form is an optional shortcut if the customer offers one
+    unprompted, never something to request.
     """
     from app.workflows.constants import STEP_SELECT_LOAN_TYPE, WORKFLOW_LOAN
     from app.workflows.memory import update_workflow_data
@@ -723,10 +727,10 @@ def tool_start_loan_workflow(
         )})
 
     if requested_amount.strip():
-        # Informational only — the loan flow still validates eligibility
-        # from the uploaded documents, not from a chat-typed figure, so
-        # this is carried along for context rather than treated as a
-        # confirmed request amount.
+        # Informational only — the loan flow still asks its own
+        # requested_amount question and takes whatever the customer
+        # answers there as the confirmed figure, so this is carried
+        # along as a hint for context rather than treated as final.
         update_workflow_data(phone_number, {"requested_amount_hint": requested_amount.strip()})
 
     result = LoanWorkflowHandler()._select_type(workflow, phone_number, detected_type, trace_id)

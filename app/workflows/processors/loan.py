@@ -182,6 +182,7 @@ def detect_loan_type_from_text(text: str) -> str | None:
 # salaried" or "self employed" resolve without a separate question.
 _EMPLOYMENT_TYPE_WORDS = {
     "self-employed": "Self-employed", "self employed": "Self-employed", "selfemployed": "Self-employed",
+    "self": "Self-employed",
     "salaried": "Salaried",
     "business owner": "Business", "businessman": "Business", "businesswoman": "Business", "business": "Business",
     "unemployed": "Unemployed", "retired": "Retired", "student": "Student",
@@ -191,8 +192,17 @@ _TENURE_HINT_RE = re.compile(r"\b([0-9]+(?:\.[0-9]+)?)\s*(years?|yrs?|months?|mo
 # as an optional group alongside the digits so a stated amount/income
 # isn't silently truncated to its bare leading digits (confirmed live:
 # "a personal loan of ₹5 lakh" was recorded as a requested_amount of "5").
-_AMOUNT_MULTIPLIERS = {"k": 1_000, "thousand": 1_000, "lac": 100_000, "lakh": 100_000, "crore": 10_000_000}
-_AMOUNT_SUFFIX_RE = r"\s*(k|thousand|lac|lakhs?|crores?)?\s*(?:rupees?)?"
+_AMOUNT_MULTIPLIERS = {
+    "k": 1_000, "thousand": 1_000, "lac": 100_000, "lakh": 100_000, "l": 100_000,
+    "crore": 10_000_000, "cr": 10_000_000,
+}
+# "l"/"cr" as bare-letter shorthand for lakh/crore (e.g. "40l", "2cr") --
+# placed after their longer counterparts so "lakh"/"crore" still match in
+# full rather than backtracking to the single-letter alternative first
+# (confirmed live: a customer answering "How much would you like to
+# borrow?" with "40l" had it stored as the literal string "40l" instead
+# of 4000000, since fullmatch had no alternative to consume the "l").
+_AMOUNT_SUFFIX_RE = r"\s*(k|thousand|lac|lakhs?|crores?|l|cr)?\s*(?:rupees?)?"
 _INCOME_HINT_RE = re.compile(
     rf"\b(?:income|salary|earn\w*|take[\s-]?home)\D{{0,12}}?([0-9][0-9,]*(?:\.[0-9]{{1,2}})?){_AMOUNT_SUFFIX_RE}", re.I
 )

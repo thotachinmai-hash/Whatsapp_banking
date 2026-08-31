@@ -28,7 +28,13 @@ from app.conversation.workflow_adapter import start_workflow_directly
 from app.conversation.intent.llm_routing import LLMRoutingDecision, classify_and_route_llm_sync
 
 from app.workflows.processors.cheque import ChequeWorkflowProcessor
-from app.workflows.processors.loan import LOAN_TYPES, LoanWorkflowHandler, loan_type_list_prompt
+from app.workflows.processors.loan import (
+    LOAN_TYPES,
+    LoanWorkflowHandler,
+    loan_type_list_prompt,
+    _EMPLOYMENT_TYPE_WORDS,
+    _next_missing_field,
+)
 from app.workflows.processors.kyc import KYCWorkflowHandler
 from app.workflows.processors.onboarding import OnboardingWorkflowHandler, start_add_account_workflow
 from app.workflows.processors.transfer import TransferWorkflowProcessor, has_transferable_balance
@@ -667,7 +673,8 @@ def _looks_like_protocol_id(query: str) -> bool:
 
 
 def _is_current_workflow_input(workflow: dict[str, Any], query: str) -> bool:
-    """Do not treat a field correction as a request to abandon its workflow."""
+    """Do not treat a field correction/answer as a request to abandon its
+    workflow."""
     if workflow.get("type") != WORKFLOW_LOAN:
         return False
     fields = (
@@ -675,10 +682,32 @@ def _is_current_workflow_input(workflow: dict[str, Any], query: str) -> bool:
         "salary", "employment", "amount", "loan amount", "requested", "tenure",
         "loan tenure", "purpose", "loan purpose",
     )
-    return any(
+    if any(
         any(line.lstrip().lower().startswith(f"{field}:") for field in fields)
         for line in query.splitlines()
-    )
+    ):
+        return True
+
+    # A bare employment-type word/phrase ("Business", "Self", "Salaried")
+    # answering the exact field currently pending is protocol input too,
+    # same as a bare digit already is for the numeric fields — skip the
+    # LLM switch-detection call entirely instead of risking it. Confirmed
+    # live: with only "loan (step: UPLOAD_LOAN_FORM)" for context (that
+    # one step covers 6 different fields, unlike every other workflow's
+    # per-field step names), the LLM has no way to know employment_type
+    # specifically is pending, and inconsistently misread a bare
+    # "Business" as OUT_OF_SCOPE/CLARIFY while an equivalent "Self" a
+    # moment later was read correctly -- real model non-determinism on
+    # an ambiguous bare word, not something worth spending a ~2.5s call
+    # on when the closed vocabulary already settles it deterministically.
+    if workflow.get("step") == "UPLOAD_LOAN_FORM":
+        pending_field = _next_missing_field(workflow.get("data", {}))
+        if pending_field == "employment_type":
+            lowered = query.strip().lower()
+            if any(phrase in lowered for phrase in _EMPLOYMENT_TYPE_WORDS):
+                return True
+
+    return False
 
 
 _MENU_OR_RESTART_WORDS = {
@@ -848,7 +877,7 @@ def _handle_back_for_workflow(workflow: dict[str, Any], phone_number: str) -> di
         "UPLOAD_CHEQUE": (None, "🧾 You are already at the first cheque step. Please upload an image or reply *Cancel*."),
         "UPLOAD_LOAN_FORM": ("SELECT_LOAN_TYPE", "📝 Back to loan type. Reply 1 Personal, 2 Home, 3 Vehicle, or 4 Education."),
         "CONFIRM_LOAN_ACCOUNT": ("SELECT_LOAN_TYPE", "📝 Back to loan type. Reply 1 Personal, 2 Home, 3 Vehicle, or 4 Education."),
-        "CONFIRM_LOAN": ("UPLOAD_LOAN_FORM", "📝 Back to your loan form. Please upload it or reply with corrections."),
+        "CONFIRM_LOAN": ("UPLOAD_LOAN_FORM", "📝 Back to your loan details. Please reply with your corrections."),
         "SELECT_LOAN_TYPE": (None, "📝 You are already at the first loan step. Reply *Cancel* to stop."),
         "CONFIRM_KYC": ("UPLOAD_KYC_FORM", "📄 Back to KYC details. Please upload the document or reply with corrections."),
         "UPLOAD_KYC_FORM": (None, "📄 You are already at the first KYC step. Reply *Cancel* to stop."),
