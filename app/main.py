@@ -36,6 +36,9 @@ load_dotenv()
 logger = get_logger(__name__)
 
 
+_webhook_secret_missing_warned = False
+
+
 def _webhook_signature_valid(raw_body: bytes, signature_header: str | None) -> bool:
     """Verify the X-Hub-Signature-256 header Meta sends on every webhook
     POST, confirming the request genuinely came from Meta (using the
@@ -47,14 +50,25 @@ def _webhook_signature_valid(raw_body: bytes, signature_header: str | None) -> b
     matches this app's existing fail-safe convention elsewhere (e.g.
     SARVAM_API_KEY missing skips TTS rather than crashing) so a
     deployment that hasn't set it yet doesn't silently break, but logs a
-    clear warning either way so the gap is visible rather than silent.
+    clear warning so the gap is visible rather than silent.
     """
+    global _webhook_secret_missing_warned
     secret = os.getenv("WEBHOOK_SECRET", "")
     if not secret:
-        logger.warning(
-            "WEBHOOK_SECRET not configured — webhook signature is NOT being "
-            "verified; any request to this URL is currently trusted as-is."
-        )
+        # Logged once per process, not once per incoming message — with
+        # WEBHOOK_SECRET unset this line was firing on every single
+        # webhook.received (logs_aug.txt showed it repeated dozens of
+        # times a minute), which reads as an ongoing verification error
+        # in the deployment logs even though there's no actual failure
+        # (every webhook.received in that log was still processed
+        # normally, by design — see the docstring above).
+        if not _webhook_secret_missing_warned:
+            logger.warning(
+                "WEBHOOK_SECRET not configured — webhook signature is NOT being "
+                "verified; any request to this URL is currently trusted as-is. "
+                "(This warning is logged only once per process.)"
+            )
+            _webhook_secret_missing_warned = True
         return True
     if not signature_header or not signature_header.startswith("sha256="):
         return False

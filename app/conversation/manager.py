@@ -56,6 +56,7 @@ from app.memory import append_turn_to_session
 from app.services.registration_gate import check_registration_gate
 from app.workflows.manager import WorkflowManager
 from app.workflows.memory import get_workflow
+from app.workflows.processors.transactions import start_view_transactions
 
 logger = get_logger(__name__)
 
@@ -109,6 +110,30 @@ def _as_text(value: Any) -> str:
     return "" if value is None else str(value)
 
 
+# Pattern-based redaction for the query/reply debug logs below — a
+# key-based check (like sanitize_workflow_data(), app/conversation/
+# context.py) can't help here since these are raw free-text messages, not
+# a structured dict. A customer routinely TYPES their PAN/Aadhaar as a
+# plain text reply during onboarding/KYC (not just uploads an image of
+# it) — confirmed by tests/test_conversation_manager.py's
+# test_15_sensitive_information_not_logged_or_stored, which sends a PAN
+# number as the message itself. Deliberately shape-based, not
+# context-aware (no reliance on knowing the current step): PAN and
+# Aadhaar have distinctive enough shapes to redact unconditionally with
+# low false-positive risk, unlike a bare short number (which could
+# equally be a legitimate loan tenure/amount) — an OTP typed as free text
+# is a known, accepted residual gap (documented in the report), not
+# silently pretended away.
+_PAN_RE = re.compile(r"\b[A-Za-z]{5}[0-9]{4}[A-Za-z]\b")
+_AADHAAR_RE = re.compile(r"\b\d{4}[ -]?\d{4}[ -]?\d{4}\b")
+
+
+def _redact_sensitive(text: str) -> str:
+    text = _PAN_RE.sub("[REDACTED-PAN]", text)
+    text = _AADHAAR_RE.sub("[REDACTED-ID]", text)
+    return text
+
+
 class ConversationManager:
     """Orchestrates one conversation turn using the existing components."""
 
@@ -137,7 +162,6 @@ class ConversationManager:
         response.
         """
         start = time.time()
-        logger.info(f"[{trace_id}] conversation.turn.started | phone={phone_number[-4:]}")
 
         # Normalize non-string payloads before any .strip()/regex work.
         message = _as_text(message)
@@ -145,6 +169,14 @@ class ConversationManager:
         # Strip laughter/filler noise ("check my balance ha ha ha") before
         # anything tries to classify or match this message.
         message = clean_noisy_text(message)
+
+        # The customer's own message, once — everything below this point
+        # only ever logs metadata (intent/action/duration), not text, so
+        # this is the one place a turn's actual input is visible for
+        # debugging. Never carries Aadhaar/PAN/OTP itself (those are
+        # sent as images, not text), but IS the customer's raw words —
+        # treat these logs with the same care as any other PII.
+        logger.info(f"[{trace_id}] conversation.turn.started | phone={phone_number[-4:]} | query={_redact_sensitive(message)[:300]!r}")
 
         context = await asyncio.to_thread(self._load_context, phone_number, trace_id)
         if context is not None:
@@ -235,6 +267,14 @@ class ConversationManager:
                 reprocess_query = workflow_result.get("reprocess_query")
                 if reprocess_query:
                     query = reprocess_query
+                    if llm_decision is None:
+                        # WorkflowManager already computed one internally
+                        # to recognize this as a side question worth
+                        # reprocessing — reuse it instead of discarding it
+                        # and (eventually) falling back to the general
+                        # agent with no idea what operation this actually
+                        # is.
+                        llm_decision = workflow_result.get("llm_decision")
 
                 if workflow_result["handled"]:
                     logger.info(f"[{trace_id}] conversation.workflow.handled | phone={phone_number[-4:]}")
@@ -347,6 +387,7 @@ class ConversationManager:
                         transfer_handler=self.workflow_manager.transfer_handler,
                         query=query,
                         trace_id=trace_id,
+                        entities=llm_decision.entities,
                     )
                     if started and started.get("handled"):
                         self._register_progress(context)
@@ -363,6 +404,38 @@ class ConversationManager:
                     self._register_progress(context)
                     return await self._finish(
                         context, phone_number, query, protocol["response"], trace_id, pending_action=None
+                    )
+
+            if action == "TOOL" and llm_decision.intent == "transaction_request" and not has_active_workflow:
+                # The general LLM+tools agent has a documented reliability
+                # gap here (see app/workflows/processors/transactions.py's
+                # module docstring): it sometimes answers "no account
+                # linked" without actually calling tool_get_last_transactions
+                # at all. The LLM router has already told us definitively
+                # this is a transaction_request — route straight to the
+                # same deterministic handler the main-menu "View
+                # transactions" row already uses (start_view_transactions),
+                # instead of leaving execution up to the agent's own
+                # tool-choice judgment. This is a dispatch/execution
+                # change only — the LLM still does 100% of the intent
+                # understanding.
+                #
+                # `not has_active_workflow` is deliberate: for a customer
+                # with 2+ accounts, start_view_transactions() creates its
+                # own WORKFLOW_VIEW_TRANSACTIONS record, and only one
+                # workflow can be active per phone number — calling it
+                # while a DIFFERENT workflow (e.g. an in-progress loan
+                # application) is already active would silently clobber
+                # it. Reaching here with an active workflow means this
+                # came back as a mid-workflow side question instead (see
+                # WorkflowManager's reprocess_query path), so it still
+                # falls through to the read-only general agent below,
+                # exactly as before this fix.
+                result = await asyncio.to_thread(start_view_transactions, phone_number, trace_id)
+                if result.get("handled"):
+                    self._register_progress(context)
+                    return await self._finish(
+                        context, phone_number, query, result["response"], trace_id, pending_action=None
                     )
 
             # action in {"TOOL", "RAG", "CONTINUE", "CORRECT"}, or a
@@ -527,5 +600,11 @@ class ConversationManager:
             asyncio.to_thread(append_turn_to_session, phone_number, query, structured.text[:500]),
             asyncio.to_thread(self._persist, context, phone_number, trace_id, structured.text),
         )
-        logger.info(f"[{trace_id}] conversation.turn.completed | phone={phone_number[-4:]}")
+        # The reply actually sent, paired with the query log at turn start
+        # (same trace_id) — this is exactly the text the customer receives
+        # over WhatsApp, so it carries nothing beyond what already went
+        # through every existing template/masking safeguard (account
+        # numbers masked, Aadhaar/PAN/OTP never echoed — see
+        # app/conversation/responses/common.py's module docstring).
+        logger.info(f"[{trace_id}] conversation.turn.completed | phone={phone_number[-4:]} | reply={_redact_sensitive(structured.text)[:300]!r}")
         return structured if was_structured else structured.text

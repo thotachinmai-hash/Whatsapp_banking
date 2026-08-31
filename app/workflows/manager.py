@@ -288,7 +288,8 @@ class WorkflowManager:
             if has_confident_switch_intent:
                 target_workflow = llm_decision.resolved_target_workflow()
                 switched = _switch_workflow(
-                    phone_number, workflow_type, target_workflow, query, trace_id, self.transfer_handler
+                    phone_number, workflow_type, target_workflow, query, trace_id, self.transfer_handler,
+                    entities=llm_decision.entities,
                 )
                 if switched is not None:
                     return switched
@@ -307,7 +308,14 @@ class WorkflowManager:
                     f"[{trace_id}] Side question recognized via LLM router | "
                     f"workflow={workflow_type} | phone={phone_number[-4:]}"
                 )
-                return {"handled": False, "response": None, "reprocess_query": query}
+                # Hand the already-computed decision back up too — the
+                # caller (ConversationManager) would otherwise have no way
+                # to know this reprocessed query is specifically a
+                # transaction_request/balance_request/etc. and would fall
+                # back to the general LLM+tools agent's own (less
+                # reliable) tool-choice judgment instead of a deterministic
+                # handler, and it avoids a second classification call.
+                return {"handled": False, "response": None, "reprocess_query": query, "llm_decision": llm_decision}
 
             if llm_decision is not None and llm_decision.action == "SWITCH":
                 candidate = llm_decision.resolved_target_workflow()
@@ -631,6 +639,7 @@ class WorkflowManager:
         if decision.action in ("START_WORKFLOW", "SWITCH") and target:
             started = start_workflow_directly(
                 target, phone_number, transfer_handler=self.transfer_handler, query=query, trace_id=trace_id,
+                entities=decision.entities,
             )
             if started:
                 return started
@@ -860,6 +869,7 @@ def _switch_workflow(
     query: str,
     trace_id: str,
     transfer_handler: Any,
+    entities: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Abandon `from_workflow` and start `to_workflow` in its place — the
     one, generic, any-to-any mechanism behind WorkflowManager.handle()'s
@@ -878,6 +888,7 @@ def _switch_workflow(
     target workflow type isn't one start_workflow_directly can start."""
     started = start_workflow_directly(
         to_workflow, phone_number, transfer_handler=transfer_handler, query=query, trace_id=trace_id,
+        entities=entities,
     )
     if started is None or not started.get("handled"):
         return None

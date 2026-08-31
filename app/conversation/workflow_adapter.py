@@ -48,9 +48,19 @@ def start_workflow_directly(
     transfer_handler: Optional[Any] = None,
     query: str = "",
     trace_id: str = "",
+    entities: Optional[dict[str, Any]] = None,
 ) -> Optional[dict[str, Any]]:
     """Returns {"handled": True, "response": ...} for a supported
     workflow_type, or None if there's nothing extra for this adapter to do.
+
+    `entities` is the LLM routing decision's own extracted-entities dict
+    (app/conversation/intent/llm_routing.py::LLMRoutingDecision.entities) —
+    passed through so a value the LLM already understood (e.g. loan_type
+    from a native-script/romanized message English keyword matching can't
+    read) is used directly instead of being silently discarded and
+    re-derived by a narrower English-only regex. The regex/keyword
+    extractors stay as the fallback for when entities don't include the
+    value (a failed LLM call, or a caller with no decision at all).
 
     "onboarding" reaching this adapter specifically means the customer is
     ALREADY registered: registration_gate.py intercepts every message from
@@ -59,6 +69,7 @@ def start_workflow_directly(
     registered customer asking for a second/third account in free text
     ("I'd like to open another account") — start the add-account flow
     instead of the (inapplicable) fresh-registration one."""
+    entities = entities or {}
 
     if workflow_type in (WORKFLOW_ONBOARDING, WORKFLOW_ADD_ACCOUNT):
         # add_account_request (a registered customer asking for an
@@ -91,7 +102,13 @@ def start_workflow_directly(
         # like a personal loan"), skip straight past the "which type?"
         # step instead of asking again — matches the same behavior
         # start_requested()'s own (now-removed) free-text loan branch had.
-        loan_type = detect_loan_type_from_text(query)
+        # Prefer the LLM's own extracted entity first (it understands
+        # native-script/romanized/code-mixed phrasing this regex can't —
+        # e.g. "నాకు వ్యక్తిగత ఋణం కావాలి") — detect_loan_type_from_text()
+        # runs the SAME normalization against whichever string is present,
+        # so "personal", "Personal Loan", "personal loan" all resolve the
+        # same way regardless of source.
+        loan_type = detect_loan_type_from_text(str(entities.get("loan_type", ""))) or detect_loan_type_from_text(query)
         if loan_type:
             return LoanWorkflowHandler()._select_type(workflow, phone_number, query, trace_id)
         return {"handled": True, "response": loan_type_list_prompt(

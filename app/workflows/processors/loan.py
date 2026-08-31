@@ -587,6 +587,19 @@ class LoanWorkflowHandler:
             return text.strip(), None
         if field in {"monthly_income", "requested_amount", "tenure_months"}:
             return _normalize_value(field, text), None
+        if field == "employment_type":
+            # Same closed-vocabulary matching extract_loan_fields_from_text()
+            # already applies to the trigger message — previously only
+            # consulted there, so answering the direct "What is your
+            # employment type?" prompt with "business" (or "I run a
+            # business") stored the raw, unnormalized text instead of
+            # resolving to "Business". Longest-phrase-first so "business
+            # owner" matches before the bare "business" substring does.
+            lowered = text.strip().lower()
+            for phrase, label in sorted(_EMPLOYMENT_TYPE_WORDS.items(), key=lambda kv: -len(kv[0])):
+                if phrase in lowered:
+                    return label, None
+            return text.strip(), None
         return text.strip(), None
 
     @staticmethod
