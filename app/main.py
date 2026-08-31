@@ -46,17 +46,17 @@ def _webhook_signature_valid(raw_body: bytes, signature_header: str | None) -> b
     differ in whitespace/key order and would break the HMAC comparison)
     and wasn't forged by a third party who found the URL.
 
-    Returns True (open) when WEBHOOK_SECRET isn't configured at all —
+    Returns True (open) when APP_SECRET isn't configured at all —
     matches this app's existing fail-safe convention elsewhere (e.g.
     SARVAM_API_KEY missing skips TTS rather than crashing) so a
     deployment that hasn't set it yet doesn't silently break, but logs a
     clear warning so the gap is visible rather than silent.
     """
     global _webhook_secret_missing_warned
-    secret = os.getenv("WEBHOOK_SECRET", "")
+    secret = os.getenv("APP_SECRET", "")
     if not secret:
         # Logged once per process, not once per incoming message — with
-        # WEBHOOK_SECRET unset this line was firing on every single
+        # APP_SECRET unset this line was firing on every single
         # webhook.received (logs_aug.txt showed it repeated dozens of
         # times a minute), which reads as an ongoing verification error
         # in the deployment logs even though there's no actual failure
@@ -64,7 +64,7 @@ def _webhook_signature_valid(raw_body: bytes, signature_header: str | None) -> b
         # normally, by design — see the docstring above).
         if not _webhook_secret_missing_warned:
             logger.warning(
-                "WEBHOOK_SECRET not configured — webhook signature is NOT being "
+                "APP_SECRET not configured — webhook signature is NOT being "
                 "verified; any request to this URL is currently trusted as-is. "
                 "(This warning is logged only once per process.)"
             )
