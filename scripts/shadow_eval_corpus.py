@@ -1,12 +1,13 @@
-"""Full 8-operation LLM-vs-rule evaluation corpus (second validation phase,
-extending the 38-case Step 3 corpus to the complete matrix the migration
-plan asks for).
+"""Full 8-operation real-Sarvam validation corpus.
 
-Each case is fed through BOTH the existing rule pipeline (classify_intent +
-route_intent + WorkflowManager's pure switch/cancel predicates) and the
-shadow LLM router (classify_and_route_llm), and the two decisions are
-diffed by scripts/shadow_eval.py. `expected_action` / `expected_target_workflow`
-are filled in only for cases unambiguous by construction.
+Each case is fed through the live LLM router (classify_and_route_llm) by
+scripts/real_sarvam_validation.py and compared against `expected_action` /
+`expected_target_workflow`, filled in only for cases unambiguous by
+construction. Originally built (and still shaped) as a rule-vs-LLM shadow
+comparison corpus during the LLM-first routing migration; the rule engine
+it was diffed against has since been deleted (see
+app/conversation/intent/rules.py's module docstring) — this corpus is now
+the primary real-model validation dataset.
 
 SCOPE NOTE (a deliberate decision, not an oversight): 5 of the 8 operations
 own a real multi-step workflow (TRANSFER_MONEY, DEPOSIT_CHEQUE,

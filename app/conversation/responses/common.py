@@ -226,11 +226,11 @@ def render_clarification(intent: Optional[str] = None) -> str:
 # id round-trips through WhatsApp as the literal reply text ("back",
 # "cancel", "menu"), so tapping one is handled by the SAME code already
 # used for a typed "Back"/"Cancel"/"menu" — see
-# app/workflows/manager.py's _is_back_command/_is_cancel_command (both
-# already handle "no earlier step"/"nothing to cancel" gracefully) and
-# _is_greeting_word (which "menu" is a member of, and which cancels the
-# active workflow before showing the main menu). No new routing logic
-# needed on top of what already exists for the typed versions.
+# app/workflows/manager.py's _is_back_command/_is_cancel_command/
+# _is_menu_or_restart_word (all three already handle "no earlier step"/
+# "nothing to cancel" gracefully, and "menu" cancels the active workflow
+# before showing the main menu). No new routing logic needed on top of
+# what already exists for the typed versions.
 _NAV_BUTTONS = [
     InteractiveButton(id="back", title="Back"),
     InteractiveButton(id="cancel", title="Cancel"),

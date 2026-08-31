@@ -239,10 +239,14 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("cancel", response)
 
     async def test_active_cheque_workflow_what_should_i_do_explains_current_step(self):
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
+
         workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
         create_workflow(self.phone, workflow)
 
-        result = self.manager.handle(self.phone, "What should I do?", trace_id="t2")
+        decision = LLMRoutingDecision(intent="unknown", action="CLARIFY", certainty="medium")
+        with patch("app.workflows.manager.classify_and_route_llm_sync", return_value=decision):
+            result = self.manager.handle(self.phone, "What should I do?", trace_id="t2")
 
         self.assertTrue(result["handled"])
         structured = as_structured_response(result["response"])
@@ -264,10 +268,14 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         # banking-domain content at all (small talk, general knowledge)
         # still triggers the continue-or-stop interruption -- verified here
         # with a genuinely off-topic query instead.
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
+
         workflow = create_workflow_model(WORKFLOW_TRANSFER, STEP_SELECT_BENEFICIARY)
         create_workflow(self.phone, workflow)
 
-        result = self.manager.handle(self.phone, "what's the weather today", trace_id="t2a")
+        decision = LLMRoutingDecision(intent="out_of_scope", action="OUT_OF_SCOPE", certainty="high")
+        with patch("app.workflows.manager.classify_and_route_llm_sync", return_value=decision):
+            result = self.manager.handle(self.phone, "what's the weather today", trace_id="t2a")
 
         self.assertTrue(result["handled"])
         structured = as_structured_response(result["response"])
@@ -285,20 +293,24 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
         workflow = create_workflow_model(WORKFLOW_TRANSFER, STEP_SELECT_BENEFICIARY)
         create_workflow(self.phone, workflow)
-        result = self.manager.handle(self.phone, "what's the weather today", trace_id="t2c")
+        with patch("app.workflows.manager.classify_and_route_llm_sync", return_value=decision):
+            result = self.manager.handle(self.phone, "what's the weather today", trace_id="t2c")
         result = self.manager.handle(self.phone, "continue", trace_id="t2d")
         self.assertTrue(result["handled"])
         response = as_structured_response(result["response"]).text.lower()
         self.assertIn("proceed with current request before addressing new request", response)
 
     async def test_workflow_is_not_restarted_by_out_of_context_question(self):
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
         from app.workflows.memory import get_workflow
 
         workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
         create_workflow(self.phone, workflow)
         workflow_id_before = get_workflow(self.phone)["workflow_id"]
 
-        self.manager.handle(self.phone, "What should I do?", trace_id="t3")
+        decision = LLMRoutingDecision(intent="unknown", action="CLARIFY", certainty="medium")
+        with patch("app.workflows.manager.classify_and_route_llm_sync", return_value=decision):
+            self.manager.handle(self.phone, "What should I do?", trace_id="t3")
 
         workflow_after = get_workflow(self.phone)
         self.assertIsNotNone(workflow_after)
@@ -312,14 +324,13 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         # question during a transfer get stuck before this fix.
         from app.workflows.constants import STEP_SELECT_BENEFICIARY, WORKFLOW_TRANSFER
 
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
+
         workflow = create_workflow_model(WORKFLOW_TRANSFER, STEP_SELECT_BENEFICIARY)
         create_workflow(self.phone, workflow)
 
-        # Deliberately forced off (regardless of the ambient
-        # LLM_FALLBACK_ENABLED env var) — this test verifies the
-        # LLM-fallback-unavailable/declined path specifically: falling
-        # back to reprocess_query rather than answering inline.
-        with patch("app.workflows.manager.is_llm_fallback_enabled", return_value=False):
+        decision = LLMRoutingDecision(intent="loan_question", action="RAG", certainty="high")
+        with patch("app.workflows.manager.classify_and_route_llm_sync", return_value=decision):
             result = self.manager.handle(
                 self.phone, "What's the interest rate on a personal loan?", trace_id="t4"
             )
@@ -330,6 +341,7 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.get("reprocess_query"), "What's the interest rate on a personal loan?")
 
     async def test_cross_topic_question_does_not_disturb_the_active_workflow(self):
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
         from app.workflows.constants import STEP_SELECT_BENEFICIARY, WORKFLOW_TRANSFER
         from app.workflows.memory import get_workflow
 
@@ -337,7 +349,9 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
         create_workflow(self.phone, workflow)
         workflow_id_before = get_workflow(self.phone)["workflow_id"]
 
-        self.manager.handle(self.phone, "What's the interest rate on a personal loan?", trace_id="t5")
+        decision = LLMRoutingDecision(intent="loan_question", action="RAG", certainty="high")
+        with patch("app.workflows.manager.classify_and_route_llm_sync", return_value=decision):
+            self.manager.handle(self.phone, "What's the interest rate on a personal loan?", trace_id="t5")
 
         workflow_after = get_workflow(self.phone)
         self.assertIsNotNone(workflow_after)
@@ -372,9 +386,12 @@ class WorkflowManagerBoundaryIntegrationTests(unittest.IsolatedAsyncioTestCase):
 # ─── LLM-fallback behaviors (side-question resume, workflow jump) ───────
 
 class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
-    """These behaviors only activate when LLM_FALLBACK_ENABLED is set —
-    with it off (the default, exercised by every other test in this file),
-    behavior is unchanged from before these features existed."""
+    """Side-question answering, natural-language decline detection, and
+    workflow-jump detection are now all decided by the single LLM routing
+    decision (app/conversation/intent/llm_routing.py) rather than three
+    separate opt-in Sarvam calls (the old answer_side_question/
+    detect_soft_decline/detect_step_or_workflow_jump) — see
+    app/services/llm_understanding.py's module docstring."""
 
     def setUp(self):
         self.manager = WorkflowManager()
@@ -383,75 +400,74 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
         patcher = patch("app.workflows.memory.redis_client", self.fake_redis)
         patcher.start()
         self.addCleanup(patcher.stop)
-        env_patcher = patch.dict("os.environ", {"LLM_FALLBACK_ENABLED": "true"})
-        env_patcher.start()
-        self.addCleanup(env_patcher.stop)
 
-    async def test_side_question_answered_and_step_resumed_in_one_turn(self):
+    async def test_side_question_preserves_workflow_via_reprocess(self):
+        # A genuine side question mid-workflow no longer gets a separate,
+        # no-tools inline answer -- it's handed to the real LLM+tools
+        # agent (which has actual data access) via reprocess_query, while
+        # the active workflow is left untouched.
         workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
         create_workflow(self.phone, workflow)
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
 
-        with patch(
-            "app.workflows.manager.answer_side_question",
-            return_value="Your interest rate depends on the loan type.",
-        ):
+        decision = LLMRoutingDecision(intent="loan_question", action="RAG", certainty="high")
+        with patch("app.workflows.manager.classify_and_route_llm_sync", return_value=decision):
             result = self.manager.handle(
                 self.phone, "What's the interest rate on a personal loan?", trace_id="t1"
             )
 
-        self.assertTrue(result["handled"])
-        response = result["response"].lower()
-        self.assertIn("interest rate", response)
-        self.assertIn("upload a clear image of the cheque", response)
+        self.assertFalse(result["handled"])
+        self.assertEqual(result.get("reprocess_query"), "What's the interest rate on a personal loan?")
+        from app.workflows.memory import get_workflow
+        self.assertEqual(get_workflow(self.phone)["type"], WORKFLOW_CHEQUE)
 
-    async def test_real_data_question_mid_workflow_bypasses_answer_side_question(self):
-        # "Get my balance" mid-transfer used to reach answer_side_question
-        # (no tools, general-knowledge only, told to decline anything
-        # needing real data) — but the model didn't reliably decline, so
-        # it hallucinated a wrong non-answer ("check the mobile app")
-        # instead of the real balance already shown earlier in the same
-        # conversation. A personal-data question like this must never
-        # reach answer_side_question at all — it should fall straight
-        # through to reprocess_query, which the real LLM+tools agent
-        # (with the actual balance tool bound) answers correctly.
+    async def test_real_data_question_mid_workflow_reprocesses_not_diverted(self):
+        # "Get my balance" mid-transfer is a TOOL decision (real customer
+        # data) -- it must always fall through to reprocess_query, which
+        # the real LLM+tools agent (with the actual balance tool bound)
+        # answers correctly, never a no-tools general-knowledge guess.
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
         from app.workflows.constants import STEP_SELECT_AMOUNT, WORKFLOW_TRANSFER
 
         workflow = create_workflow_model(WORKFLOW_TRANSFER, STEP_SELECT_AMOUNT)
         create_workflow(self.phone, workflow)
 
-        with patch("app.workflows.manager.answer_side_question") as mock_answer:
+        decision = LLMRoutingDecision(intent="balance_request", action="TOOL", certainty="high")
+        with patch("app.workflows.manager.classify_and_route_llm_sync", return_value=decision):
             result = self.manager.handle(self.phone, "Get my balance", trace_id="t12")
 
-        mock_answer.assert_not_called()
         self.assertFalse(result["handled"])
         self.assertEqual(result.get("reprocess_query"), "Get my balance")
 
     async def test_side_question_resume_does_not_change_workflow_state(self):
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
         from app.workflows.memory import get_workflow
 
         workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
         create_workflow(self.phone, workflow)
         workflow_id_before = get_workflow(self.phone)["workflow_id"]
 
-        with patch("app.workflows.manager.answer_side_question", return_value="Some answer."):
+        decision = LLMRoutingDecision(intent="loan_question", action="RAG", certainty="high")
+        with patch("app.workflows.manager.classify_and_route_llm_sync", return_value=decision):
             self.manager.handle(self.phone, "What's the interest rate on a loan?", trace_id="t2")
 
         after = get_workflow(self.phone)
         self.assertEqual(after["workflow_id"], workflow_id_before)
 
-    async def test_natural_soft_decline_offers_continue_or_stop(self):
+    async def test_natural_language_decline_offers_continue_or_stop(self):
         # "I don't want to go with transfer right now" has none of
-        # _is_cancel_command's literal cancel/stop/end words — without
-        # the LLM fallback this was silently ignored (the workflow just
-        # sat there, unacknowledged). It must now be recognized and
-        # offer the same tappable Continue/Stop confirmation a literal
-        # "cancel" already gets.
+        # _is_cancel_command's literal cancel/stop/end words -- the LLM
+        # router's CANCEL action recognizes it instead, and it must offer
+        # the same tappable Continue/Stop confirmation a literal "cancel"
+        # already gets.
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
         from app.workflows.constants import STEP_SELECT_BENEFICIARY, WORKFLOW_TRANSFER
 
         workflow = create_workflow_model(WORKFLOW_TRANSFER, STEP_SELECT_BENEFICIARY)
         create_workflow(self.phone, workflow)
 
-        with patch("app.workflows.manager.detect_soft_decline", return_value=True):
+        decision = LLMRoutingDecision(intent="unknown", action="CANCEL", certainty="high")
+        with patch("app.workflows.manager.classify_and_route_llm_sync", return_value=decision):
             result = self.manager.handle(
                 self.phone, "okay i dont want to go with transfer right now", trace_id="t9"
             )
@@ -461,34 +477,37 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.kind.value, "buttons")
         self.assertEqual({b.id for b in response.buttons}, {"continue", "stop"})
 
-    async def test_llm_soft_decline_never_called_without_a_negation_word(self):
-        # The cheap pre-filter (_looks_like_possible_decline) must gate
-        # the LLM call — an ordinary field answer (an account number)
-        # must never pay that latency on every single message.
+    async def test_account_number_field_answer_still_resolves_as_continue(self):
+        # An account number has no reserved literal shape (unlike a bare
+        # digit or a "field: value" line) — it DOES get checked, but the
+        # LLM correctly recognizes it as CONTINUE, so the transfer
+        # processor still gets its normal chance to handle it.
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
         from app.workflows.constants import STEP_COLLECT_BENEFICIARY_ACCOUNT, WORKFLOW_TRANSFER
 
         workflow = create_workflow_model(WORKFLOW_TRANSFER, STEP_COLLECT_BENEFICIARY_ACCOUNT)
         create_workflow(self.phone, workflow)
 
-        with patch("app.workflows.manager.detect_soft_decline") as mock_decline, \
+        decision = LLMRoutingDecision(intent="transfer_request", action="CONTINUE", certainty="high")
+        with patch("app.workflows.manager.classify_and_route_llm_sync", return_value=decision) as mock_llm, \
              patch("app.workflows.processors.transfer.create_beneficiary", return_value=None):
-            self.manager.handle(self.phone, "GB29NWBK60161331926819", trace_id="t10")
+            result = self.manager.handle(self.phone, "GB29NWBK60161331926819", trace_id="t10")
 
-        mock_decline.assert_not_called()
+        mock_llm.assert_called_once()
+        self.assertIsNone(result.get("reprocess_query"))
 
     async def test_soft_decline_does_not_preempt_a_named_workflow_jump(self):
-        # "actually let me apply for a loan instead" must still resolve
-        # via the more specific jump-detection path (offering "Switch to
-        # Loan"), not the generic decline path — the two must not fight
-        # over the same message.
+        # "actually let me apply for a loan instead" must resolve via
+        # SWITCH (offering "Switch to Loan"), not CANCEL -- the single LLM
+        # decision only ever names one action per turn, so the two can't
+        # fight over the same message.
         from app.conversation.intent.llm_routing import LLMRoutingDecision
         from app.workflows.constants import STEP_UPLOAD_CHEQUE, WORKFLOW_CHEQUE
 
         workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
         create_workflow(self.phone, workflow)
 
-        with patch("app.workflows.manager.detect_soft_decline") as mock_decline, \
-             patch(
+        with patch(
                 "app.workflows.manager.classify_and_route_llm_sync",
                 return_value=LLMRoutingDecision(
                     intent="loan_application_request", action="SWITCH", certainty="high", target_workflow="loan",
@@ -498,15 +517,14 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
                 self.phone, "actually let me apply for a loan instead", trace_id="t11"
             )
 
-        mock_decline.assert_not_called()
         self.assertTrue(result["handled"])
-        self.assertIn("loan", result["response"].text.lower())
+        self.assertIn("loan", as_structured_response(result["response"]).text.lower())
 
-    async def test_llm_answer_failure_falls_back_to_reprocess_query(self):
+    async def test_llm_call_failure_falls_back_to_reprocess_query(self):
         workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
         create_workflow(self.phone, workflow)
 
-        with patch("app.workflows.manager.answer_side_question", return_value=None):
+        with patch("app.workflows.manager.classify_and_route_llm_sync", return_value=None):
             result = self.manager.handle(
                 self.phone, "What's the interest rate on a personal loan?", trace_id="t3"
             )
@@ -520,10 +538,15 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
         workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)
         create_workflow(self.phone, workflow)
 
+        # certainty="medium" (not "high") -- this is the confirm-first
+        # path; a "high" certainty SWITCH now jumps immediately (see
+        # tests/test_workflow_switching.py::AnyToAnySwitchTests), matching
+        # the same CONFIDENCE_HIGH-equivalent bar a fresh START_WORKFLOW
+        # decision already requires.
         with patch(
             "app.workflows.manager.classify_and_route_llm_sync",
             return_value=LLMRoutingDecision(
-                intent="loan_application_request", action="SWITCH", certainty="high", target_workflow="loan",
+                intent="loan_application_request", action="SWITCH", certainty="medium", target_workflow="loan",
             ),
         ):
             result = self.manager.handle(self.phone, "actually let me apply for a loan instead", trace_id="t4")
@@ -549,7 +572,7 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
         with patch(
             "app.workflows.manager.classify_and_route_llm_sync",
             return_value=LLMRoutingDecision(
-                intent="loan_application_request", action="SWITCH", certainty="high", target_workflow="loan",
+                intent="loan_application_request", action="SWITCH", certainty="medium", target_workflow="loan",
             ),
         ):
             self.manager.handle(self.phone, "actually let me apply for a loan instead", trace_id="t5")
@@ -569,7 +592,7 @@ class LlmFallbackWorkflowTests(unittest.IsolatedAsyncioTestCase):
         with patch(
             "app.workflows.manager.classify_and_route_llm_sync",
             return_value=LLMRoutingDecision(
-                intent="loan_application_request", action="SWITCH", certainty="high", target_workflow="loan",
+                intent="loan_application_request", action="SWITCH", certainty="medium", target_workflow="loan",
             ),
         ):
             self.manager.handle(self.phone, "actually let me apply for a loan instead", trace_id="t7")
@@ -593,7 +616,13 @@ class InteractiveListConversionTests(unittest.IsolatedAsyncioTestCase):
         self.addCleanup(patcher.stop)
 
     async def test_loan_start_returns_list_with_four_types(self):
-        result = self.manager.start_requested(self.phone, "I want a loan", trace_id="t1")
+        # Free-text workflow starts ("I want a loan") are now dispatched by
+        # ConversationManager via the LLM decision + start_workflow_directly
+        # (app/conversation/workflow_adapter.py) -- start_requested() itself
+        # is scoped to literal button/list/menu-digit protocol only.
+        from app.conversation.workflow_adapter import start_workflow_directly
+
+        result = start_workflow_directly("loan", self.phone, trace_id="t1")
         self.assertTrue(result["handled"])
         response = as_structured_response(result["response"])
         self.assertEqual(response.kind, ResponseKind.LIST)
@@ -602,10 +631,11 @@ class InteractiveListConversionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual({row.title for row in rows}, {"Personal Loan", "Home Loan", "Vehicle Loan", "Education Loan"})
 
     async def test_tapped_loan_type_row_id_advances_the_workflow(self):
+        from app.conversation.workflow_adapter import start_workflow_directly
         from app.workflows.constants import STEP_CONFIRM_LOAN_ACCOUNT
 
         fake_accounts = [{"account_number": "GB12FNCL00010001234567", "account_type": "current", "balance": "500.00", "currency": "INR"}]
-        self.manager.start_requested(self.phone, "I want a loan", trace_id="t2")
+        start_workflow_directly("loan", self.phone, trace_id="t2")
         with patch("app.workflows.processors.loan.get_accounts_by_phone", return_value=fake_accounts), \
              patch("app.workflows.processors.loan.get_customer_by_phone", return_value={"full_name": "Alex Doe"}):
             # "lt_home", not a bare digit -- the loan-type list is
@@ -728,31 +758,29 @@ class NavigationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(get_workflow(self.phone)["step"], STEP_SELECT_LOAN_TYPE)
 
 
-# ─── Part 4: natural language must remain primary ──────────────────────
+# ─── Part 4: natural language, deterministic pre-filter + LLM decision ──
 
 class NaturalLanguageTests(unittest.IsolatedAsyncioTestCase):
-    """These exact phrasings, from Task 10 Part 4, must resolve to the
-    right intent/workflow without forcing a menu reply."""
+    """The deterministic pre-filter (app/conversation/intent/classifier.py)
+    no longer classifies free-text workflow requests/questions at all —
+    that's the LLM router's job now (app/conversation/intent/llm_routing.py),
+    validated against the real Sarvam API by
+    scripts/real_sarvam_validation.py, not re-derived from text here. These
+    tests confirm two things instead: (1) the deterministic layer correctly
+    stays out of the way (returns "unknown") for exactly the phrasings that
+    used to be rule-classified, and (2) LLMRoutingDecision's own mapping
+    logic (schema, not model behavior) still enforces the same financial
+    safety invariant a plain question must never start a workflow."""
 
-    async def test_transfer_request(self):
+    async def test_transfer_request_is_unknown_to_the_deterministic_layer(self):
         from app.conversation.intent.classifier import classify_intent
         result = await classify_intent("I want to transfer money.")
-        self.assertEqual(result.intent, "transfer_request")
+        self.assertEqual(result.intent, "unknown")
 
-    async def test_transfer_with_amount_and_beneficiary(self):
-        from app.conversation.intent.classifier import classify_intent
-        result = await classify_intent("Transfer 500 to Priya.")
-        self.assertEqual(result.intent, "transfer_request")
-
-    async def test_balance_request(self):
+    async def test_balance_request_is_unknown_to_the_deterministic_layer(self):
         from app.conversation.intent.classifier import classify_intent
         result = await classify_intent("Show my balance.")
-        self.assertEqual(result.intent, "balance_request")
-
-    async def test_transaction_insight_request(self):
-        from app.conversation.intent.classifier import classify_intent
-        result = await classify_intent("What did I spend this month?")
-        self.assertEqual(result.intent, "transaction_insight_question")
+        self.assertEqual(result.intent, "unknown")
 
     async def test_spend_question_is_not_misread_as_cancel(self):
         # Regression: "spend" contains "end", and "this" is a common word —
@@ -760,89 +788,6 @@ class NaturalLanguageTests(unittest.IsolatedAsyncioTestCase):
         # both and treat this ordinary question as a cancel command.
         from app.workflows.manager import _is_cancel_command
         self.assertFalse(_is_cancel_command("What did I spend this month?"))
-
-    async def test_cheque_deposit_request(self):
-        from app.conversation.intent.classifier import classify_intent
-        result = await classify_intent("I want to deposit a cheque.")
-        self.assertEqual(result.intent, "cheque_deposit_request")
-
-    async def test_loan_interest_question_never_starts_a_loan_application(self):
-        # Regression: a real user asked "What's the loan intrest amount
-        # charged" and the classifier's loan branch (unlike its sibling
-        # kyc_update_request) had no question-guard, so it was classified
-        # as loan_application_request at high confidence and the router
-        # actually STARTED a real loan workflow from a plain question.
-        from app.conversation.intent.classifier import classify_intent
-        from app.conversation.router import route_intent
-
-        result = await classify_intent("What's the loan intrest amount charged")
-        self.assertNotEqual(result.intent, "loan_application_request")
-        decision = route_intent(result)
-        self.assertNotEqual(decision.action, "START_WORKFLOW")
-
-    async def test_transfer_limit_question_never_starts_a_transfer(self):
-        from app.conversation.intent.classifier import classify_intent
-        from app.conversation.router import route_intent
-
-        result = await classify_intent("What is the transfer limit?")
-        self.assertNotEqual(result.intent, "transfer_request")
-        decision = route_intent(result)
-        self.assertNotEqual(decision.action, "START_WORKFLOW")
-
-    async def test_cheque_deposit_question_never_starts_a_cheque_workflow(self):
-        from app.conversation.intent.classifier import classify_intent
-        from app.conversation.router import route_intent
-
-        result = await classify_intent("Can I deposit a cheque online?")
-        self.assertNotEqual(result.intent, "cheque_deposit_request")
-        decision = route_intent(result)
-        self.assertNotEqual(decision.action, "START_WORKFLOW")
-
-    async def test_genuine_loan_request_still_starts_workflow(self):
-        # The question-guard fix above must not affect real, non-question
-        # action requests.
-        from app.conversation.intent.classifier import classify_intent
-        from app.conversation.router import route_intent
-
-        result = await classify_intent("I want a personal loan")
-        self.assertEqual(result.intent, "loan_application_request")
-        decision = route_intent(result)
-        self.assertEqual(decision.action, "START_WORKFLOW")
-
-    async def test_genuine_transfer_request_still_starts_workflow(self):
-        from app.conversation.intent.classifier import classify_intent
-        from app.conversation.router import route_intent
-
-        result = await classify_intent("Transfer 500 to Priya")
-        self.assertEqual(result.intent, "transfer_request")
-        decision = route_intent(result)
-        self.assertEqual(decision.action, "START_WORKFLOW")
-
-    async def test_cheque_status_request(self):
-        from app.conversation.intent.classifier import classify_intent
-        result = await classify_intent("Check my cheque.")
-        self.assertEqual(result.intent, "cheque_status_request")
-
-    async def test_loan_eligibility_natural_language(self):
-        from app.conversation.intent.classifier import classify_intent
-        from app.conversation.guidance.policy import build_guidance
-
-        text = "I earn 50000 per month and want a personal loan."
-        result = await classify_intent(text)
-        self.assertEqual(result.intent, "loan_eligibility_question")
-        guidance = build_guidance(text, result)
-        self.assertEqual(guidance.entities.get("monthly_income"), 50000)
-        self.assertEqual(guidance.entities.get("loan_type"), "personal")
-
-    async def test_kyc_update_request(self):
-        from app.conversation.intent.classifier import classify_intent
-        result = await classify_intent("I want to update my KYC.")
-        self.assertEqual(result.intent, "kyc_update_request")
-
-    async def test_kyc_question(self):
-        from app.conversation.intent.classifier import classify_intent
-        result = await classify_intent("What is KYC?")
-        self.assertEqual(result.intent, "kyc_question")
 
     async def test_cancel_natural_language(self):
         from app.conversation.intent.classifier import classify_intent
@@ -854,19 +799,31 @@ class NaturalLanguageTests(unittest.IsolatedAsyncioTestCase):
         result = await classify_intent("Go back.")
         self.assertEqual(result.intent, "back")
 
-    async def test_no_eligibility_or_approval_claim_in_loan_guidance(self):
-        from app.conversation.intent.classifier import classify_intent
-        from app.conversation.guidance.policy import build_guidance
-        from app.conversation.guidance.responses import render_guidance
+    async def test_a_plain_question_decision_is_never_certain_enough_to_imply_start_workflow(self):
+        # Schema-level safety invariant: only a "high"-certainty decision is
+        # ever treated as authorizing a workflow start
+        # (app/conversation/manager.py checks `certainty == "high"` before
+        # calling start_workflow_directly() — see
+        # tests/test_conversation_manager.py::LlmRoutingSafetyTests for the
+        # full integration-level assertion of that gate).
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
 
-        text = "I earn 50000 per month and want a personal loan."
-        intent_result = await classify_intent(text)
-        guidance = build_guidance(text, intent_result)
-        rendered = render_guidance(guidance)
-        lowered = rendered.text.lower()
-        self.assertNotIn("you are eligible", lowered)
-        self.assertNotIn("you will get", lowered)
-        self.assertNotIn("your loan is approved", lowered)
+        for certainty in ("low", "medium"):
+            with self.subTest(certainty=certainty):
+                decision = LLMRoutingDecision(
+                    intent="loan_application_request", action="CLARIFY", certainty=certainty,
+                )
+                self.assertNotEqual(decision.certainty, "high")
+
+    async def test_a_confident_workflow_request_decision_resolves_its_workflow(self):
+        from app.conversation.intent.llm_routing import LLMRoutingDecision
+
+        decision = LLMRoutingDecision(
+            intent="loan_application_request", action="START_WORKFLOW", certainty="high", target_workflow="loan",
+        )
+        self.assertEqual(decision.action, "START_WORKFLOW")
+        self.assertEqual(decision.certainty, "high")
+        self.assertEqual(decision.resolved_target_workflow(), "loan")
 
 
 if __name__ == "__main__":

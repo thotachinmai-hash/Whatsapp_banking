@@ -63,64 +63,11 @@ class InterpretChoiceLlmTests(unittest.TestCase):
         client.chat.completions.assert_not_called()
 
 
-class AnswerSideQuestionTests(unittest.TestCase):
-    def test_returns_answer_text(self) -> None:
-        client = MagicMock()
-        client.chat.completions.return_value = _mock_response("Interest rates vary by loan type.")
-        with patch.object(lu, "_get_client", return_value=client):
-            result = lu.answer_side_question("what's the interest rate?", "cheque", "UPLOAD_CHEQUE")
-        self.assertEqual(result, "Interest rates vary by loan type.")
-
-    def test_none_sentinel_returns_none(self) -> None:
-        client = MagicMock()
-        client.chat.completions.return_value = _mock_response("NONE")
-        with patch.object(lu, "_get_client", return_value=client):
-            result = lu.answer_side_question("approve my loan now", "loan", "CONFIRM_LOAN")
-        self.assertIsNone(result)
-
-    def test_client_exception_returns_none(self) -> None:
-        client = MagicMock()
-        client.chat.completions.side_effect = RuntimeError("boom")
-        with patch.object(lu, "_get_client", return_value=client):
-            result = lu.answer_side_question("hello", "loan", "CONFIRM_LOAN")
-        self.assertIsNone(result)
-
-
-class DetectStepOrWorkflowJumpTests(unittest.TestCase):
-    def test_confident_jump_returns_target(self) -> None:
-        client = MagicMock()
-        client.chat.completions.return_value = _mock_response(
-            '{"target_workflow": "loan", "confidence": 0.9}'
-        )
-        with patch.object(lu, "_get_client", return_value=client):
-            result = lu.detect_step_or_workflow_jump("actually let me apply for a loan", "transfer", "SELECT_BENEFICIARY")
-        self.assertIsNotNone(result)
-        self.assertEqual(result.target_workflow, "loan")
-
-    def test_low_confidence_returns_none(self) -> None:
-        client = MagicMock()
-        client.chat.completions.return_value = _mock_response(
-            '{"target_workflow": "loan", "confidence": 0.2}'
-        )
-        with patch.object(lu, "_get_client", return_value=client):
-            result = lu.detect_step_or_workflow_jump("hmm maybe", "transfer", "SELECT_BENEFICIARY")
-        self.assertIsNone(result)
-
-    def test_same_workflow_target_returns_none(self) -> None:
-        client = MagicMock()
-        client.chat.completions.return_value = _mock_response(
-            '{"target_workflow": "transfer", "confidence": 0.95}'
-        )
-        with patch.object(lu, "_get_client", return_value=client):
-            result = lu.detect_step_or_workflow_jump("500 to Priya", "transfer", "SELECT_BENEFICIARY")
-        self.assertIsNone(result)
-
-    def test_client_exception_returns_none(self) -> None:
-        client = MagicMock()
-        client.chat.completions.side_effect = RuntimeError("boom")
-        with patch.object(lu, "_get_client", return_value=client):
-            result = lu.detect_step_or_workflow_jump("switch to loan", "transfer", "SELECT_BENEFICIARY")
-        self.assertIsNone(result)
+# answer_side_question()/detect_step_or_workflow_jump() were removed in
+# the LLM-first routing migration (see app/services/llm_understanding.py's
+# module docstring) — their job is now the single LLM routing decision's
+# TOOL/RAG/SWITCH actions, already covered by tests/test_llm_routing_schema.py
+# and tests/test_workflow_switching.py.
 
 
 if __name__ == "__main__":

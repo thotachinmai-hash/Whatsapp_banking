@@ -25,35 +25,50 @@ Every incoming message is first matched against a registered-customer database b
 
 ## Architecture
 
+Intent understanding is **LLM-first**: a single Sarvam call
+(`classify_and_route_llm`) is the primary source of truth for what a
+customer wants — greeting, workflow start/switch/continue/correct/cancel,
+a data lookup, a general question, or out-of-scope — in any language,
+script, or code-mix. Only a short, explicit list of things stay
+deterministic (no LLM call): prompt-injection detection, literal
+cancel/back/menu/repeat words, button/list/menu-digit taps, an
+already-in-progress workflow's own field/document input, and every
+financial confirmation gate. See `docs/current_architecture.md`, "Phase 13
+— LLM-First Routing Migration" for the full design record.
+
 ```mermaid
 flowchart TD
     A[WhatsApp User\nSends text, voice, or document] -->|WhatsApp message| B[WhatsApp Business\nCloud API]
-    B -->|Webhook POST| C[Public HTTPS URL\nngrok for local dev]
-    C -->|Forwards to| D[FastAPI App\nPort 8001]
-    D --> E[Message Handler]
-    E -->|voice message| F[Groq Whisper\nVoice to Text]
-    E -->|document image/PDF/DOCX| DOC[Groq Vision OCR\nDocument Parser]
-    E -->|text / transcribed / parsed| G[run_agent]
-    F --> G
-    DOC --> G
-    G --> RG{Registration Gate\ncustomers lookup}
-    RG -->|unregistered| ONB[Onboarding Workflow\nname, Aadhaar, PAN\ncreates customer + account]
-    RG -->|registered, greeting| MENU[Greeting + Service Menu]
-    RG -->|registered, normal message| WF{Active Workflow?}
-    WF -->|cheque, loan, KYC,\nor transfer| CHQ[Workflow Processor\nvalidate, correct, persist]
-    WF -->|none| H[LangGraph Agent\nGroq LLM tool-calling]
-    H -->|tool call| I[Banking Tools\nbalance, transactions,\nspend summary, cheque/loan status]
-    I --> J[(PostgreSQL\naccounts, transactions, customers,\ncheque/loan/kyc requests)]
-    ONB --> J
-    CHQ --> J
-    H --> K[(Redis\nSession memory + active\nworkflow state, 1h TTL)]
-    RG --> K
-    G -->|response text| D
-    D -->|send reply via WhatsApp Cloud API| B
+    B -->|Webhook POST| C[Idempotency Guard\nRedis SET NX, dedupes retries]
+    C -->|new event| D[Message Handler\nvoice -> Sarvam STT, docs -> Sarvam Doc AI]
+    D --> E[ConversationManager.handle_message]
+    E --> F{Deterministic pre-filter\ninjection / hard nav / confirm-shorthand}
+    F -->|resolved| G[Immediate response\nno LLM call]
+    F -->|no opinion, no active workflow| H[Sarvam LLM Router\nclassify_and_route_llm - ONE call]
+    H -->|GREETING / OUT_OF_SCOPE / CLARIFY| G
+    H -->|START_WORKFLOW / SWITCH, high certainty| WF1[Workflow Adapter\nstarts transfer/loan/cheque/kyc/kyc/add_account]
+    H -->|TOOL / RAG| AGENT[LLM + Tools Agent\nSarvam tool-calling loop]
+    E -->|active workflow| WM[WorkflowManager\nsame LLM decision reused, or a\nlazy call only for cheque/loan/kyc/transfer/add_account]
+    WM -->|field/doc input, confirm, back, literal cancel| PROC[Workflow Processor\nvalidate, correct, persist]
+    WM -->|SWITCH / natural-language CANCEL / side question| E
+    AGENT -->|tool call| TOOLS[Banking Tools\nbalance, transactions, spend summary,\ncheque/loan/kyc status, RAG search]
+    TOOLS --> DB[(PostgreSQL\naccounts, transactions, customers,\ncheque/loan/kyc requests)]
+    PROC --> DB
+    WF1 --> RS[(Redis\nsession memory + workflow state, 1h TTL)]
+    PROC --> RS
+    G --> D
+    AGENT --> D
+    WF1 --> D
+    D -->|text reply, or Sarvam TTS for a voice turn| B
     B -->|WhatsApp reply| A
-    D --> L[Trace ID Logging\nDaily rotating logs\n7 day retention]
-    D --> M[Metrics Endpoint\nGET /metrics]
 ```
+
+**LLM call budget per turn**: 0 for a deterministic pre-filter match; 1
+(`classify_and_route_llm[_sync]`) for everything else the pre-filter has
+no opinion on; a 2nd call (the tool-calling agent) only when the decision
+is `TOOL`/`RAG` and needs real customer data or general banking knowledge.
+No message is ever classified twice. Voice adds exactly one Sarvam STT
+call in and one Sarvam TTS call out around the same text pipeline.
 
 ---
 
@@ -293,16 +308,22 @@ Verified: all tables and their constraints exist as expected (`customers` has un
 
 **app/** — Application code
 - `main.py` — FastAPI entry point and webhook receiver
-- `agent/agent.py` — LangGraph agent (registration gate → active workflow → tool-calling LLM); `trace_id` flows from here into every layer below
-- `agent/tools.py` — Banking tools — balance, transactions, spend summary, cheque status, loan status, start cheque workflow
+- `agent/agent.py` — Thin `run_agent()` entry point delegating to `ConversationManager`; also owns the LangGraph tool-calling agent (`_run_llm_agent`) used for `TOOL`/`RAG` decisions
+- `agent/tools.py` — Banking tools — balance, transactions, spend summary, cheque/loan/kyc/transfer status, RAG document search, start transfer/loan/kyc workflow
+- `conversation/manager.py` — `ConversationManager`, the LLM-first turn orchestrator: deterministic pre-filter → (registration gate | active workflow) → single LLM routing call → dispatch
+- `conversation/intent/rules.py` — The only deterministic pre-filter: prompt-injection detection and literal hard-navigation words (cancel/back/menu/repeat/restart) plus a bare yes/no at an active CONFIRM step. Nothing else is rule-classified.
+- `conversation/intent/llm_routing.py` — `LLMRoutingDecision` schema and the Sarvam call (`classify_and_route_llm`) that is the sole source of intent understanding for everything the pre-filter doesn't resolve — greeting, workflow start/switch/continue/correct/cancel, tool/RAG, out-of-scope, clarify — in any language/script/code-mix
+- `conversation/workflow_adapter.py` — Starts a workflow (transfer/loan/cheque/kyc/onboarding/add_account) from a routing decision
+- `conversation/responses/` — Centralized response templates (menu, navigation, per-workflow confirmations/summaries, errors) — no template ever accepts a raw Aadhaar/PAN/OTP/PIN/CVV/password value
 - `services/whatsapp.py` — WhatsApp Business Cloud API client to send messages and download media
-- `services/transcription.py` — Groq Whisper voice to text
-- `services/document_parser.py` — Groq Vision OCR for images/PDF/DOCX
-- `services/registration_gate.py` — Looks up the sender in `customers`; greets or starts onboarding; owns `GREETING_KEYWORDS`, reused by the workflow manager to detect a mid-workflow interrupt
+- `services/transcription.py` — Sarvam STT (`saaras:v3`) voice to text
+- `services/document_parser.py` — Sarvam Document Intelligence for images/PDF/DOCX
+- `services/tts.py` — Sarvam TTS (`bulbul:v3`) for voice replies
+- `services/registration_gate.py` — Looks up the sender in `customers`; greets or starts onboarding, driven by the single LLM routing decision (not text keyword-sniffing)
 - `services/menu.py` — Shared service-menu and onboarding-welcome text shown across the app
 - `services/receipts.py` — PDF receipt generation for completed cheque/loan/KYC/transfer requests, sent as a WhatsApp document
 - `services/message_handler.py` — Routes voice/text/document, runs agent, sends response
-- `workflows/manager.py` — Routes a message to the active workflow's processor; owns the cancel/interrupt logic (explicit *Cancel*/*Stop* or a bare greeting) and the workflow-boundary/conversational-question handling that lets customers ask questions without losing their place mid-workflow
+- `workflows/manager.py` — Routes a message to the active workflow's processor. Literal cancel/back/menu words and document/field/digit input stay deterministic; a genuine switch, natural-language cancel, or mid-workflow side question is resolved by the same single LLM routing decision `ConversationManager` computed (or, only for cheque/loan/kyc/transfer/add_account, one lazy call when none was computed upstream) — never a second, independent classifier
 - `workflows/memory.py` — Redis-backed workflow state (create/get/update/complete)
 - `workflows/constants.py` — Workflow types, statuses, and step constants
 - `workflows/processors/onboarding.py` — Name → Aadhaar image → PAN image → confirm → create customer → select account type → open account
@@ -342,7 +363,7 @@ Verified: all tables and their constraints exist as expected (`customers` has un
 
 ## Known Limitations
 
-- **Groq free-tier daily token limit (100K TPD).** Heavy testing can exhaust this within a session — the app catches `429` responses and replies with "the service is temporarily busy" instead of crashing, but no LLM-driven replies (balance/transactions/spend/cheque-status questions) will work until the quota resets. Registration, the greeting/menu, and every deterministic workflow (cheque, loan, KYC, transfer) are unaffected since they don't call the LLM. Switch to `qwen/qwen3-32b` in `.env` for a 500K daily budget if this is a problem.
+- **Sarvam API quota/outage.** The app catches `429`/`503` responses and replies with "the service is temporarily busy" instead of crashing. Since intent understanding is LLM-first (see Architecture above), a Sarvam outage affects more than just banking Q&A now: greeting, and starting/switching a workflow from free text, all need the one routing call too. What still works with Sarvam fully down: a literal cancel/back/menu/repeat word, a button/list tap, and continuing an already-active workflow with its own field/document input or a bare yes/no at a confirmation step — all deterministic, no LLM call.
 - **Onboarding collects Aadhaar/PAN as card images**, not typed text — the vision document parser extracts and format-validates the ID values from the photo.
 - **`workflows/memory.py`'s own log lines don't carry a trace ID** (create/get/update/delete workflow state) — every decision made *about* a workflow does (registration gate, workflow manager, every processor), but the low-level Redis read/write lines don't yet. Not a blocker for tracing a conversation, just slightly less granular than the rest.
 

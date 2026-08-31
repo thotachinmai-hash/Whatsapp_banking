@@ -37,8 +37,8 @@ from app.workflows.constants import (
 from app.workflows.memory import create_workflow, create_workflow_model
 from app.workflows.processors.transfer import start_transfer_from_text
 from app.workflows.processors.onboarding import start_add_account_workflow
+from app.workflows.processors.loan import detect_loan_type_from_text, loan_type_list_prompt
 from app.conversation.responses.cheque import render_cheque_deposit_started
-from app.conversation.responses.loan import render_loan_application_started
 from app.conversation.responses.kyc import render_kyc_update_started
 
 
@@ -83,9 +83,20 @@ def start_workflow_directly(
         return {"handled": True, "response": render_cheque_deposit_started()}
 
     if workflow_type == WORKFLOW_LOAN:
+        from app.workflows.processors.loan import LoanWorkflowHandler
+
         workflow = create_workflow_model(WORKFLOW_LOAN, STEP_SELECT_LOAN_TYPE)
         create_workflow(phone_number, workflow)
-        return {"handled": True, "response": render_loan_application_started()}
+        # If the loan type was already stated in this same message ("I'd
+        # like a personal loan"), skip straight past the "which type?"
+        # step instead of asking again — matches the same behavior
+        # start_requested()'s own (now-removed) free-text loan branch had.
+        loan_type = detect_loan_type_from_text(query)
+        if loan_type:
+            return LoanWorkflowHandler()._select_type(workflow, phone_number, query, trace_id)
+        return {"handled": True, "response": loan_type_list_prompt(
+            "\U0001F4DD Let's get your loan application going! What kind of loan are you after?"
+        )}
 
     if workflow_type == WORKFLOW_KYC:
         workflow = create_workflow_model(WORKFLOW_KYC, STEP_UPLOAD_KYC_FORM)

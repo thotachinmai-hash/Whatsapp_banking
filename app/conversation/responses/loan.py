@@ -60,13 +60,6 @@ def render_loan_menu() -> str:
     )
 
 
-def render_loan_application_started() -> str:
-    """The opening message when a loan workflow is first created —
-    matching pre-existing wording, reusing render_loan_menu() rather than
-    duplicating the type list."""
-    return f"\U0001F4DD Let's get your loan application going!\n\n{render_loan_menu()}"
-
-
 def render_loan_type_prompt() -> str:
     """The re-prompt shown when the customer's reply didn't match a loan
     type — distinct wording/footer from render_loan_menu() (the initial

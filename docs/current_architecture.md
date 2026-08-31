@@ -1817,6 +1817,211 @@ file, so removing it changes nothing functionally.
 
 ---
 
+## Phase 13 — LLM-First Routing Migration
+
+**Why it exists.** Phases 1–12 built a real, working LLM routing schema
+(`app/conversation/intent/llm_routing.py::LLMRoutingDecision`,
+`classify_and_route_llm[_sync]`) but only ever consulted it *after* nine
+keyword/regex rule layers in `app/conversation/intent/rules.py` (plus more
+scattered through `app/workflows/manager.py`, `app/services/
+llm_understanding.py`, and the entire `app/conversation/guidance/`
+package) declined to confidently match. This phase inverts that priority:
+the LLM router is now the first and only source of semantic intent
+understanding for anything beyond a short, explicit deterministic list,
+every semantic keyword classifier is deleted, and the duplicate/second LLM
+calls that pattern created are removed.
+
+**What stayed deterministic, and why** (the only rule-based logic left in
+the app):
+- **Prompt-injection detection** (`rules.looks_like_injection`) — security,
+  checked before anything else, including the LLM call.
+- **Hard navigation** — literal, exact-phrase cancel/stop/back/menu/repeat/
+  restart words (`rules.classify_hard_navigation`,
+  `workflows/manager.py::_is_cancel_command/_is_closing_word/
+  _is_menu_or_restart_word/_is_back_command`). No synonym or semantic
+  guessing — a longer, natural-language cancellation ("I don't want to do
+  this right now") is the LLM router's `CANCEL` action instead.
+- **A bare yes/no/confirm answering an active `CONFIRM_*` step**
+  (`rules.classify_workflow_conversation`) — a financial-confirmation-gate
+  protocol reply, not a semantic classification; the workflow processor's
+  own `interpret_confirmation()` remains the actual authority.
+- **Button/list/menu-digit protocol** — a WhatsApp interactive reply id,
+  a tapped main-menu digit, or a bare digit/`"field: value"` line answering
+  the active step, all resolved without ever reaching an LLM
+  (`workflows/manager.py::_looks_like_protocol_id/_is_current_workflow_input`,
+  `app/conversation/manager.py`'s menu-digit short-circuit).
+- **Document/format validation** — Aadhaar/PAN regex, cheque field checks,
+  OCR-vs-typed mismatch detection — unchanged, lives in the workflow
+  processors, never touched by this migration.
+- **Financial confirmation gates** — `app/workflows/nlu.py::
+  interpret_confirmation()`/`interpret_menu_choice()` — rule-first,
+  unchanged; the LLM is never in the business of confirming a financial
+  action.
+- **Mandatory workflow validation / tool execution safety** — every
+  workflow's own field collection, `STEP_CONFIRM_*` gate, and DB
+  persistence — untouched. A `START_WORKFLOW`/`SWITCH` decision only ever
+  *begins* a workflow, at high certainty; classification alone still can
+  never authorize money movement.
+
+**Everything else deleted** (semantic/keyword classification):
+`rules.py`'s `classify_soft_navigation`, `classify_workflow_conversation`'s
+non-confirmation triggers, `classify_status_request`,
+`classify_guidance`, `classify_workflow_request`,
+`classify_banking_question`, `classify_out_of_scope` (the English
+deny-list and the keyword-absence guess), `GREETING_KEYWORDS` (greeting is
+now the LLM's `GREETING` action, in any language), `BANKING_DOMAIN_KEYWORDS`,
+and every associated regex/entity-extraction helper;
+`classifier.py::default_llm_classify` (a second, differently-shaped Sarvam
+classification call duplicating `classify_and_route_llm`'s job, never
+wired to a live caller); `workflows/manager.py`'s `start_requested()`
+free-text keyword branches (transfer/loan/cheque/kyc trigger words,
+lookup-word/delete-verb guards), `has_confident_switch_intent`'s old
+rule-based source, `_is_conversational_query`/`_is_workflow_help_query`/
+`_is_allowed_for_workflow`/`_WORKFLOW_ON_TOPIC_TERMS`; `llm_understanding.py`'s
+`answer_side_question`/`detect_soft_decline`/`detect_step_or_workflow_jump`
+(three separate Sarvam calls, each now subsumed by the one routing
+decision's `TOOL`/`RAG`, `CANCEL`, and `SWITCH` actions respectively —
+`detect_step_or_workflow_jump` was already dead code, no remaining call
+site); the entire `app/conversation/guidance/` package (`policy.py`,
+`handoff.py`, `responses.py`, `models.py`'s `GuidanceType`/`ResponseMode`/
+`SuggestedAction`/`GuidanceAction`) — its job of hand-classifying *which
+kind* of question a message represents is now a single `TOOL`/`RAG` call
+to the existing LLM+tools agent, which already has boundary instructions
+against inventing eligibility/approval/policy; `router.py`'s
+`route_intent()`/`_route()` (the confidence-threshold rule router — dead
+once nothing produces a rule-classified `IntentResult` worth routing
+anymore; `RoutingDecision` and the intent→workflow table it used are kept,
+still the shared vocabulary `LLMRoutingDecision.to_routing_decision()`
+projects onto); `app/agent/workflow_tools.py` (confirmed dead duplicate of
+`tools.py::tool_start_cheque_workflow`); the `SHADOW_LLM_ROUTING_ENABLED`
+shadow-comparison mechanism in `manager.py` (`_fire_shadow_llm_routing`/
+`_shadow_llm_routing_comparison`) — with no rule engine left to shadow
+against, it had nothing left to compare.
+
+**New control flow**
+(`app/conversation/manager.py::ConversationManager.handle_message()`):
+1. Build context (unchanged).
+2. Deterministic pre-filter: injection → immediate `OUT_OF_SCOPE`, no LLM
+   call, no registration gate, no workflow check.
+3. No active workflow: a bare main-menu digit tries
+   `WorkflowManager.start_requested()`'s digit map first (deterministic,
+   no LLM call); otherwise, one `classify_and_route_llm()` call (skipped
+   only for an already-resolved hard-navigation/confirmation-shorthand
+   intent), then the registration gate applies as a structural filter on
+   that decision (unregistered + a real banking action → redirect to
+   onboarding, stashing the query to resume after registration).
+4. Active workflow: `WorkflowManager.handle()` runs first and is
+   structurally authoritative, exactly as before this migration — it
+   reuses the same decision if one was computed, or (only for
+   cheque/loan/kyc/transfer/add_account — the workflows genuinely prone to
+   cross-pivoting; onboarding/view_transactions stay deterministic-only,
+   since an ordinary field answer there must never be second-guessed as a
+   pivot) makes its own single lazy call when the message isn't a literal
+   protocol/field input.
+5. Dispatch on the decision's action: `GREETING`/`OUT_OF_SCOPE`/`CLARIFY`
+   render a template; `CANCEL` (no active workflow reached this branch —
+   an active one resolves it inside `WorkflowManager`) acknowledges
+   nothing-to-cancel; `START_WORKFLOW`/`SWITCH` at high certainty calls
+   `workflow_adapter.start_workflow_directly()` (generalized to cover all
+   6 workflow-owning operations, using the LLM's extracted entities);
+   below high certainty, or for `TOOL`/`RAG`/`CONTINUE`/`CORRECT`, falls
+   through to the existing LLM+tools agent — the only place a second call
+   happens.
+
+**Financial safety (verified, not just assumed).** `route_intent()`'s
+`CONFIDENCE_HIGH` gate before `START_WORKFLOW` has a direct LLM-era
+equivalent: `ConversationManager` only calls `start_workflow_directly()`
+at `certainty == "high"`; a `medium`/`low` certainty workflow-starting
+decision falls through to the LLM+tools agent instead of guessing (a real
+gap found and fixed during this migration — an earlier draft dispatched on
+`action` alone with no certainty check at all). `WorkflowManager`'s
+mid-workflow switch check applies the same bar. Every workflow's own
+`STEP_CONFIRM_*` gate and `nlu.py::interpret_confirmation()` are completely
+unchanged — the LLM still never directly executes a financial transaction.
+
+**Duplicate/redundant call removal.** Before: an "unknown to the rules"
+message could pay for up to 3 Sarvam calls in the worst case (the router's
+own LLM rescue, `WorkflowManager`'s side-question/jump detection, and the
+general agent). After: at most 2 (the single routing decision, then the
+agent only for `TOOL`/`RAG`) — no message is ever classified twice, and a
+protocol/field/hard-nav match costs 0.
+
+**Tests.** `tests/test_intent_classifier.py` replaced (now tests only the
+deterministic pre-filter — injection, hard navigation, confirmation
+shorthand); `tests/test_guidance_policy.py`/`test_guidance_responses.py`/
+`test_shadow_llm_routing.py` deleted (the mechanisms they tested no longer
+exist); `tests/test_workflow_switching.py`, `tests/test_response_ux.py`,
+`tests/test_conversation_manager.py`, `tests/test_conversation_router.py`,
+`tests/test_llm_understanding.py`, `tests/test_registration_gate.py`
+rewritten for the new flow — unit tests inject an explicit
+`LLMRoutingDecision` (what the router decided) rather than re-deriving one
+from text, so they test dispatch logic deterministically without an API
+key; `tests/test_llm_routing_schema.py` kept and extended (it's the
+backbone now). Full suite: 437 passed, 1 skipped (pre-existing,
+undocumented "quick amount" buttons feature — unrelated to this
+migration), 0 failed.
+
+**Real Sarvam API validation.** `scripts/real_sarvam_validation.py` (new)
+runs the 101-case corpus in `scripts/shadow_eval_corpus.py` — all 8
+operations × normal/phrasing-variant/continuation/correction/cancellation/
+switch/ambiguous/RAG/out-of-scope/multilingual-native/romanized/mixed/
+voice-transcribed-style — plus a small greeting/side-question supplement,
+against the real `classify_and_route_llm()`, no mocking. Superseded
+`scripts/shadow_eval.py`/`shadow_report.py` (deleted — both were built
+around a rule-vs-LLM diff that has nothing left to diff against). See the
+task's final report for the actual pass-rate/latency numbers from this
+run.
+
+**Not done, deliberately out of scope for this phase:** a database-level
+idempotency key tying a transfer/cheque/loan/KYC row to its triggering
+message (Phase 6's already-documented limitation, unrelated to routing);
+rewriting the LangGraph agent's own tool-calling loop (its tool_calls
+already run concurrently via `asyncio.gather` inside LangGraph's
+`ToolNode._afunc` — confirmed by reading the installed library's source,
+not assumed — so no change was needed there); a full README rewrite for
+pre-existing, unrelated documentation drift (e.g. historical Groq
+references) — only the sections describing routing/architecture were
+updated to match this phase.
+
+**Cleanup follow-up pass.** A second, dedicated cleanup pass over this
+phase's own output found and fixed two real issues a first pass missed:
+(1) `LLMRoutingDecision.to_routing_decision()` and `app/conversation/
+router.py::RoutingDecision`'s action-mapping logic were dead — a leftover
+bridge from when the plan was to project the LLM decision onto the old
+rule router's output shape, but `app/conversation/manager.py` and
+`app/workflows/manager.py` ended up dispatching directly on
+`LLMRoutingDecision.action` instead; the mapping method and its
+`_ACTION_TO_ROUTING_ACTION` table were deleted (the plain `RoutingDecision`
+class itself is kept, still documenting the dispatch vocabulary and
+covered by an architecture-boundary test). (2) `ConversationManager` was
+never updating `ConversationContext.last_intent`/`intent_confidence` from
+the LLM's actual decision — only from the deterministic pre-filter, which
+is `"unknown"` for the vast majority of turns now — so this observability
+field had silently gone stale for most messages; fixed by refreshing it
+from `LLMRoutingDecision.to_intent_result()` right after the routing
+decision is made. Also removed one genuinely dead constant/variable pair
+(`router.py`'s unused `ROUTING_ACTIONS`/`logger_name`) and verified full
+test-suite isolation from `SARVAM_API_KEY` by running the suite with the
+key removed from the environment (430 passed, 1 skipped, 0 failed either
+way) — a real gap this check caught: two tests in `test_response_ux.py`
+still called the just-deleted `to_routing_decision()`, invisible in a
+normal run only because the real API key was present and those particular
+assertions happened not to be the ones exercised first. Full sweep method:
+`pyflakes`/`vulture` (fresh install, `--min-confidence 60`) across
+`app/`, `tests/`, `scripts/`, plus a manual read-through of
+`app/workflows/manager.py` and `app/conversation/manager.py` line by
+line — no other dead code, orphaned imports, or stale feature flags found
+beyond what's listed above. Pre-existing, out-of-migration-scope items
+deliberately left alone: several long-unused `app/workflows/constants.py`
+step constants (already documented as a known issue in section 11 of this
+file, predating this migration) and the `_is_compound_or_conditional()`
+heuristic in `conversation/manager.py` (a pre-existing, narrow structural
+signal — "does this look complex enough to need multi-step reasoning" —
+that routes to the general agent rather than deciding intent itself; not
+a semantic classifier, and present unchanged since before this migration).
+
+---
+
 ## 1. Current architecture
 
 ```

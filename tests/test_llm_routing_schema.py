@@ -1,12 +1,13 @@
-"""Step 1 of the keyword-to-LLM intent-classification migration:
-app/conversation/intent/llm_routing.py::LLMRoutingDecision and its projection
-onto the existing IntentResult/RoutingDecision types.
+"""app/conversation/intent/llm_routing.py::LLMRoutingDecision — the schema
+behind the live LLM routing call. app/conversation/manager.py and
+app/workflows/manager.py read its fields directly (`.action`, `.certainty`,
+`.intent`, `.entities`, `.resolved_target_workflow()`) — there is no
+separate RoutingDecision projection step to keep in sync.
 
-Nothing here exercises a real LLM call or changes user-facing behavior — this
-schema isn't wired into the live pipeline yet (that's Step 2, shadow mode).
-These tests only lock in the contract: that a well-formed or malformed
-decision from a future LLM call always resolves to something the EXISTING
-route_intent()/WorkflowManager consumers already know how to handle safely.
+Nothing here exercises a real LLM call (see scripts/real_sarvam_validation.py
+for that). These tests lock in the schema contract: that a well-formed or
+malformed decision always resolves to something WorkflowManager/
+ConversationManager already know how to handle safely.
 """
 
 import unittest
@@ -20,7 +21,7 @@ from app.conversation.intent.models import (
     CONFIDENCE_MEDIUM,
     confidence_band,
 )
-from app.conversation.router import get_workflow_for_intent, route_intent
+from app.conversation.router import get_workflow_for_intent
 
 
 class DefaultsAndValidationTests(unittest.TestCase):
@@ -51,9 +52,10 @@ class DefaultsAndValidationTests(unittest.TestCase):
 
 class CertaintyBandAlignmentTests(unittest.TestCase):
     """The whole point of using bands instead of a raw LLM-reported float is
-    that they must land in the same high/medium/low buckets route_intent()
-    already uses — verify that alignment explicitly rather than trusting the
-    chosen numbers by inspection."""
+    that they must land in the same high/medium/low buckets
+    app/conversation/intent/models.py::confidence_band() already defines —
+    verify that alignment explicitly rather than trusting the chosen
+    numbers by inspection."""
 
     def test_high_certainty_lands_in_confidence_high_band(self) -> None:
         self.assertGreaterEqual(CERTAINTY_TO_CONFIDENCE["high"], CONFIDENCE_HIGH)
@@ -70,6 +72,11 @@ class CertaintyBandAlignmentTests(unittest.TestCase):
 
 
 class ToIntentResultTests(unittest.TestCase):
+    """to_intent_result() is used by app/conversation/manager.py purely for
+    observability (refreshing ConversationContext.last_intent/
+    intent_confidence with the decision that actually drove the turn) —
+    nothing re-reads those fields to route anything."""
+
     def test_projects_intent_entities_and_llm_method(self) -> None:
         decision = LLMRoutingDecision(
             intent="balance_request", action="TOOL", certainty="high", entities={"account_type": "savings"},
@@ -79,15 +86,6 @@ class ToIntentResultTests(unittest.TestCase):
         self.assertEqual(result.entities, {"account_type": "savings"})
         self.assertEqual(result.method, "llm")
         self.assertEqual(result.confidence, CERTAINTY_TO_CONFIDENCE["high"])
-
-    def test_result_feeds_route_intent_exactly_like_a_rule_result(self) -> None:
-        # The whole point of reusing IntentResult: route_intent() should not
-        # need to know or care whether the object in front of it came from
-        # rules.py or an LLM call.
-        decision = LLMRoutingDecision(intent="transfer_request", action="START_WORKFLOW", certainty="high")
-        routing = route_intent(decision.to_intent_result())
-        self.assertEqual(routing.action, "START_WORKFLOW")
-        self.assertEqual(routing.workflow, "transfer")
 
 
 class ResolvedTargetWorkflowTests(unittest.TestCase):
@@ -104,74 +102,45 @@ class ResolvedTargetWorkflowTests(unittest.TestCase):
         self.assertIsNone(decision.resolved_target_workflow())
 
 
-class ToRoutingDecisionTests(unittest.TestCase):
-    def test_continue_maps_to_workflow_action(self) -> None:
-        decision = LLMRoutingDecision(intent="loan_application_request", action="CONTINUE", target_workflow="loan")
-        routing = decision.to_routing_decision()
-        self.assertEqual(routing.action, "WORKFLOW")
-        self.assertEqual(routing.workflow, "loan")
+class ActionSemanticsTests(unittest.TestCase):
+    """The dispatch semantics app/conversation/manager.py and
+    app/workflows/manager.py actually implement, asserted directly against
+    LLMRoutingDecision's own fields (no intermediate projection object)."""
 
-    def test_correct_maps_to_workflow_action(self) -> None:
-        decision = LLMRoutingDecision(intent="loan_application_request", action="CORRECT", target_workflow="loan")
-        routing = decision.to_routing_decision()
-        self.assertEqual(routing.action, "WORKFLOW")
-        self.assertEqual(routing.workflow, "loan")
-
-    def test_switch_maps_to_start_workflow_with_new_target(self) -> None:
-        # The exact "loan active, user says create another account" scenario
-        # from the migration request — generic, not a hardcoded pair.
-        decision = LLMRoutingDecision(intent="add_account_request", action="SWITCH", certainty="high")
-        routing = decision.to_routing_decision()
-        self.assertEqual(routing.action, "START_WORKFLOW")
-        self.assertEqual(routing.workflow, "add_account")
-
-    def test_start_workflow_maps_directly(self) -> None:
-        decision = LLMRoutingDecision(intent="cheque_deposit_request", action="START_WORKFLOW", certainty="high")
-        routing = decision.to_routing_decision()
-        self.assertEqual(routing.action, "START_WORKFLOW")
-        self.assertEqual(routing.workflow, "cheque")
-
-    def test_tool_maps_to_banking_llm_with_no_workflow(self) -> None:
-        decision = LLMRoutingDecision(intent="balance_request", action="TOOL")
-        routing = decision.to_routing_decision()
-        self.assertEqual(routing.action, "BANKING_LLM")
-        self.assertIsNone(routing.workflow)
-
-    def test_rag_maps_to_banking_llm_with_no_workflow(self) -> None:
-        decision = LLMRoutingDecision(intent="banking_question", action="RAG")
-        routing = decision.to_routing_decision()
-        self.assertEqual(routing.action, "BANKING_LLM")
-        self.assertIsNone(routing.workflow)
-
-    def test_clarify_maps_to_clarification_required(self) -> None:
-        decision = LLMRoutingDecision(action="CLARIFY")
-        routing = decision.to_routing_decision()
-        self.assertEqual(routing.action, "CLARIFICATION_REQUIRED")
-
-    def test_out_of_scope_maps_directly(self) -> None:
-        decision = LLMRoutingDecision(intent="out_of_scope", action="OUT_OF_SCOPE")
-        routing = decision.to_routing_decision()
-        self.assertEqual(routing.action, "OUT_OF_SCOPE")
-
-    def test_cancel_defers_to_safe_fallback_not_a_new_execution_path(self) -> None:
-        # CANCEL is deliberately not given real execution semantics here:
-        # cancellation already has a cheap, deterministic upstream handler
-        # (classify_hard_navigation). An LLM emitting CANCEL should never
-        # cause NEW behavior at the routing layer.
+    def test_cancel_is_a_real_action_not_silently_dropped(self) -> None:
+        # A literal cancel/stop word is caught for free by the
+        # deterministic pre-filter (classify_hard_navigation) before an LLM
+        # call ever runs. CANCEL reaching this schema means a
+        # NATURAL-LANGUAGE cancellation ("I don't want to continue with
+        # this") the LLM recognized -- WorkflowManager treats it exactly
+        # like a literal cancel word (the existing stop-confirmation UX),
+        # never an immediate unconfirmed abandonment or a financial action.
         decision = LLMRoutingDecision(intent="cancel", action="CANCEL", certainty="high")
-        routing = decision.to_routing_decision()
-        self.assertEqual(routing.action, "SAFE_FALLBACK")
+        self.assertEqual(decision.action, "CANCEL")
+
+    def test_greeting_carries_no_workflow(self) -> None:
+        decision = LLMRoutingDecision(intent="greeting", action="GREETING", certainty="high")
+        self.assertIsNone(decision.resolved_target_workflow())
+
+    def test_out_of_scope_carries_no_workflow(self) -> None:
+        decision = LLMRoutingDecision(intent="out_of_scope", action="OUT_OF_SCOPE")
+        self.assertIsNone(decision.resolved_target_workflow())
+
+    def test_clarify_is_the_safe_default_for_unknown_intent(self) -> None:
+        decision = LLMRoutingDecision(action="CLARIFY")
+        self.assertEqual(decision.action, "CLARIFY")
+        self.assertIsNone(decision.resolved_target_workflow())
 
 
 class AllEightOperationsTests(unittest.TestCase):
-    """Second validation phase: every one of the 8 named banking operations
-    (per the migration plan's own list) gets an explicit, deterministic
-    regression test of its schema-level behavior -- no live LLM call
-    needed, since this is testing the pure mapping/validation logic, not
-    model judgment (that's scripts/shadow_eval.py's job, run live against
-    scripts/shadow_eval_corpus.py's 101-case matrix)."""
+    """Every one of the 8 named banking operations gets an explicit,
+    deterministic regression test of its schema-level behavior -- no live
+    LLM call needed, since this is testing the pure mapping/validation
+    logic, not model judgment (that's scripts/real_sarvam_validation.py's
+    job, run live against scripts/shadow_eval_corpus.py's 101-case
+    matrix)."""
 
-    # (operation label, rule intent, workflow name or None for a tool lookup)
+    # (operation label, intent, workflow name or None for a tool lookup)
     OPERATIONS = [
         ("TRANSFER_MONEY", "transfer_request", "transfer"),
         ("CHECK_BALANCE", "balance_request", None),
@@ -189,25 +158,14 @@ class AllEightOperationsTests(unittest.TestCase):
                 decision = LLMRoutingDecision(intent=intent, action="START_WORKFLOW", certainty="high")
                 self.assertEqual(decision.resolved_target_workflow(), expected_workflow)
 
-    def test_every_workflow_operation_start_workflow_maps_correctly(self) -> None:
-        for label, intent, expected_workflow in self.OPERATIONS:
-            if expected_workflow is None:
-                continue
-            with self.subTest(operation=label):
-                decision = LLMRoutingDecision(intent=intent, action="START_WORKFLOW", certainty="high")
-                routing = decision.to_routing_decision()
-                self.assertEqual(routing.action, "START_WORKFLOW")
-                self.assertEqual(routing.workflow, expected_workflow)
-
-    def test_every_lookup_operation_tool_maps_to_banking_llm_no_workflow(self) -> None:
+    def test_every_lookup_operation_is_a_tool_call_never_a_workflow(self) -> None:
         for label, intent, expected_workflow in self.OPERATIONS:
             if expected_workflow is not None:
                 continue
             with self.subTest(operation=label):
                 decision = LLMRoutingDecision(intent=intent, action="TOOL", certainty="high")
-                routing = decision.to_routing_decision()
-                self.assertEqual(routing.action, "BANKING_LLM")
-                self.assertIsNone(routing.workflow)
+                self.assertEqual(decision.action, "TOOL")
+                self.assertIsNone(decision.resolved_target_workflow())
 
     def test_every_workflow_operation_supports_continue_correct_cancel(self) -> None:
         for label, intent, expected_workflow in self.OPERATIONS:
@@ -215,18 +173,18 @@ class AllEightOperationsTests(unittest.TestCase):
                 continue
             with self.subTest(operation=label):
                 cont = LLMRoutingDecision(intent=intent, action="CONTINUE", target_workflow=expected_workflow)
-                self.assertEqual(cont.to_routing_decision().action, "WORKFLOW")
-                self.assertEqual(cont.to_routing_decision().workflow, expected_workflow)
+                self.assertEqual(cont.action, "CONTINUE")
+                self.assertEqual(cont.resolved_target_workflow(), expected_workflow)
 
                 corr = LLMRoutingDecision(intent=intent, action="CORRECT", target_workflow=expected_workflow)
-                self.assertEqual(corr.to_routing_decision().action, "WORKFLOW")
-                self.assertEqual(corr.to_routing_decision().workflow, expected_workflow)
+                self.assertEqual(corr.action, "CORRECT")
+                self.assertEqual(corr.resolved_target_workflow(), expected_workflow)
 
                 cancel = LLMRoutingDecision(intent=intent, action="CANCEL", target_workflow=expected_workflow)
-                # CANCEL always defers to the deterministic upstream handler
-                # regardless of intent/workflow -- verified for all 5
-                # workflow-owning operations, not just one.
-                self.assertEqual(cancel.to_routing_decision().action, "SAFE_FALLBACK")
+                # CANCEL always stays a real CANCEL action regardless of
+                # intent/workflow -- verified for all 5 workflow-owning
+                # operations, not just one.
+                self.assertEqual(cancel.action, "CANCEL")
 
     def test_every_operation_can_be_the_target_of_a_switch_from_any_other(self) -> None:
         """Generic ANY-to-ANY requirement: every workflow-owning operation
@@ -241,23 +199,25 @@ class AllEightOperationsTests(unittest.TestCase):
                     continue
                 with self.subTest(frm=from_workflow, to=to_label):
                     decision = LLMRoutingDecision(intent=to_intent, action="SWITCH", certainty="high")
-                    routing = decision.to_routing_decision()
-                    self.assertEqual(routing.action, "START_WORKFLOW")
-                    self.assertEqual(routing.workflow, to_workflow)
+                    self.assertEqual(decision.action, "SWITCH")
+                    self.assertEqual(decision.resolved_target_workflow(), to_workflow)
 
 
 class NeverAuthorizesFinancialActionTests(unittest.TestCase):
-    """A RoutingDecision only ever says where a turn goes, never that money
-    moved. This is a schema-shape guarantee: RoutingDecision has no field
-    that could represent "transfer executed" or "KYC submitted", so a
-    high-certainty SWITCH/START_WORKFLOW decision is structurally incapable
-    of being more than a routing hint."""
+    """LLMRoutingDecision only ever says where a turn goes, never that
+    money moved. This is a schema-shape guarantee: it has no field that
+    could represent "transfer executed" or "KYC submitted", so even a
+    high-certainty SWITCH/START_WORKFLOW decision is structurally
+    incapable of being more than a routing hint."""
 
-    def test_high_certainty_switch_is_still_just_a_routing_hint(self) -> None:
+    def test_schema_has_no_execution_or_confirmation_field(self) -> None:
         decision = LLMRoutingDecision(intent="transfer_request", action="SWITCH", certainty="high")
-        routing = decision.to_routing_decision()
-        self.assertEqual(set(routing.model_dump().keys()), {"action", "workflow", "reason"})
-        self.assertEqual(routing.action, "START_WORKFLOW")
+        self.assertEqual(
+            set(decision.model_dump().keys()),
+            {"intent", "action", "certainty", "target_workflow", "entities", "language"},
+        )
+        for forbidden in ("executed", "confirmed", "amount_transferred", "committed"):
+            self.assertNotIn(forbidden, decision.model_dump())
 
 
 if __name__ == "__main__":

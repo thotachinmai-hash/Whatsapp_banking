@@ -1,19 +1,25 @@
-"""ConversationManager — Phase 5 orchestrator.
+"""ConversationManager — LLM-first orchestrator.
 
-Owns the conversation turn lifecycle: load context, classify intent, run
-the registration gate, the active workflow, and the router, then persist
-context — calling existing components for every step. See
-docs/current_architecture.md, "Conversation Manager — Phase 5".
+Owns the conversation turn lifecycle: load context, run the deterministic
+pre-filter (injection / hard navigation / workflow-confirmation
+shorthand), the registration gate, the active workflow, and the single LLM
+routing decision, then persist context. See docs/current_architecture.md,
+"Phase 13 — LLM-First Routing Migration".
 
 ARCHITECTURAL RULE: this class orchestrates; it does not execute business
 logic. It never queries the database directly, never validates a banking
 operation, and never decides workflow state itself — all of that stays in
-WorkflowManager, the workflow processors, the intent classifier, and the
-router, exactly as before this phase. The LLM+tools branch is injected as
-a callable (`llm_fallback`) rather than imported directly: it is owned by
-app/agent/agent.py, which in turn imports this module, so importing it
-back here would be circular — dependency injection is the clean way
-around that, not a workaround.
+WorkflowManager, the workflow processors, and the workflow-start adapter.
+The LLM+tools branch is injected as a callable (`llm_fallback`) rather than
+imported directly, to avoid a circular import with app/agent/agent.py.
+
+LLM call budget per turn: 0 calls for a deterministic pre-filter match
+with no active workflow needing dispatch (injection, hard navigation, a
+protocol/field input for an active workflow); exactly 1 call
+(classify_and_route_llm[_sync]) for everything else the deterministic
+layer has no opinion on; a 2nd call (the LLM+tools agent, `llm_fallback`)
+only for a TOOL/RAG decision that needs real customer data or general
+banking knowledge. No message is ever classified twice.
 """
 
 import asyncio
@@ -24,12 +30,8 @@ from typing import Any, Awaitable, Callable, Optional
 from app.conversation.builder import build_context
 from app.conversation.context import ConversationContext, sanitize_workflow_data
 from app.conversation.context_store import ConversationContextStore
-from app.conversation.guidance.handoff import WORKFLOW_FOR_ACTION, resolve_pending_action
-from app.conversation.guidance.models import GuidanceAction, GuidanceType
-from app.conversation.guidance.policy import build_guidance
-from app.conversation.guidance.responses import render_action_info, render_guidance
-from app.conversation.intent import classify_intent
-from app.conversation.intent.llm_routing import classify_and_route_llm, is_shadow_llm_routing_enabled
+from app.conversation.intent.classifier import classify_intent
+from app.conversation.intent.llm_routing import LLMRoutingDecision, classify_and_route_llm
 from app.conversation.intent.text_clean import clean_noisy_text
 from app.services.language import (
     DEFAULT_LANGUAGE,
@@ -40,10 +42,14 @@ from app.services.language import (
     translate_text,
 )
 from app.conversation.renderer import ResponseLike, StructuredResponse, as_structured_response
-from app.conversation.responses.common import render_cancelled, render_clarification
-from app.conversation.responses.common import render_main_menu_list, render_out_of_scope, render_service_unavailable
+from app.conversation.responses.common import (
+    render_cancelled,
+    render_clarification,
+    render_main_menu_list,
+    render_out_of_scope,
+    render_service_unavailable,
+)
 from app.conversation.responses.errors import render_agent_error
-from app.conversation.router import RoutingDecision, route_intent
 from app.conversation.workflow_adapter import start_workflow_directly
 from app.logger import get_logger
 from app.memory import append_turn_to_session
@@ -53,24 +59,27 @@ from app.workflows.memory import get_workflow
 
 logger = get_logger(__name__)
 
-# A small, safe cap on the stored retry_count — see docs, "Retry count".
-# Nothing currently branches on this value; it exists so the persisted
-# field can't grow unbounded across a long run of ambiguous messages.
+# A small, safe cap on the stored retry_count. Nothing currently branches
+# on this value; it exists so the persisted field can't grow unbounded
+# across a long run of ambiguous messages.
 MAX_CLARIFICATION_RETRIES = 3
+
+# Hard-navigation/confirmation-shorthand intents the deterministic
+# pre-filter (app/conversation/intent/classifier.py) can produce — these
+# never need the LLM router to resolve them further.
+_DETERMINISTIC_INTENTS = {"cancel", "back", "main_menu", "repeat", "start_over", "workflow_confirmation"}
+
+# The row ids of app/conversation/responses/common.py's _MAIN_MENU_ROWS /
+# app/workflows/manager.py's start_requested() menu_actions — a tapped
+# WhatsApp list row arrives as this bare digit with no active workflow.
+_MENU_DIGITS = {"1", "2", "3", "4", "5", "6", "7", "8"}
 
 # A cheap, local, no-LLM signal that a message needs real reasoning
 # (check a fact, then conditionally act — "transfer to my landlord if my
-# balance is more than 20k") rather than the deterministic
-# keyword-triggered workflow starters (WorkflowManager.start_requested).
-# Those blindly grab everything after "to"/a keyword via regex and have
-# no concept of a condition — see the compound-request routing plan. A
+# balance is more than 20k") rather than a simple direct dispatch. A
 # condition word alone is treated as sufficient (rather than also
 # requiring a comparison word) because false positives here just mean an
-# extra LLM round-trip, not a wrong answer, whereas requiring a
-# comparison word missed real cases like "check whether I paid my
-# landlord this month; if not, transfer ₹15,000". Deliberately narrow —
-# a plain "send 500 to Priya please" must still take the fast,
-# well-tested deterministic path.
+# extra step through the LLM+tools agent, not a wrong answer.
 _CONDITION_WORD_RE = re.compile(r"\b(if|when|unless|provided|as long as)\b", re.I)
 _CHECK_VERB_RE = re.compile(r"\b(check|tell me|show|verify|find out|confirm)\b", re.I)
 _ACT_VERB_RE = re.compile(r"\b(transfer|send|pay|apply|update|start)\b", re.I)
@@ -85,71 +94,11 @@ def _is_compound_or_conditional(query: str) -> bool:
     return bool(_CHECK_VERB_RE.search(text) and _ACT_VERB_RE.search(text))
 
 
-def _looks_like_transfer_request_with_condition(query: str) -> bool:
-    """Compound transfer intents with a balance condition still belong in the
-    deterministic transfer flow (the same free-text parser that handles plain
-    'send 2000 to Bhavitha' messages) rather than being sent to the generic
-    LLM fallback. The condition check is a policy decision to be handled by
-    the transfer workflow or the LLM tool layer, not a reason to drop the
-    actual transfer intent entirely."""
-    text = (query or "").strip()
-    if not text:
-        return False
-    has_transfer_intent = bool(re.search(r"\b(?:transfer|send|pay)\b", text, re.I))
-    has_beneficiary = bool(re.search(r"\bto\s+[A-Za-z][A-Za-z .'-]{1,50}\b", text, re.I))
-    has_condition = bool(_CONDITION_WORD_RE.search(text))
-    return has_transfer_intent and has_beneficiary and has_condition
-
-
-def _looks_like_numeric_value(query: str) -> bool:
-    """A bare number is not out of scope: it could be an amount the user is
-    typing into a transfer or another numeric prompt. Keep menu taps on the
-    dedicated digit path, but let true numeric values continue through to the
-    regular LLM/tool logic instead of being rejected as a generic banking
-    question."""
-    text = (query or "").strip()
-    return bool(text) and text not in {"1", "2", "3", "4", "5", "6", "7", "8"} and bool(re.fullmatch(r"\d+(?:[.,]\d+)?", text))
-
 # A plain-ASCII text message with at least this many words is treated as
 # an implicit "the customer is writing in English now" signal — see
 # _update_language(). Below this, a short reply ("yes", "1", "ok") is too
 # ambiguous to mean anything and the sticky non-English language is kept.
 MIN_ENGLISH_SWITCH_WORDS = 3
-
-# Guidance types that replace a turn's answer (skipping the LLM, or —
-# for the two loan/cheque classifier gaps documented in
-# app/conversation/guidance/policy.py — skipping an incorrect
-# START_WORKFLOW) with a deterministic guidance response. Deliberately
-# NOT every GuidanceType: GENERAL_BANKING_GUIDANCE and TRANSACTION_GUIDANCE
-# stay on the existing LLM+tools path (the LLM/tools are the only place
-# that can answer an open banking question or a real spending-insight
-# question with actual data — see docs, "Banking Guidance & Response
-# Handoff — Phase 7"); WORKFLOW_HELP stays on the existing path too (an
-# active workflow's LLM-explained "what should I do" already correctly
-# explains the current step without restarting it — replacing it here
-# would risk drifting from the live workflow's real prompts); UNKNOWN
-# stays on the router's own CLARIFICATION_REQUIRED text, which already
-# exists for exactly this case. LOAN_GUIDANCE was moved off this list once
-# app/agent/tools.py::tool_get_loan_product_info() gave the LLM a real
-# rate/fee/tenure lookup — a plain "what's the interest rate" question now
-# gets a real, tool-provided figure instead of the guidance layer's
-# necessarily-generic "I can't quote exact numbers here". LOAN_DOCUMENT_GUIDANCE
-# got the same treatment for the same reason once app/agent/tools.py::
-# tool_search_bank_documents() (RAG over app/rag/documents/) gave the LLM a
-# real, indexed answer for "what documents do I need" — confirmed via live
-# testing that without this, that exact question never reached the RAG
-# tool at all; it was answered by this layer's generic "the exact list
-# depends..." text first. LOAN_ELIGIBILITY_GUIDANCE stays intercepted: it's
-# about a *personal* decision (never invented/computed), not the bank's
-# published rate card or document policy.
-_INTERCEPT_GUIDANCE_TYPES = {
-    GuidanceType.LOAN_ELIGIBILITY_GUIDANCE,
-    GuidanceType.TRANSFER_GUIDANCE,
-    GuidanceType.CHEQUE_GUIDANCE,
-    GuidanceType.CHEQUE_STATUS_GUIDANCE,
-    GuidanceType.KYC_GUIDANCE,
-    GuidanceType.ACCOUNT_GUIDANCE,
-}
 
 LlmFallbackFn = Callable[[str, str, str, Optional[dict]], Awaitable[ResponseLike]]
 
@@ -170,10 +119,6 @@ class ConversationManager:
     ) -> None:
         self.workflow_manager = workflow_manager or WorkflowManager()
         self.context_store = context_store or ConversationContextStore()
-        # Step 2 (LLM-first routing migration): strong refs to in-flight
-        # shadow-comparison background tasks so asyncio can't garbage-collect
-        # them mid-flight -- see _fire_shadow_llm_routing().
-        self._shadow_tasks: set[asyncio.Task] = set()
 
     async def handle_message(
         self,
@@ -189,23 +134,16 @@ class ConversationManager:
 
         Never raises — any failure anywhere in the turn is caught, logged
         with `trace_id`, and turned into an existing user-safe error
-        response, matching the guarantee run_agent() made before this
-        phase existed.
+        response.
         """
         start = time.time()
         logger.info(f"[{trace_id}] conversation.turn.started | phone={phone_number[-4:]}")
 
         # Normalize non-string payloads before any .strip()/regex work.
-        # Numeric menu taps or other unexpected types can reach this entry
-        # point from downstream callers; turning them into strings here keeps
-        # the rest of the pipeline consistent and prevents crashes like
-        # 'int' object has no attribute 'strip'.
         message = _as_text(message)
 
         # Strip laughter/filler noise ("check my balance ha ha ha") before
-        # anything tries to classify or match this message — see
-        # app/conversation/intent/text_clean.py. Voice transcriptions and
-        # typed text both flow through here, so this covers both.
+        # anything tries to classify or match this message.
         message = clean_noisy_text(message)
 
         context = await asyncio.to_thread(self._load_context, phone_number, trace_id)
@@ -213,275 +151,223 @@ class ConversationManager:
             context.last_user_message = message[:500]
             await self._update_language(context, message, detected_language, is_voice, trace_id)
 
-        intent_result = await self._classify_intent(context, message, trace_id)
-        self._fire_shadow_llm_routing(context, message, intent_result, phone_number, trace_id)
         query = message
-        reprocess_query = None
 
         try:
-            gate_result = await asyncio.to_thread(
-                check_registration_gate,
-                phone_number=phone_number,
-                query=query,
-                trace_id=trace_id,
-                has_active_workflow=(context.current_workflow is not None) if context is not None else None,
-            )
-            if gate_result and gate_result["handled"]:
-                return await self._finish(context, phone_number, query, gate_result["response"], trace_id)
+            pre_result = await self._classify_intent(context, query, trace_id)
 
-            handoff_result = await self._try_pending_action_handoff(context, phone_number, query, trace_id)
-            if handoff_result is not None:
-                return handoff_result
+            # Injection detection short-circuits everything else — the
+            # message is never handed to a workflow or the LLM as if it
+            # were a real request.
+            if pre_result is not None and pre_result.intent == "out_of_scope":
+                return await self._finish(
+                    context, phone_number, query, render_out_of_scope(), trace_id, pending_action=None
+                )
 
-            workflow_result = await asyncio.to_thread(
-                self.workflow_manager.handle,
-                phone_number=phone_number,
-                query=query,
-                parsed_document=parsed_document,
-                trace_id=trace_id,
-                intent_result=intent_result,
-            )
-            reprocess_query = workflow_result.get("reprocess_query")
-            if reprocess_query:
-                query = reprocess_query
+            has_active_workflow = bool(context and context.current_workflow)
+            llm_decision: Optional[LLMRoutingDecision] = None
+            forced_banking_llm = False
+            is_bare_menu_digit = not has_active_workflow and query.strip() in _MENU_DIGITS
 
-            if workflow_result["handled"]:
-                logger.info(f"[{trace_id}] conversation.workflow.handled | phone={phone_number[-4:]}")
+            if not has_active_workflow:
+                # A tapped main-menu row (a bare digit "1".."8") carries no
+                # words for any classifier to work with — it must never
+                # cost an LLM call or risk being misread as OUT_OF_SCOPE/
+                # CLARIFY. Deterministic digit/button protocol stays
+                # deterministic: try WorkflowManager's digit map first,
+                # with `decision=None` for the registration gate (its own
+                # is_menu_tap check already handles this case for a
+                # registered customer without needing one).
+                if is_bare_menu_digit:
+                    gate_result = await asyncio.to_thread(
+                        check_registration_gate,
+                        phone_number=phone_number,
+                        query=query,
+                        decision=None,
+                        is_registered=bool(context and context.is_registered),
+                        trace_id=trace_id,
+                    )
+                    if gate_result and gate_result["handled"]:
+                        return await self._finish(context, phone_number, query, gate_result["response"], trace_id)
+
+                    protocol = await asyncio.to_thread(
+                        self.workflow_manager.start_requested, phone_number, query, trace_id=trace_id
+                    )
+                    if protocol["handled"]:
+                        self._register_progress(context)
+                        return await self._finish(
+                            context, phone_number, query, protocol["response"], trace_id, pending_action=None
+                        )
+                    if protocol.get("reprocess_query"):
+                        # A digit with no dedicated workflow of its own
+                        # (balance, transactions, cheque status) resolves
+                        # to a clear text query — answer it via the
+                        # LLM+tools agent directly, no routing call needed.
+                        query = protocol["reprocess_query"]
+                        forced_banking_llm = True
+
+                if not forced_banking_llm:
+                    needs_llm = pre_result is None or pre_result.intent not in _DETERMINISTIC_INTENTS
+                    if needs_llm:
+                        llm_decision = await classify_and_route_llm(query, context=context, trace_id=trace_id)
+
+                    gate_result = await asyncio.to_thread(
+                        check_registration_gate,
+                        phone_number=phone_number,
+                        query=query,
+                        decision=llm_decision,
+                        is_registered=bool(context and context.is_registered),
+                        trace_id=trace_id,
+                    )
+                    if gate_result and gate_result["handled"]:
+                        return await self._finish(context, phone_number, query, gate_result["response"], trace_id)
+
+            reprocess_query = None
+            if not forced_banking_llm:
+                workflow_result = await asyncio.to_thread(
+                    self.workflow_manager.handle,
+                    phone_number=phone_number,
+                    query=query,
+                    parsed_document=parsed_document,
+                    trace_id=trace_id,
+                    llm_decision=llm_decision,
+                )
+                reprocess_query = workflow_result.get("reprocess_query")
+                if reprocess_query:
+                    query = reprocess_query
+
+                if workflow_result["handled"]:
+                    logger.info(f"[{trace_id}] conversation.workflow.handled | phone={phone_number[-4:]}")
+                    self._register_progress(context)
+                    return await self._finish(context, phone_number, query, workflow_result["response"], trace_id)
+
+            if not forced_banking_llm and pre_result is not None and pre_result.intent == "main_menu":
                 self._register_progress(context)
-                return await self._finish(context, phone_number, query, workflow_result["response"], trace_id)
-
-            routing_decision = None
-            if intent_result is not None:
-                if intent_result.intent == "main_menu":
-                    self._register_progress(context)
-                    return await self._finish(
-                        context, phone_number, query, render_main_menu_list(), trace_id, pending_action=None
-                    )
-                routing_decision = route_intent(intent_result, context=context)
-                logger.info(
-                    f"[{trace_id}] conversation.route.decided | phone={phone_number[-4:]} | "
-                    f"intent={intent_result.intent} | confidence={intent_result.confidence:.2f} | "
-                    f"routing_decision={routing_decision.action} | "
-                    f"workflow={(context.current_workflow if context else None) or 'none'} | "
-                    f"step={(context.current_step if context else None) or 'none'}"
-                )
-            action = routing_decision.action if routing_decision else "SAFE_FALLBACK"
-
-            is_compound = _is_compound_or_conditional(query)
-            if is_compound and _looks_like_transfer_request_with_condition(query):
-                deterministic = await asyncio.to_thread(
-                    self.workflow_manager.start_requested, phone_number, query, trace_id=trace_id
-                )
-                if deterministic["handled"]:
-                    self._register_progress(context)
-                    return await self._finish(
-                        context, phone_number, query, deterministic["response"], trace_id, pending_action=None
-                    )
-                logger.info(
-                    f"[{trace_id}] conversation.route.compound_transfer_fallback | "
-                    f"phone={phone_number[-4:]} | query={query[:80]!r}"
+                return await self._finish(
+                    context, phone_number, query, render_main_menu_list(), trace_id, pending_action=None
                 )
 
-            if is_compound:
-                # Skip guidance interception and the deterministic
-                # keyword-triggered workflow starters entirely — both are
-                # single-intent shortcuts that would either mangle this
-                # message (see start_requested()'s free-text regexes) or
-                # answer only part of it. Go straight to the LLM+tools
-                # agent, which has the check-then-act tools/instructions
-                # needed to actually reason through it.
-                logger.info(f"[{trace_id}] conversation.route.compound_or_conditional | phone={phone_number[-4:]}")
-                action = "BANKING_LLM"
+            is_compound = not forced_banking_llm and _is_compound_or_conditional(query)
+            if is_compound or forced_banking_llm:
+                # A compound/conditional request ("check my balance, and if
+                # it's over 20k transfer 5000 to Priya") needs the real
+                # LLM+tools agent's check-then-act reasoning, not a direct
+                # workflow start or a static template. A forced-banking-LLM
+                # digit reprocess (e.g. menu row "2" -> "check my balance")
+                # likewise already knows its destination — no routing call
+                # needed.
+                if is_compound:
+                    logger.info(f"[{trace_id}] conversation.route.compound_or_conditional | phone={phone_number[-4:]}")
+                self._register_progress(context)
+                response = await llm_fallback(query, phone_number, trace_id, parsed_document)
+                return await self._finish(context, phone_number, query, response, trace_id, pending_action=None)
 
-            guidance_response = None if is_compound else await self._try_guidance(
-                intent_result, context, phone_number, query, trace_id
+            if llm_decision is None and reprocess_query is None:
+                # The deterministic pre-filter had no opinion (an
+                # unresolved hard-nav intent like "repeat"/"start_over"
+                # with no active workflow, or WorkflowManager declined a
+                # protocol input without needing its own lazy call) — this
+                # is the only remaining place a fresh routing call can be
+                # needed, and it happens at most once.
+                llm_decision = await classify_and_route_llm(query, context=context, trace_id=trace_id)
+
+            if llm_decision is None:
+                # The LLM call failed/unavailable — safe default: let the
+                # general LLM+tools agent try, matching the app's existing
+                # fail-safe pattern of never leaving a turn unanswered.
+                self._register_progress(context)
+                response = await llm_fallback(query, phone_number, trace_id, parsed_document)
+                return await self._finish(context, phone_number, query, response, trace_id, pending_action=None)
+
+            action = llm_decision.action
+            if context is not None:
+                # _classify_intent() only ever sets last_intent/confidence
+                # from the deterministic pre-filter (injection/hard-nav/
+                # confirm-shorthand), which is "unknown" for the vast
+                # majority of turns now that the LLM router resolves them —
+                # update it here from the actual decision so observability
+                # reflects what really happened this turn.
+                intent_result = llm_decision.to_intent_result()
+                context.last_intent = intent_result.intent
+                context.intent_confidence = intent_result.confidence
+            logger.info(
+                f"[{trace_id}] conversation.route.decided | phone={phone_number[-4:]} | "
+                f"intent={llm_decision.intent} | action={action} | certainty={llm_decision.certainty} | "
+                f"workflow={(context.current_workflow if context else None) or 'none'}"
             )
-            if guidance_response is not None:
-                return guidance_response
 
-            if action in ("OUT_OF_SCOPE", "CLARIFICATION_REQUIRED") and query.strip() in {
-                "1", "2", "3", "4", "5", "6", "7", "8",
-            }:
-                # A tapped main-menu row (or a typed bare digit) carries no
-                # words for the intent classifier to work with, so it can
-                # legitimately fall out as OUT_OF_SCOPE/CLARIFICATION_REQUIRED
-                # even though WorkflowManager.start_requested()'s digit map
-                # (see app/workflows/manager.py::menu_actions) knows exactly
-                # what "2" means. Give that deterministic check one try
-                # before giving up. Deliberately gated to an exact digit
-                # match only (not the rest of start_requested()'s keyword
-                # matching) — CLARIFICATION_REQUIRED also covers a
-                # low-confidence WORKFLOW_EXECUTING_INTENTS guess (e.g. "I
-                # might want a loan"), and the router's whole point there is
-                # to ask rather than guess before starting a financial
-                # workflow; a bare digit has no such ambiguity to protect
-                # against.
-                deterministic = await asyncio.to_thread(
-                    self.workflow_manager.start_requested, phone_number, query, trace_id=trace_id
+            if action == "GREETING":
+                # WorkflowManager/registration_gate already absorb GREETING
+                # whenever a workflow is active or none was yet started —
+                # reaching here is a rare edge case (e.g. a registered
+                # customer with history greeting mid-turn); fall back to
+                # the same menu either would have shown.
+                self._register_progress(context)
+                return await self._finish(
+                    context, phone_number, query, render_main_menu_list(), trace_id, pending_action=None
                 )
-                if deterministic["handled"]:
-                    self._register_progress(context)
-                    return await self._finish(
-                        context, phone_number, query, deterministic["response"], trace_id, pending_action=None
-                    )
-                if deterministic.get("reprocess_query"):
-                    # Digit rows with no dedicated workflow of their own
-                    # (balance, transactions, cheque status) resolve here to
-                    # a clear text query instead — let the LLM+tools path
-                    # below answer it rather than telling the customer their
-                    # unambiguous menu tap was out of scope.
-                    query = deterministic["reprocess_query"]
-                    action = "BANKING_LLM"
-
-            if action == "OUT_OF_SCOPE" and _looks_like_numeric_value(query):
-                action = "BANKING_LLM"
-
-            if (
-                action == "OUT_OF_SCOPE"
-                and intent_result is not None
-                and intent_result.confidence < 0.9
-                and should_attempt_detection(query)
-            ):
-                # classify_out_of_scope()'s catch-all (rules.py) tags
-                # anything with no recognized ENGLISH banking keyword as
-                # out_of_scope at confidence 0.85 -- it has no way to
-                # recognize a genuine banking question asked in a native
-                # script with no English loanword mixed in (e.g. pure
-                # Telugu/Tamil/Hindi), so it isn't a safe signal for
-                # non-English text specifically. The 0.9 cutoff excludes
-                # the separate, English-only deny-list match (confidence
-                # 0.95, e.g. "write me a poem") that's still a reliable
-                # out-of-scope signal regardless of script. Let the
-                # LLM+tools agent -- which understands native-script and
-                # code-mixed input natively and still redirects genuinely
-                # out-of-scope requests per its own system prompt -- make
-                # the real call instead of rejecting on a heuristic that's
-                # blind to the language actually used.
-                action = "BANKING_LLM"
 
             if action == "OUT_OF_SCOPE":
                 return await self._finish(
                     context, phone_number, query, render_out_of_scope(), trace_id, pending_action=None
                 )
 
-            if action == "CLARIFICATION_REQUIRED":
-                reason = routing_decision.reason or "unknown"
-                # classify_workflow_request() and its rule siblings are
-                # English-keyword-led: CLARIFICATION_REQUIRED means they
-                # either had NO opinion at all (reason="unknown" -- pure
-                # native-script, romanized, or indirect phrasing like
-                # "నాకు లోన్ కావాలి") OR matched a workflow-request/banking
-                # intent without enough confidence to trust (a hedged
-                # phrase, e.g. "maybe I should get a loan"). Both used to
-                # mean the same static "did you mean X?" wall (or, for
-                # "unknown", a blind hand-off to an agent with no tool to
-                # actually START a workflow). classify_and_route_llm() --
-                # the SAME single schema-based call, not a second one --
-                # is now authoritative across this WHOLE ambiguous surface,
-                # not just the no-opinion-at-all slice: this is the
-                # semantic-understanding decision itself moving from
-                # keyword matching to the LLM, while a genuinely
-                # high-confidence rule match (the vast majority of English
-                # traffic) still never reaches this branch and costs
-                # nothing extra.
-                llm_decision = await classify_and_route_llm(query, context=context, trace_id=trace_id)
-                if llm_decision is None:
-                    # Call failed/unavailable -- exact original fallback:
-                    # "unknown" forwards to the agent, everything else gets
-                    # the static targeted clarification, same as before
-                    # this change ever existed.
-                    if reason == "unknown":
-                        action = "BANKING_LLM"
-                    else:
-                        response = render_clarification(reason)
-                        self._register_clarification(context)
-                        return await self._finish(
-                            context, phone_number, query, response, trace_id, pending_action=f"clarify:{reason}"
-                        )
-                elif llm_decision.action == "OUT_OF_SCOPE":
-                    return await self._finish(
-                        context, phone_number, query, render_out_of_scope(), trace_id, pending_action=None
-                    )
-                elif (
-                    llm_decision.action in ("START_WORKFLOW", "SWITCH")
-                    and llm_decision.certainty == "high"
-                    and llm_decision.resolved_target_workflow()
-                ):
-                    # Reuse the EXACT existing START_WORKFLOW pipeline
-                    # (start_requested() then start_workflow_directly())
-                    # below rather than duplicating "how a workflow
-                    # begins" -- a high-certainty LLM decision is treated
-                    # exactly like a high-confidence rule decision from
-                    # here on, including still requiring its own
-                    # STEP_CONFIRM_* gate before anything is committed.
-                    action = "START_WORKFLOW"
-                    routing_decision = RoutingDecision(
-                        action="START_WORKFLOW",
-                        workflow=llm_decision.resolved_target_workflow(),
-                        reason=f"llm_rescue:{llm_decision.intent}",
-                    )
-                elif llm_decision.action == "CLARIFY":
-                    # The LLM agrees this is genuinely ambiguous -- fall
-                    # back to the existing targeted clarification (keyed
-                    # off the rule's own `reason` when it had one) rather
-                    # than inventing new clarification copy.
-                    response = render_clarification(reason)
-                    self._register_clarification(context)
-                    return await self._finish(
-                        context, phone_number, query, response, trace_id, pending_action=f"clarify:{reason}"
-                    )
-                else:
-                    # TOOL / RAG / low-certainty START_WORKFLOW/SWITCH --
-                    # the agent actually has the tools and grounding to
-                    # answer these; matches the "2 calls when data
-                    # grounding is needed" tier already accepted for
-                    # BANKING_LLM turns, not a new latency tier.
-                    action = "BANKING_LLM"
-
-            if action in ("START_WORKFLOW", "SAFE_FALLBACK"):
-                # START_WORKFLOW: high-confidence request to begin a new
-                # workflow — reuse the existing deterministic starter
-                # rather than duplicating "how a workflow begins" logic.
-                # SAFE_FALLBACK: the router has no confident opinion (e.g.
-                # a navigation intent that should already have been
-                # handled upstream, or an unmapped/errored classification)
-                # — behave exactly as before Phase 3 and give the legacy
-                # keyword starter its normal chance.
-                requested_workflow = await asyncio.to_thread(
-                    self.workflow_manager.start_requested, phone_number, query, trace_id=trace_id
+            if action == "CLARIFY":
+                response = render_clarification(llm_decision.intent)
+                self._register_clarification(context)
+                return await self._finish(
+                    context, phone_number, query, response, trace_id, pending_action=f"clarify:{llm_decision.intent}"
                 )
-                if (
-                    not requested_workflow["handled"]
-                    and action == "START_WORKFLOW"
-                    and routing_decision.workflow
-                ):
-                    # The classifier recognized this as a workflow-start
-                    # request but start_requested()'s own (narrower)
-                    # keyword gate didn't — fall back to the
-                    # smallest-necessary adapter rather than losing the
-                    # router's confident decision to the general LLM.
-                    requested_workflow = await asyncio.to_thread(
+
+            if action == "CANCEL":
+                # No active workflow reached this point (an active one is
+                # always resolved inside WorkflowManager.handle() first) —
+                # nothing to cancel.
+                self._register_progress(context)
+                return await self._finish(
+                    context, phone_number, query, render_cancelled("That"), trace_id, pending_action=None
+                )
+
+            if action in ("START_WORKFLOW", "SWITCH") and llm_decision.certainty != "high":
+                # Intent classification alone must never authorize a
+                # financial action -- a workflow-starting decision only
+                # begins one (still gated by its own STEP_CONFIRM_* before
+                # anything is committed) at high certainty. Below that,
+                # fall through to the LLM+tools agent rather than guessing
+                # which real banking operation to start.
+                action = "BANKING_LLM"
+
+            if action in ("START_WORKFLOW", "SWITCH"):
+                target = llm_decision.resolved_target_workflow()
+                if target:
+                    started = await asyncio.to_thread(
                         start_workflow_directly,
-                        routing_decision.workflow,
+                        target,
                         phone_number,
                         transfer_handler=self.workflow_manager.transfer_handler,
                         query=query,
                         trace_id=trace_id,
-                    ) or requested_workflow
-                if requested_workflow["handled"]:
+                    )
+                    if started and started.get("handled"):
+                        self._register_progress(context)
+                        return await self._finish(
+                            context, phone_number, query, started["response"], trace_id, pending_action=None
+                        )
+                # No resolvable target, or the adapter declined — fall
+                # through to the deterministic menu-digit/list-tap starter,
+                # then the LLM+tools agent, rather than dead-ending.
+                protocol = await asyncio.to_thread(
+                    self.workflow_manager.start_requested, phone_number, query, trace_id=trace_id
+                )
+                if protocol["handled"]:
                     self._register_progress(context)
                     return await self._finish(
-                        context, phone_number, query, requested_workflow["response"], trace_id, pending_action=None
+                        context, phone_number, query, protocol["response"], trace_id, pending_action=None
                     )
-                # Router expected a workflow start (or had no opinion) but
-                # neither the deterministic starter nor the adapter
-                # recognized it — fall through to the LLM below rather
-                # than dead-ending the turn.
 
-            # action in {"BANKING_LLM", "WORKFLOW"}, or a START_WORKFLOW/
-            # SAFE_FALLBACK the deterministic starter didn't pick up, all
-            # converge on the existing LLM+tools agent — unchanged, and
-            # owned by app/agent/agent.py (injected as `llm_fallback`).
+            # action in {"TOOL", "RAG", "CONTINUE", "CORRECT"}, or a
+            # START_WORKFLOW/SWITCH nothing above could start — all
+            # converge on the existing LLM+tools agent.
             self._register_progress(context)
             response = await llm_fallback(query, phone_number, trace_id, parsed_document)
             duration = (time.time() - start) * 1000
@@ -528,42 +414,8 @@ class ConversationManager:
         ConversationContext.
 
         Voice and text are tracked as two fully independent sticky
-        languages. A language established on a voice call must never
-        leak into a text reply, and a language established over text must
-        never leak into a voice reply — each channel is answered in
-        whatever language THAT channel is currently using (see the
-        module's "Language Separation" requirement). Without this split,
-        a Hindi voice conversation followed by a short English text reply
-        ("ok") would incorrectly keep answering in Hindi, since a bare
-        ASCII reply carries no language signal of its own and used to
-        fall back to one shared sticky field.
-
-        Voice branch: every voice turn re-signals its own language
-        (Sarvam STT detects it from the audio itself, not the transcript
-        text — see app/services/transcription.py), so voice-to-voice
-        never gets stuck: a customer who spoke Hindi and then English gets
-        an English voice reply immediately, no special-casing needed here.
-        `detected_language` is None when STT's own tag was dropped as
-        unreliable (transcript too short to carry real signal) — the
-        voice channel then simply stays on whatever it last established
-        (voice continuity), same idea as the text branch's stickiness
-        below but scoped to voice_language only.
-
-        Text branch: a bare "yes"/"1" reply is too short to mean anything
-        either way, so it keeps whatever language the TEXT channel already
-        established — sticky ONLY for low-signal text. Once a non-English
-        text language is established, a SHORT plain-ASCII reply does NOT
-        silently reset the conversation back to English (the customer
-        never asked for that), but a substantive plain-ASCII message (a
-        real sentence, not a menu-tap) is itself a strong, unambiguous
-        signal the customer has switched to English for this turn — it
-        doesn't need "reply in English" phrasing
-        (detect_explicit_language_change) to count. Language changes on: a
-        genuine non-ASCII detection (should_attempt_detection), an
-        explicit meta-request ("reply in English", "switch to Hindi") —
-        see detect_explicit_language_change — or a plain-ASCII message
-        with real sentence content. If no non-English language is active,
-        the ASCII fast path is unchanged (no LLM call, stays English)."""
+        languages — a language established on one channel never leaks
+        into the other."""
         if is_voice:
             if detected_language:
                 context.voice_language = detected_language
@@ -593,23 +445,9 @@ class ConversationManager:
         if context is None:
             return None
         try:
-            # No separate LLM classification call — the fast rule layers in
-            # app/conversation/intent/rules.py cover the deterministic cases
-            # (navigation, digits, workflow context) essentially for free,
-            # and anything they don't recognize now falls straight through
-            # to the single LLM+tools agent call below (see the
-            # CLARIFICATION_REQUIRED/"unknown" handling further down this
-            # module) instead of paying for a whole extra classify
-            # round-trip first. default_llm_classify remains available in
-            # app/conversation/intent/classifier.py for a caller that wants
-            # it, just not wired in here anymore.
-            result = await classify_intent(message, context=context, trace_id=trace_id, llm_classify=None)
+            result = await classify_intent(message, context=context, trace_id=trace_id)
             context.last_intent = result.intent
             context.intent_confidence = result.confidence
-            logger.info(
-                f"[{trace_id}] conversation.intent.classified | phone={context.phone_number[-4:]} | "
-                f"intent={result.intent} | confidence={result.confidence:.2f}"
-            )
             return result
         except Exception as e:
             logger.error(
@@ -618,197 +456,9 @@ class ConversationManager:
             )
             return None
 
-    def _fire_shadow_llm_routing(
-        self,
-        context: Optional[ConversationContext],
-        message: str,
-        rule_intent_result: Any,
-        phone_number: str,
-        trace_id: str,
-    ) -> None:
-        """Step 2 of the LLM-first routing migration: kick off a purely
-        observational LLM routing call in the background and return
-        immediately. Never awaited by the live turn, so it cannot add
-        latency or change what the customer sees -- see
-        _shadow_llm_routing_comparison() for what it actually does. Gated
-        off by default (is_shadow_llm_routing_enabled())."""
-        if context is None or not is_shadow_llm_routing_enabled():
-            return
-        task = asyncio.create_task(
-            self._shadow_llm_routing_comparison(context, message, rule_intent_result, phone_number, trace_id)
-        )
-        self._shadow_tasks.add(task)
-        task.add_done_callback(self._shadow_tasks.discard)
-
-    async def _shadow_llm_routing_comparison(
-        self,
-        context: ConversationContext,
-        message: str,
-        rule_intent_result: Any,
-        phone_number: str,
-        trace_id: str,
-    ) -> None:
-        """Runs the candidate LLM routing call and logs it next to what the
-        existing rule pipeline decided for the same message, so the two can
-        be diffed offline (Step 3) before anything becomes authoritative.
-        Never raises, never touches workflow state, never influences the
-        response already sent for this turn."""
-        try:
-            llm_decision = await classify_and_route_llm(message, context=context, trace_id=trace_id)
-            if llm_decision is None:
-                return
-            rule_routing = route_intent(rule_intent_result, context=context) if rule_intent_result else None
-            llm_routing = llm_decision.to_routing_decision()
-            agree = bool(
-                rule_routing
-                and rule_routing.action == llm_routing.action
-                and rule_routing.workflow == llm_routing.workflow
-            )
-            rule_intent = rule_intent_result.intent if rule_intent_result else "none"
-            rule_confidence = rule_intent_result.confidence if rule_intent_result else 0.0
-            logger.info(
-                f"[{trace_id}] shadow.llm_routing | phone={phone_number[-4:]} | "
-                f"workflow={context.current_workflow or 'none'} | step={context.current_step or 'none'} | "
-                f"rule_intent={rule_intent} | rule_confidence={rule_confidence:.2f} | "
-                f"rule_action={rule_routing.action if rule_routing else 'none'} | "
-                f"llm_intent={llm_decision.intent} | llm_action={llm_decision.action} | "
-                f"llm_certainty={llm_decision.certainty} | "
-                f"llm_target_workflow={llm_decision.target_workflow or 'none'} | "
-                f"language={llm_decision.language or 'unknown'} | agree={'yes' if agree else 'no'}"
-            )
-        except Exception as e:
-            logger.error(f"[{trace_id}] shadow.llm_routing.failed | phone={phone_number[-4:]} | error={e}")
-
-    async def _try_pending_action_handoff(
-        self,
-        context: Optional[ConversationContext],
-        phone_number: str,
-        query: str,
-        trace_id: str,
-    ) -> Optional[str]:
-        """Task 9.2 — resolve a reply to a guidance offer from the previous
-        turn ("Start application", "Show documents", "Cancel", "2", ...)
-        into the existing workflow-start mechanism, BEFORE intent
-        classification/routing sees this message. Necessary because
-        short action-selection replies like "Start application" carry no
-        banking keyword and would otherwise be misclassified as
-        out_of_scope by the (unmodified) classifier — see
-        docs/current_architecture.md, "Banking Guidance & Response
-        Handoff — Phase 7".
-
-        Only ever consulted when there is NO active workflow (a stale
-        guidance offer must never hijack a numbered reply that's actually
-        meant for a real in-progress workflow step, e.g. selecting a
-        beneficiary by number). Returns the final response string if this
-        turn was fully handled here, else None (continue the normal flow).
-        """
-        if context is None or context.current_workflow or not context.pending_action:
-            return None
-        if not context.pending_action.startswith("guidance:"):
-            return None
-
-        allowed_actions = context.allowed_actions
-        selected = resolve_pending_action(query, allowed_actions)
-
-        if selected is None:
-            # Doesn't match the offer — treat as a fresh message, not a
-            # dead end. Clear the stale offer so it can't leak into an
-            # unrelated future turn.
-            context.pending_action = None
-            context.allowed_actions = []
-            return None
-
-        if selected == GuidanceAction.CANCEL:
-            context.allowed_actions = []
-            self._register_progress(context)
-            return await self._finish(
-                context, phone_number, query, render_cancelled(), trace_id, pending_action=None
-            )
-
-        if selected == GuidanceAction.BACK:
-            context.allowed_actions = []
-            self._register_progress(context)
-            return await self._finish(
-                context, phone_number, query, render_main_menu_list(), trace_id, pending_action=None
-            )
-
-        workflow_type = WORKFLOW_FOR_ACTION.get(selected)
-        if workflow_type:
-            started = await asyncio.to_thread(
-                start_workflow_directly,
-                workflow_type, phone_number, transfer_handler=self.workflow_manager.transfer_handler,
-                query=query, trace_id=trace_id,
-            )
-            if started and started["handled"]:
-                logger.info(
-                    f"[{trace_id}] conversation.guidance.action_selected | phone={phone_number[-4:]} | "
-                    f"action={selected.value} | workflow={workflow_type}"
-                )
-                context.allowed_actions = []
-                self._register_progress(context)
-                return await self._finish(
-                    context, phone_number, query, started["response"], trace_id, pending_action=None
-                )
-            # Adapter declined (e.g. transfer with no transferable
-            # balance already returns its own handled=True response
-            # above) — fall through to a safe generic reply rather than
-            # silently doing nothing.
-            context.pending_action = None
-            context.allowed_actions = []
-            return await self._finish(
-                context, phone_number, query, render_agent_error(), trace_id, pending_action=None
-            )
-
-        # A SHOW_* info action — render the short explanation and keep the
-        # SAME offer available (context.allowed_actions unchanged) so the
-        # user can still say "start it" right after reading the info.
-        info_text = render_action_info(selected)
-        logger.info(
-            f"[{trace_id}] conversation.guidance.action_selected | phone={phone_number[-4:]} | "
-            f"action={selected.value} | workflow=none"
-        )
-        return await self._finish(context, phone_number, query, info_text, trace_id, pending_action=_UNSET)
-
-    async def _try_guidance(
-        self,
-        intent_result,
-        context: Optional[ConversationContext],
-        phone_number: str,
-        query: str,
-        trace_id: str,
-    ) -> Optional[str]:
-        """Task 9.2 — deterministic guidance instead of the general LLM
-        (or, for two documented classifier gaps, instead of an incorrect
-        workflow start) for a curated set of guidance types — see
-        `_INTERCEPT_GUIDANCE_TYPES`'s docstring above for exactly which,
-        and why the rest stay on the existing path unchanged. Returns the
-        final response string if handled, else None."""
-        if intent_result is None:
-            return None
-        try:
-            guidance_result = build_guidance(query, intent_result, context)
-        except Exception as e:
-            logger.error(f"[{trace_id}] conversation.guidance.failed | phone={phone_number[-4:]} | error={e}")
-            return None
-        if guidance_result is None or guidance_result.guidance_type not in _INTERCEPT_GUIDANCE_TYPES:
-            return None
-
-        rendered = render_guidance(guidance_result, context)
-        logger.info(
-            f"[{trace_id}] conversation.guidance.rendered | phone={phone_number[-4:]} | "
-            f"guidance_type={guidance_result.guidance_type.value} | "
-            f"response_mode={guidance_result.response_mode.value} | "
-            f"actions={[a.value for a in rendered.actions]}"
-        )
-        if context is not None:
-            context.allowed_actions = [a.value for a in rendered.actions]
-        pending = f"guidance:{rendered.primary_action.value}" if rendered.primary_action else None
-        self._register_progress(context)
-        return await self._finish(context, phone_number, query, rendered.text, trace_id, pending_action=pending)
-
     def _register_clarification(self, context: Optional[ConversationContext]) -> None:
         """A clarification was needed this turn — track it without
-        inventing any new routing behavior (see module docstring)."""
+        inventing any new routing behavior."""
         if context is None:
             return
         context.retry_count = min(context.retry_count + 1, MAX_CLARIFICATION_RETRIES)
@@ -859,42 +509,20 @@ class ConversationManager:
         if context is not None and pending_action is not _UNSET:
             context.pending_action = pending_action
 
-        # `response` may be a plain string or a StructuredResponse carrying
-        # WhatsApp interactive buttons/list metadata (see
-        # app/conversation/renderer.py) — either way, `.text` is the body
-        # that gets translated/logged/persisted; the interactive metadata
-        # (if any) passes through untouched to the eventual render_and_send
-        # call. Button/list option titles are NOT translated in this
-        # version — only the body text — a known limitation for non-English
-        # interactive prompts.
         was_structured = isinstance(response, StructuredResponse)
         structured = as_structured_response(response)
 
         # Every response generated above this point is authored in
         # English (templates, RAG/LLM output, error text). Translate once,
-        # here, right before it's sent/logged/persisted — a single choke
-        # point instead of translating at each of the many call sites
-        # above. See app/services/language.py; never blocks the turn on
-        # failure — it falls back to the original English text.
+        # here, right before it's sent/logged/persisted.
         if context is not None and context.detected_language != DEFAULT_LANGUAGE:
             structured.text = await translate_text(structured.text, context.detected_language, trace_id=trace_id)
 
         # Record the language `text` actually ends up in (English included)
         # so a voice reply can be spoken in the same language it was
-        # translated into — see StructuredResponse.language's docstring.
+        # translated into.
         structured.language = context.detected_language if context is not None else None
 
-        # Session history (app/memory.py) is a separate, unchanged
-        # mechanism from ConversationContext — see docs/current_architecture.md,
-        # "Conversation Context — Phase 1". Never logs the raw message —
-        # only Redis stores it, under the same TTL/retention as before.
-        # Both halves of the turn are appended in one read-modify-write
-        # (append_turn_to_session) instead of two independent GET+SET
-        # round-trips. This write and _persist() touch different stores
-        # (session history vs. workflow/context state) with no shared
-        # data, and this all runs BEFORE the reply is sent to the customer
-        # — so running them concurrently instead of one-after-another
-        # shaves real tail latency off every single turn.
         await asyncio.gather(
             asyncio.to_thread(append_turn_to_session, phone_number, query, structured.text[:500]),
             asyncio.to_thread(self._persist, context, phone_number, trace_id, structured.text),
