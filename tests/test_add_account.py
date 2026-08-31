@@ -19,6 +19,7 @@ from app.workflows.constants import (
     WORKFLOW_ADD_ACCOUNT,
     WORKFLOW_ONBOARDING,
 )
+from app.workflows.manager import WorkflowManager
 from app.workflows.memory import create_workflow, create_workflow_model, get_workflow
 from app.workflows.processors.onboarding import OnboardingWorkflowHandler, start_add_account_workflow
 
@@ -268,6 +269,61 @@ class MenuAndAdapterWiringTests(unittest.TestCase):
             self.assertTrue(result["handled"])
             workflow = get_workflow("441111111111")
             self.assertEqual(workflow["type"], WORKFLOW_ADD_ACCOUNT)
+
+
+class AccountTypeSelectionNotMisroutedTests(unittest.IsolatedAsyncioTestCase):
+    """Regression: a bare answer to "which account would you like to
+    open?" (e.g. "Current Account") during WORKFLOW_ADD_ACCOUNT's
+    SELECT_ACCOUNT_TYPE step must reach the deterministic step processor
+    directly, never the mid-workflow LLM switch-detection call — see
+    app/workflows/manager.py::_is_account_type_selection_input.
+
+    Confirmed live: without this bypass, "Current Account" was
+    misclassified by the LLM router as a side question, handed off to the
+    general LLM+tools agent (which has no account-opening tool), and the
+    agent hallucinated one — leaking a fake tool-call string to the
+    customer instead of actually opening the account."""
+
+    def setUp(self):
+        self.fake_redis = FakeRedis()
+        patcher = patch("app.workflows.memory.redis_client", self.fake_redis)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.phone = "441111111111"
+        self.manager = WorkflowManager()
+
+    async def test_account_type_phrase_never_reaches_the_llm_router(self):
+        create_workflow(self.phone, create_workflow_model(
+            WORKFLOW_ADD_ACCOUNT, STEP_SELECT_ACCOUNT_TYPE, data={"full_name": "Alex Doe"},
+        ))
+        with patch("app.workflows.manager.classify_and_route_llm_sync") as mock_llm, \
+             patch("app.workflows.processors.onboarding.get_accounts_by_phone", return_value=[]), \
+             patch("app.workflows.processors.onboarding.create_zero_balance_account", return_value={
+                 "account_number": "FNCL000000000099", "account_type": "current",
+             }), \
+             patch("app.workflows.processors.onboarding.cache_active_account"):
+            result = self.manager.handle(self.phone, "Current Account", trace_id="t1", llm_decision=None)
+
+        mock_llm.assert_not_called()
+        self.assertTrue(result["handled"])
+        # The workflow actually completed (account opened) rather than
+        # being handed off elsewhere.
+        self.assertIsNone(get_workflow(self.phone))
+
+    async def test_bare_digit_account_type_also_never_reaches_the_llm_router(self):
+        create_workflow(self.phone, create_workflow_model(
+            WORKFLOW_ADD_ACCOUNT, STEP_SELECT_ACCOUNT_TYPE, data={"full_name": "Alex Doe"},
+        ))
+        with patch("app.workflows.manager.classify_and_route_llm_sync") as mock_llm, \
+             patch("app.workflows.processors.onboarding.get_accounts_by_phone", return_value=[]), \
+             patch("app.workflows.processors.onboarding.create_zero_balance_account", return_value={
+                 "account_number": "FNCL000000000099", "account_type": "savings",
+             }), \
+             patch("app.workflows.processors.onboarding.cache_active_account"):
+            result = self.manager.handle(self.phone, "1", trace_id="t2", llm_decision=None)
+
+        mock_llm.assert_not_called()
+        self.assertTrue(result["handled"])
 
 
 if __name__ == "__main__":

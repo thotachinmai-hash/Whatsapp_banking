@@ -56,6 +56,11 @@ class TransferTemplateTests(unittest.TestCase):
             source_account_label="GB12FNCL00010001234567",
         )
         self.assertIn("TRF-ABCD1234", text)
+        # Per this module's own documented SUCCESS-CLAIM RULE: the debit/
+        # credit already happened atomically in create_transfer() by the
+        # time this renders, and this system has no later async
+        # settlement step -- so the status says "completed", matching
+        # what's actually persisted.
         self.assertIn("completed", text.lower())
         self.assertIn("What would you like to do?", text)
 

@@ -119,12 +119,22 @@ def start_transfer_from_text(
     query: str,
     transfer_handler: "TransferWorkflowProcessor",
     trace_id: str = "",
+    entities: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     """Start a transfer workflow, parsing whatever beneficiary name and/or
     amount the customer already gave in the message that triggered it
     (e.g. "send 500 to Priya", "transfer 200 to Amit") — so those steps are
     skipped instead of being asked again. Falls back to the plain
     beneficiary-selection prompt when nothing usable is found in the text.
+
+    `entities` is the LLM routing decision's own extracted-entities dict
+    (app/conversation/intent/llm_routing.py::LLMRoutingDecision.entities),
+    consulted only when the regex extraction below finds nothing — the
+    regexes are English-phrasing-only ("send/pay/transfer ... to NAME",
+    digits/₹/Rs/k), so a native-language or Romanized voice-transcribed
+    message (e.g. Telugu "Karu ki 500 pampandi") silently lost its
+    beneficiary/amount before this existed, even though the LLM router
+    itself understood the request correctly.
 
     This is the one place that logic lives — both the deterministic
     keyword-triggered path (WorkflowManager.start_requested) and the
@@ -134,11 +144,17 @@ def start_transfer_from_text(
     if not has_transferable_balance(phone_number):
         return {"handled": True, "response": templates.render_insufficient_balance()}
 
+    entities = entities or {}
+
     requested_name = ""
     name_match = _BENEFICIARY_INTENT_RE.search(query.strip())
     if name_match:
         candidate = _NAME_TRAILERS.sub("", name_match.group(1).strip())
         requested_name = candidate.strip().title()
+    if not requested_name:
+        entity_recipient = str(entities.get("recipient", "")).strip()
+        if entity_recipient:
+            requested_name = entity_recipient.title()
 
     beneficiaries = get_beneficiaries_by_phone(phone_number)
     saved = next(
@@ -152,6 +168,10 @@ def start_transfer_from_text(
 
     amount: Optional[str] = None
     amount_value = _parse_amount_text(query)
+    if amount_value is None:
+        entity_amount = str(entities.get("amount", "")).strip()
+        if entity_amount:
+            amount_value = _parse_amount_text(entity_amount)
     if amount_value is not None:
         amount = f"₹{amount_value:,.2f}"
 
@@ -231,8 +251,14 @@ class TransferWorkflowProcessor:
             )
             update_workflow_data(phone_number, {"beneficiary_account": account_number})
             if workflow.get("data", {}).get("amount"):
-                set_workflow_step(phone_number, STEP_SELECT_SOURCE_ACCOUNT)
-                return self._source_prompt(phone_number)
+                # Route through the same offer/auto-select logic every
+                # other path to the source-account step uses (_amount(),
+                # _beneficiary()) instead of jumping straight to the full
+                # picker — a single-account customer was being shown a
+                # "choose your account" list with only one, unselectable-
+                # by-default option instead of having it picked for them.
+                data = {**workflow.get("data", {}), "beneficiary_account": account_number}
+                return self.resolve_source_account_or_prompt(phone_number, data)
             set_workflow_step(phone_number, STEP_SELECT_AMOUNT)
             return self._amount_prompt(f"✅ Saved {beneficiary_name} as a new beneficiary.")
         if step in {STEP_SELECT_AMOUNT, STEP_COLLECT_AMOUNT}:
@@ -257,7 +283,7 @@ class TransferWorkflowProcessor:
                         beneficiary_name=data.get("beneficiary_name", ""),
                         beneficiary_account=data.get("beneficiary_account", ""),
                         amount=amount_value,
-                        status="INITIATED",
+                        status="COMPLETED",
                     )
                 except Exception as e:
                     logger.error(f"[{trace_id}] Transfer persistence failed | phone={phone_number[-4:]} | error={e}")
@@ -296,7 +322,7 @@ class TransferWorkflowProcessor:
                         ("Beneficiary Account", data.get("beneficiary_account")),
                         ("Amount", data.get("amount")),
                         ("Source Account", data.get("source_account")),
-                        ("Status", "INITIATED"),
+                        ("Status", "COMPLETED"),
                     ],
                 )
                 menu_response.pdf_bytes = receipt_response.pdf_bytes

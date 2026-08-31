@@ -51,6 +51,18 @@ PROFILE_FIELD_ALIASES = {
 _ACCOUNT_TYPE_ROWS = [("savings", "savings", "Savings Account"), ("current", "current", "Current Account"), ("salary", "salary", "Salary Account")]
 ALL_ACCOUNT_TYPES = tuple(key for _digit, key, _title in _ACCOUNT_TYPE_ROWS)
 
+# Shared with app/workflows/manager.py's deterministic protocol-input check
+# (see _is_account_type_selection_input there) so a bare answer to "which
+# account would you like to open?" is recognized identically in both
+# places, instead of only here — a mismatch is exactly what let a message
+# like "Current Account" fall through to the LLM router instead of
+# reaching this step's own processor.
+ACCOUNT_TYPE_ALIASES = {
+    "1": "savings", "savings": "savings", "savings account": "savings",
+    "2": "current", "current": "current", "current account": "current",
+    "3": "salary", "salary": "salary", "salary account": "salary",
+}
+
 
 def account_type_list_prompt(intro: str, eligible_types: "set[str] | None" = None) -> StructuredResponse:
     """Tap-to-reply account-type list — row ids "1"/"2"/"3" match
@@ -464,11 +476,7 @@ class OnboardingWorkflowHandler:
         workflow_type: str = WORKFLOW_ONBOARDING,
         trace_id: str = "",
     ) -> dict[str, Any]:
-        aliases = {
-            "1": "savings", "savings": "savings", "savings account": "savings",
-            "2": "current", "current": "current", "current account": "current",
-            "3": "salary", "salary": "salary", "salary account": "salary",
-        }
+        aliases = ACCOUNT_TYPE_ALIASES
         # Always computed (not just for WORKFLOW_ADD_ACCOUNT) — a brand-new
         # customer simply has zero accounts yet, so this is a no-op filter
         # for fresh registration and the real guard for a repeat customer.

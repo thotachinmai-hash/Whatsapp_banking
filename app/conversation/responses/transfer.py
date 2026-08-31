@@ -10,9 +10,14 @@ customer just supplied or confirmed that exact number, so echoing it back
 for their own review isn't a new exposure).
 
 SUCCESS-CLAIM RULE: render_transfer_success() must only be called once
-the transfer has actually been persisted with status INITIATED by the
-workflow — the wording itself says "initiated", not "completed", since
-completion is a separate bank-side event (see check_transfer_status).
+the transfer has actually been persisted by the workflow — the debit from
+the source account and the credit to the beneficiary (see
+app/database.py::create_transfer) both happen atomically in that same
+call, so by the time this renders, the money has genuinely already moved.
+There is no later async settlement step in this system that could change
+that outcome, so the wording says "completed", matching the real,
+already-persisted status (see check_transfer_status) rather than
+"initiated" — a status this system never actually transitions out of.
 """
 
 from typing import Optional
@@ -109,9 +114,8 @@ def render_transfer_success(
         f"\U0001F4B0 Amount: {amount_label}\n"
         f"\U0001F3E6 From: {source_account_label}\n"
         "\U0001F4CC Status: COMPLETED\n\n"
-        "Your bank will process this shortly and I'll reflect the status here once it "
-        f'settles. Feel free to check in anytime, e.g. "check status of {reference}" or '
-        '"what was my last transfer".\n\n'
+        "The amount has been moved from your account. You can check on this transfer "
+        f'anytime, e.g. "check status of {reference}" or "what was my last transfer".\n\n'
         "\U0001F4CB What would you like to do?"
     )
 

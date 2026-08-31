@@ -218,7 +218,14 @@ _ROUTING_SYSTEM_PROMPT = (
     "phrasing -- e.g. \"vyaktigata runam\"/\"personal loan\"/\"a home loan\"), always include it as "
     'entities.loan_type using exactly one of these English words: "personal", "home", "vehicle", '
     '"education". This lets the app skip re-asking a loan type the customer already stated in a '
-    "script or language its own text-matching can't read."
+    "script or language its own text-matching can't read.\n"
+    "When the message is a transfer/payment request that also states who to pay and/or how much "
+    '(in any language, script, or phrasing -- e.g. "Karu ki 500 pampandi", "send 500 to Karu", '
+    '"give Priya two thousand"), include entities.recipient (the beneficiary\'s name, transliterated '
+    "to Latin script if the message itself used a different script) and/or entities.amount (digits "
+    'only, no currency symbol or words -- e.g. "500", "2000") for whichever of the two the message '
+    "actually states. This lets the app skip re-asking for a beneficiary/amount the customer already "
+    "stated in a script or phrasing its own text-matching can't read."
 )
 
 

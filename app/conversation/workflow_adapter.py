@@ -86,7 +86,11 @@ def start_workflow_directly(
         # the triggering message (e.g. "send 500 to Priya") instead of
         # discarding it and asking from scratch — see start_transfer_from_text's
         # docstring for why this lives there rather than being duplicated here.
-        return start_transfer_from_text(phone_number, query, transfer_handler, trace_id)
+        # entities is passed through for the same reason the loan branch
+        # below does: a native-language/Romanized message's regex-free
+        # beneficiary/amount extraction fails, but the LLM already
+        # understood it.
+        return start_transfer_from_text(phone_number, query, transfer_handler, trace_id, entities=entities)
 
     if workflow_type == WORKFLOW_CHEQUE:
         workflow = create_workflow_model(WORKFLOW_CHEQUE, STEP_UPLOAD_CHEQUE)

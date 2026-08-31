@@ -11,6 +11,7 @@ from app.workflows.constants import (
     WORKFLOW_TRANSFER,
     WORKFLOW_VIEW_TRANSACTIONS,
     STEP_COLLECT_AADHAAR,
+    STEP_SELECT_ACCOUNT_TYPE,
     STEP_SELECT_LOAN_TYPE,
     STEP_UPLOAD_KYC_FORM,
     STEP_UPLOAD_CHEQUE,
@@ -36,7 +37,7 @@ from app.workflows.processors.loan import (
     _next_missing_field,
 )
 from app.workflows.processors.kyc import KYCWorkflowHandler
-from app.workflows.processors.onboarding import OnboardingWorkflowHandler, start_add_account_workflow
+from app.workflows.processors.onboarding import ACCOUNT_TYPE_ALIASES, OnboardingWorkflowHandler, start_add_account_workflow
 from app.workflows.processors.transfer import TransferWorkflowProcessor, has_transferable_balance
 from app.workflows.processors.transactions import ViewTransactionsWorkflowHandler, start_view_transactions
 
@@ -153,6 +154,7 @@ class WorkflowManager:
             parsed_document is not None
             or _looks_like_protocol_id(query)
             or _is_current_workflow_input(workflow, query)
+            or _is_account_type_selection_input(workflow, query)
             or bool(re.fullmatch(r"\d+(?:[.,]\d+)?", query.strip()))
             or (
                 (workflow.get("step") or "").upper().startswith("CONFIRM")
@@ -708,6 +710,30 @@ def _is_current_workflow_input(workflow: dict[str, Any], query: str) -> bool:
                 return True
 
     return False
+
+
+def _is_account_type_selection_input(workflow: dict[str, Any], query: str) -> bool:
+    """A bare account-type answer ("current", "current account", "1") to
+    the SELECT_ACCOUNT_TYPE step's own question is protocol input, not a
+    side question — same treatment bare digits/loan-field answers already
+    get above. Confirmed live: WORKFLOW_ADD_ACCOUNT (unlike
+    WORKFLOW_ONBOARDING, which is excluded from is_llm_eligible_workflow
+    entirely for exactly this reason — see its comment above) still ran
+    the mid-workflow LLM switch-detection call for this step's answers,
+    and a literal reply like "Current Account" was misread as a side
+    question, handed to the general LLM+tools agent — which has no
+    account-opening tool and hallucinated one, leaking a fake tool-call
+    string straight to the customer instead of opening the account.
+    Reuses onboarding.py's own ACCOUNT_TYPE_ALIASES so the two can't name
+    a different set of accepted answers."""
+    if (workflow.get("step") or "") != STEP_SELECT_ACCOUNT_TYPE:
+        return False
+    normalized = query.strip().lower()
+    if normalized in ACCOUNT_TYPE_ALIASES:
+        return True
+    return any(
+        alias in normalized for alias in ACCOUNT_TYPE_ALIASES if len(alias) > 1
+    )
 
 
 _MENU_OR_RESTART_WORDS = {
