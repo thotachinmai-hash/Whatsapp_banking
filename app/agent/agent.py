@@ -25,6 +25,7 @@ from app.agent.tools import (
     tool_list_beneficiaries,
     tool_get_spend_summary,
     tool_get_loan_product_info,
+    tool_check_loan_eligibility,
     tool_search_bank_documents,
     tool_start_transfer_workflow,
     tool_start_loan_workflow,
@@ -163,6 +164,32 @@ def make_tools(trace_id: str,phone_number: str,) -> list:
             never state that a specific customer is approved for, or will
             receive, a particular rate or amount; only report what this
             tool returns.
+            """
+        ),
+        StructuredTool.from_function(
+            func=lambda loan_type="", account_number="": tool_check_loan_eligibility(
+                loan_type, account_number, phone_number, trace_id
+            ),
+            name="check_loan_eligibility",
+            description="""
+            Estimate how much a customer could realistically borrow for a
+            loan type, based on THEIR OWN transaction history (average
+            monthly income) and the bank's published terms. Use this when
+            the customer asks about their own loan eligibility or
+            borrowing capacity (e.g. "am I eligible for a loan", "how much
+            can I borrow", "check my loan eligibility", "what's the max
+            personal loan I can get").
+
+            loan_type is one of: personal, home, vehicle, education (or a
+            close synonym) — ask which loan type first if not stated. For
+            a registered customer, omit account_number to use the account
+            linked to their phone.
+
+            This is an ESTIMATE, not an approval — always relay the
+            disclaimer field from the result, and never say the customer
+            is "approved" or guaranteed this amount. If income can't be
+            estimated (no transaction history), offer to start the loan
+            application instead, which asks for income directly.
             """
         ),
         StructuredTool.from_function(
@@ -394,6 +421,15 @@ do not say a specific customer will get a particular rate or amount, and do not 
 is "eligible" or "approved" — eligibility depends on factors like income, existing
 obligations, and credit profile, decided during the actual application. Offer to help them
 check requirements or start an application instead of guessing.
+When the customer asks about THEIR OWN loan eligibility or borrowing capacity specifically
+(e.g. "am I eligible", "how much can I borrow", "check my loan eligibility"), call
+check_loan_eligibility instead — unlike get_loan_product_info, this one DOES compute a
+personalized estimate from the customer's own transaction history, and you should state
+that estimate (the amount, and the disclaimer field verbatim). This is still not an approval:
+never say "approved" or "guaranteed" even when relaying this estimate — call it an estimate,
+and note the real application still makes the final decision. If check_loan_eligibility
+returns found: False for lack of transaction history, offer to start the loan application
+instead, which asks for income directly.
 For questions about what documents are needed for a loan/KYC/cheque, how KYC works, why a
 cheque might be rejected, or other policy/how-it-works questions, call search_bank_documents
 and answer only from what it returns. If it finds nothing relevant, say plainly that you don't

@@ -387,6 +387,146 @@ def tool_get_loan_product_info(loan_type: str = "", trace_id: str = "") -> dict:
         return _tool_error("get_loan_product_info", "retrieving loan product information", e, trace_id)
 
 
+def tool_check_loan_eligibility(
+    loan_type: str = "", account_number: str = "", phone_number: str = "", trace_id: str = ""
+) -> dict:
+    """
+    Estimate how much a customer could realistically borrow for a given
+    loan type, computed from their own transaction history (average
+    monthly income) and the bank's published terms for that loan type —
+    a real, personalized figure, not a guess.
+
+    THIS IS AN ESTIMATE, NOT AN APPROVAL. Always present the number as an
+    illustrative estimate based on the customer's own transaction history
+    and a simplified affordability rule (roughly 50% of income toward
+    loan repayment) — never say the customer is "approved" or guaranteed
+    this amount; final eligibility is still decided during the real
+    application (tool_start_loan_workflow). Relay the disclaimer field
+    from this tool's result to the customer.
+
+    loan_type is one of: personal, home, vehicle, education (or a close
+    synonym like "mortgage", "car", "student") — required; ask the
+    customer which loan type first if they haven't said.
+
+    For a registered customer, omit account_number to use the account
+    linked to their phone; never ask repeatedly for an account number.
+    """
+    start = time.time()
+    try:
+        normalized_type = _LOAN_TYPE_ALIASES.get((loan_type or "").strip().lower())
+        if not normalized_type:
+            return {
+                "found": False,
+                "message": f"'{loan_type}' isn't a loan type this bank offers. Available types: personal, home, vehicle, education.",
+            }
+
+        product = get_loan_product(normalized_type)
+        if not product:
+            logger.info(f"[{trace_id}] TOOL | check_loan_eligibility | no_product | type={normalized_type}")
+            return {"found": False, "message": f"No published rate card for {normalized_type} loans right now."}
+
+        account_number = (account_number or "").strip()
+        if account_number:
+            account = get_account_by_number(account_number)
+        else:
+            accounts = get_accounts_by_phone(phone_number)
+            if not accounts:
+                return {"found": False, "message": "No active accounts are linked to this mobile number."}
+            if len(accounts) > 1:
+                # Same "ask which account" shape as tool_get_account_balance
+                # — income history differs per account, so this can't
+                # silently guess accounts[0].
+                return {"found": True, "multiple_accounts": True, "accounts": [
+                    {"account_number": item["account_number"], "account_type": item["account_type"]}
+                    for item in accounts
+                ]}
+            account = get_account_by_number(accounts[0]["account_number"])
+
+        if not account:
+            return {
+                "found": False,
+                "message": f"Account {account_number or 'linked to this mobile number'} was not found or is inactive.",
+            }
+
+        # Prefer salary-tagged credits as the income signal; fall back to
+        # every credit on the account (rent refunds, transfers in, etc.)
+        # as a rougher proxy only if no salary history exists at all —
+        # flagged via income_basis so the caller can tell the customer
+        # which basis was used rather than presenting either silently.
+        income_transactions = get_transactions(account["id"], limit=100, transaction_type="credit", category="salary")
+        income_basis = "salary_credits"
+        if not income_transactions:
+            income_transactions = get_transactions(account["id"], limit=100, transaction_type="credit")
+            income_basis = "all_credits_estimate"
+
+        if not income_transactions:
+            logger.info(f"[{trace_id}] TOOL | check_loan_eligibility | no_income_history | account={account['account_number']}")
+            return {
+                "found": False,
+                "message": (
+                    "There isn't enough transaction history on this account to estimate income. "
+                    "Ask the customer to state their monthly income directly, or offer to start "
+                    "the loan application, which asks for it as part of the form."
+                ),
+            }
+
+        avg_monthly_income = sum(float(t["amount"]) for t in income_transactions) / len(income_transactions)
+        # Illustrative debt-to-income heuristic: assume up to half of
+        # monthly income could go toward a loan repayment, then invert
+        # the standard amortization formula using this loan type's own
+        # published rate (midpoint) and its maximum tenure to find the
+        # principal that EMI could service.
+        monthly_emi_capacity = avg_monthly_income * 0.5
+
+        interest_rate_min = float(product["interest_rate_min"])
+        interest_rate_max = float(product["interest_rate_max"])
+        monthly_rate = ((interest_rate_min + interest_rate_max) / 2) / 12 / 100
+        tenure_months = int(product["max_tenure_months"])
+
+        if monthly_rate > 0:
+            estimated_amount = monthly_emi_capacity * (1 - (1 + monthly_rate) ** -tenure_months) / monthly_rate
+        else:
+            estimated_amount = monthly_emi_capacity * tenure_months
+
+        min_amount = float(product["min_amount"])
+        max_amount = float(product["max_amount"])
+        # Never inflate a low estimate up to the product's minimum — a
+        # genuinely low estimate is itself useful information (the
+        # customer likely doesn't qualify for this loan type's minimum).
+        # Only cap the upper end at what the bank actually offers.
+        estimated_amount = max(min(estimated_amount, max_amount), 0)
+
+        duration = (time.time() - start) * 1000
+        logger.info(
+            f"[{trace_id}] TOOL | check_loan_eligibility | success | type={normalized_type} | "
+            f"income_basis={income_basis} | duration={duration:.2f}ms"
+        )
+
+        return {
+            "found": True,
+            "loan_type": normalized_type,
+            "display_name": product["display_name"],
+            "avg_monthly_income": round(avg_monthly_income, 2),
+            "income_basis": income_basis,
+            "monthly_emi_capacity": round(monthly_emi_capacity, 2),
+            "estimated_max_eligible_amount": round(estimated_amount, 2),
+            "meets_product_minimum": estimated_amount >= min_amount,
+            "product_min_amount": min_amount,
+            "product_max_amount": max_amount,
+            "interest_rate_min": interest_rate_min,
+            "interest_rate_max": interest_rate_max,
+            "max_tenure_months": tenure_months,
+            "currency": product["currency"],
+            "disclaimer": (
+                "This is an illustrative estimate based on the customer's own transaction "
+                "history and this loan type's published terms — not an approval or a "
+                "guaranteed amount. Actual eligibility is decided during the real application."
+            ),
+        }
+    except Exception as e:
+        return _tool_error("check_loan_eligibility", "estimating loan eligibility", e, trace_id)
+
+
 def _format_loan_product(product: dict) -> dict:
     return {
         "loan_type": product["loan_type"],

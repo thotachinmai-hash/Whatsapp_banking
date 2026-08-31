@@ -881,9 +881,9 @@ def _handle_back_for_workflow(workflow: dict[str, Any], phone_number: str) -> di
         "SELECT_LOAN_TYPE": (None, "📝 You are already at the first loan step. Reply *Cancel* to stop."),
         "CONFIRM_KYC": ("UPLOAD_KYC_FORM", "📄 Back to KYC details. Please upload the document or reply with corrections."),
         "UPLOAD_KYC_FORM": (None, "📄 You are already at the first KYC step. Reply *Cancel* to stop."),
-        "COLLECT_AADHAAR": (None, "🪪 You are already at the first registration step. Please upload a clear image of your Aadhaar card."),
-        "COLLECT_PAN": ("COLLECT_AADHAAR", "🪪 Back to Aadhaar. Please upload the Aadhaar card image."),
-        "CONFIRM_REGISTRATION": ("COLLECT_PAN", "🪪 Back to PAN. Please upload the PAN card image."),
+        "COLLECT_AADHAAR": (None, "🪪 You are already at the first registration step. Please upload a clear image of your Aadhaar or PAN card."),
+        "COLLECT_PAN": ("COLLECT_AADHAAR", "🪪 Back to identity documents. Please upload your Aadhaar or PAN card image, whichever is easier."),
+        "CONFIRM_REGISTRATION": ("COLLECT_PAN", "🪪 Back to identity documents. Please upload your Aadhaar or PAN card image, whichever is easier."),
         "SELECT_ACCOUNT_TYPE": ("CONFIRM_REGISTRATION", "🔎 Back to confirmation. Please review your registration details."),
     }.get(step, (None, "You are already at the first step. Reply *Cancel* to stop."))
     if previous[0]:

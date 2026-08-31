@@ -393,7 +393,7 @@ class WebhookIdempotencyIntegrationTests(unittest.IsolatedAsyncioTestCase):
 
 class WebhookSignatureVerificationTests(unittest.IsolatedAsyncioTestCase):
     """app.main._webhook_signature_valid() -- verifies X-Hub-Signature-256
-    against WEBHOOK_SECRET (Task 12 security fix: this was previously
+    against APP_SECRET (Task 12 security fix: this was previously
     documented in .env.example but never actually checked anywhere)."""
 
     def test_unconfigured_secret_fails_open(self):
@@ -411,19 +411,19 @@ class WebhookSignatureVerificationTests(unittest.IsolatedAsyncioTestCase):
         body = b'{"a": 1}'
         secret = "test-secret"
         signature = "sha256=" + hmac_module.new(secret.encode(), body, hashlib.sha256).hexdigest()
-        with patch.dict("os.environ", {"WEBHOOK_SECRET": secret}):
+        with patch.dict("os.environ", {"APP_SECRET": secret}):
             self.assertTrue(main_module._webhook_signature_valid(body, signature))
 
     def test_invalid_signature_rejected(self):
         from app import main as main_module
 
-        with patch.dict("os.environ", {"WEBHOOK_SECRET": "test-secret"}):
+        with patch.dict("os.environ", {"APP_SECRET": "test-secret"}):
             self.assertFalse(main_module._webhook_signature_valid(b'{"a": 1}', "sha256=" + "0" * 64))
 
     def test_missing_header_rejected_when_configured(self):
         from app import main as main_module
 
-        with patch.dict("os.environ", {"WEBHOOK_SECRET": "test-secret"}):
+        with patch.dict("os.environ", {"APP_SECRET": "test-secret"}):
             self.assertFalse(main_module._webhook_signature_valid(b'{"a": 1}', None))
 
     def test_tampered_body_rejected(self):
@@ -434,14 +434,14 @@ class WebhookSignatureVerificationTests(unittest.IsolatedAsyncioTestCase):
 
         secret = "test-secret"
         signature = "sha256=" + hmac_module.new(secret.encode(), b'{"a": 1}', hashlib.sha256).hexdigest()
-        with patch.dict("os.environ", {"WEBHOOK_SECRET": secret}):
+        with patch.dict("os.environ", {"APP_SECRET": secret}):
             self.assertFalse(main_module._webhook_signature_valid(b'{"a": 2}', signature))
 
     async def test_webhook_endpoint_rejects_invalid_signature(self):
         from app import main as main_module
 
         payload = _webhook_payload("SIG-TEST-1")
-        with patch.dict("os.environ", {"WEBHOOK_SECRET": "test-secret"}), \
+        with patch.dict("os.environ", {"APP_SECRET": "test-secret"}), \
              patch.object(main_module, "handle_incoming_message", new=AsyncMock()) as mock_handle:
             request = _FakeRequest(payload)
             request.headers = {"X-Hub-Signature-256": "sha256=" + "0" * 64}

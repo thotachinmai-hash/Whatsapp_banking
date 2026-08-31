@@ -90,21 +90,18 @@ def build_document_prompt(active_workflow: dict | None, filename: str) -> str:
         exactly as printed. Do not guess, summarize, or include any text
         outside the JSON object.
         """
-    if active_workflow and active_workflow.get("step") == STEP_COLLECT_AADHAAR:
+    if active_workflow and active_workflow.get("step") in (STEP_COLLECT_AADHAAR, STEP_COLLECT_PAN):
+        # Shared for both steps -- the customer may upload Aadhaar or PAN
+        # in either order (see app/workflows/processors/onboarding.py's
+        # _detect_identity_document_type), so this can't assume which one
+        # is coming and must let the model identify it, the same way the
+        # WORKFLOW_KYC prompt below already does.
         document_prompt = """
-            Read the Aadhaar card image. Return ONLY valid JSON in this exact shape:
-            {"aadhaar_number": "12 digits, preserving the digits exactly",
-             "full_name": "full name as printed",
-             "date_of_birth": "date of birth as printed",
-             "address": "address as printed",
-             "guardian_name": "father/spouse/guardian name as printed"}
-            If a field is not visible or cannot be read, use an empty string.
-            Do not include any other text.
-            """
-    elif active_workflow and active_workflow.get("step") == STEP_COLLECT_PAN:
-        document_prompt = """
-            Read the PAN card image. Return ONLY valid JSON in this exact shape:
-            {"pan_number": "PAN number in the format ABCDE1234F, preserving it exactly",
+            Identify whether this is an Aadhaar card or a PAN card, then
+            extract its details. Return ONLY valid JSON in this exact shape:
+            {"id_type": "aadhaar" | "pan" | "other",
+             "aadhaar_number": "12 digits, preserving the digits exactly (only if this is an Aadhaar card)",
+             "pan_number": "PAN number in the format ABCDE1234F, preserving it exactly (only if this is a PAN card)",
              "full_name": "full name as printed",
              "date_of_birth": "date of birth as printed",
              "address": "address as printed",
@@ -168,22 +165,15 @@ def build_document_schema(active_workflow: dict | None) -> dict:
     two never name a different set of fields for the same context; PDF/
     DOCX uploads keep using build_document_prompt()'s natural-language
     text instead (see parse_document()'s docstring for why)."""
-    if active_workflow and active_workflow.get("step") == STEP_COLLECT_AADHAAR:
+    if active_workflow and active_workflow.get("step") in (STEP_COLLECT_AADHAAR, STEP_COLLECT_PAN):
+        # Shared for both steps -- see build_document_prompt()'s matching
+        # branch for why (either document can arrive in either order).
         return {
             "type": "object",
             "properties": {
-                "aadhaar_number": _string_field("The 12-digit Aadhaar number, preserving the digits exactly"),
-                "full_name": _string_field("Full name as printed"),
-                "date_of_birth": _string_field("Date of birth as printed"),
-                "address": _string_field("Address as printed"),
-                "guardian_name": _string_field("Father/spouse/guardian name as printed"),
-            },
-        }
-    if active_workflow and active_workflow.get("step") == STEP_COLLECT_PAN:
-        return {
-            "type": "object",
-            "properties": {
-                "pan_number": _string_field("The PAN in the format ABCDE1234F, preserving it exactly"),
+                "id_type": _string_field('Either "aadhaar", "pan", or "other"'),
+                "aadhaar_number": _string_field("The 12-digit Aadhaar number, preserving the digits exactly (only if this is an Aadhaar card)"),
+                "pan_number": _string_field("The PAN in the format ABCDE1234F, preserving it exactly (only if this is a PAN card)"),
                 "full_name": _string_field("Full name as printed"),
                 "date_of_birth": _string_field("Date of birth as printed"),
                 "address": _string_field("Address as printed"),

@@ -106,7 +106,7 @@ ACCESS_TOKEN=your_whatsapp_cloud_access_token_here
 PHONE_NUMBER_ID=your_whatsapp_phone_number_id_here
 VERIFY_TOKEN=your_webhook_verify_token_here
 
-WEBHOOK_SECRET=
+APP_SECRET=
 ```
 
 ---
@@ -355,7 +355,7 @@ Verified: all tables and their constraints exist as expected (`customers` has un
 
 **Groq rate limits** — llama-3.3-70b-versatile has 100K daily tokens on the free tier. Switch to `qwen/qwen3-32b` in `.env` for 500K daily tokens.
 
-**WEBHOOK_SECRET is optional.** Leave it empty for development. Set a random string in production for webhook authentication.
+**APP_SECRET is optional.** Leave it empty for development. Set a random string in production for webhook authentication.
 
 **The Postgres database is ephemeral by design.** There is no persistent Docker volume for Postgres data — every `docker compose down` + `up` recreates the container from a clean state and re-runs `infra/postgres/init.sql` from scratch. This is intentional: it guarantees the schema/seed data you see always matches exactly what's in `init.sql`, with no possibility of drift between an old running database and newer code. The trade-off is that **any data created during a session — new registrations, auto-opened accounts, cheque deposits — is lost on the next `down`/`up` cycle.** This is fine for local development and testing, but if you ever want this app to hold real, durable customer data, you'll need to reintroduce a named volume on the `postgres` service in `docker-compose.yml`. A plain `docker compose restart` (or simply leaving containers running) does **not** lose data — only removing and recreating the container does.
 

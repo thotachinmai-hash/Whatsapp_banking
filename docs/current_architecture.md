@@ -2435,7 +2435,7 @@ processors, `database.py`, or the webhook endpoint itself.
 
 *(Documented for awareness — not fixed in this task, per instructions.)*
 
-1. **No webhook authentication.** `WEBHOOK_SECRET` is defined in
+1. **No webhook authentication.** `APP_SECRET` is defined in
    `.env.example`/`docker-compose.yml`/README but never read or checked in
    any Python file. `POST /openwa/whatsapp` trusts the sender phone number
    from the payload with no signature/secret verification.
@@ -2554,7 +2554,7 @@ live in a new `app/conversation/` package rather than being folded into any
 of the above.
 
 ### Risks found
-- No webhook authentication (`WEBHOOK_SECRET` unused) — sender identity is
+- No webhook authentication (`APP_SECRET` unused) — sender identity is
   spoofable.
 - Money transfer has no OTP/step-up verification despite being documented
   as OTP-protected; the referenced `services/sms.py` doesn't exist.

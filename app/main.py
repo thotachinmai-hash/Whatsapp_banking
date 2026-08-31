@@ -39,7 +39,7 @@ logger = get_logger(__name__)
 _webhook_secret_missing_warned = False
 
 
-def _webhook_signature_valid(raw_body: bytes, signature_header: str | None) -> bool:
+def _webhook_signature_valid(raw_body: bytes, signature_header: str | None, trace_id: str = "") -> bool:
     """Verify the X-Hub-Signature-256 header Meta sends on every webhook
     POST, confirming the request genuinely came from Meta (using the
     exact bytes as sent, not the re-parsed/re-serialized JSON, which can
@@ -51,6 +51,11 @@ def _webhook_signature_valid(raw_body: bytes, signature_header: str | None) -> b
     SARVAM_API_KEY missing skips TTS rather than crashing) so a
     deployment that hasn't set it yet doesn't silently break, but logs a
     clear warning so the gap is visible rather than silent.
+
+    Logs the pass/fail outcome for every request that actually goes
+    through verification (secret configured) — this is the single place
+    that decides valid/invalid, so it's also the single place that logs
+    it; the caller doesn't need its own duplicate log line.
     """
     global _webhook_secret_missing_warned
     secret = os.getenv("APP_SECRET", "")
@@ -71,12 +76,20 @@ def _webhook_signature_valid(raw_body: bytes, signature_header: str | None) -> b
             _webhook_secret_missing_warned = True
         return True
     if not signature_header or not signature_header.startswith("sha256="):
+        logger.warning(
+            f"[{trace_id}] webhook.signature_check | valid=False | reason=missing_or_malformed_header"
+        )
         return False
     expected = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
     provided = signature_header.removeprefix("sha256=")
     # constant-time compare — a timing side-channel here would let an
     # attacker recover the signature byte-by-byte.
-    return hmac.compare_digest(expected, provided)
+    valid = hmac.compare_digest(expected, provided)
+    if valid:
+        logger.info(f"[{trace_id}] webhook.signature_check | valid=True")
+    else:
+        logger.warning(f"[{trace_id}] webhook.signature_check | valid=False | reason=mismatch")
+    return valid
 
 
 def _redact_media_for_log(value):
@@ -166,8 +179,7 @@ async def whatsapp_webhook(request: Request):
 
     try:
         raw_body = await request.body()
-        if not _webhook_signature_valid(raw_body, request.headers.get("X-Hub-Signature-256")):
-            logger.warning(f"[{webhook_trace_id}] webhook.signature_invalid")
+        if not _webhook_signature_valid(raw_body, request.headers.get("X-Hub-Signature-256"), webhook_trace_id):
             raise HTTPException(status_code=401, detail="Invalid webhook signature")
 
         payload = await request.json()

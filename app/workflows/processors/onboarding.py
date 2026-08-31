@@ -193,64 +193,9 @@ class OnboardingWorkflowHandler:
                 "response": templates.render_registration_cancelled()
             }
 
-        if not parsed_document or not parsed_document.get("mime_type", "").startswith("image/"):
-            return {
-                "handled": True,
-                "response": templates.render_document_expected_not_text("Aadhaar card")
-            }
-
-        digits = re.sub(r"[\s-]", "", self._document_value(
-            parsed_document.get("content"),
-            "aadhaar_number", "aadhaar", "aadhar_number", "aadhar",
-        ))
-
-        if not AADHAAR_PATTERN.match(digits):
-            logger.info(f"[{trace_id}] Aadhaar OCR unreadable/invalid | phone={phone_number[-4:]}")
-            return {
-                "handled": True,
-                "response": (
-                    "I couldn't read a valid 12-digit Aadhaar number from that image. "
-                    "Please upload a clearer image of the Aadhaar card."
-                )
-            }
-
-        if workflow_type == WORKFLOW_ADD_ACCOUNT:
-            # An additional account must be verified against the SAME
-            # identity already on file for this phone number — a fresh
-            # registration has no such record to check against yet, so
-            # this only ever applies here.
-            customer = get_customer_by_phone(phone_number)
-            if customer and customer.get("aadhaar_number") and customer["aadhaar_number"] != digits:
-                logger.info(f"[{trace_id}] Add-account Aadhaar mismatch | phone={phone_number[-4:]}")
-                return {"handled": True, "response": templates.render_identity_document_mismatch("Aadhaar card")}
-
-        workflow = get_workflow(phone_number) or {}
-        stored_data = workflow.get("data", {}) or {}
-        document_profile = self._extract_profile_fields(parsed_document.get("content"))
-        mismatches = self._validate_profile_data(stored_data, document_profile)
-
-        if mismatches:
-            return {
-                "handled": True,
-                "response": (
-                    "The Aadhaar details do not match the information you already shared. "
-                    f"Please upload the correct Aadhaar card. Mismatch: {', '.join(self._label_for_fields(mismatches))}."
-                ),
-            }
-
-        profile_updates = {
-            field: value
-            for field, value in document_profile.items()
-            if value and not stored_data.get(field)
-        }
-        update_workflow_data(phone_number, {"aadhaar_number": digits, **profile_updates})
-        set_workflow_step(phone_number, STEP_COLLECT_PAN)
-        logger.info(f"[{trace_id}] Registration Aadhaar collected | phone={phone_number[-4:]}")
-
-        return {
-            "handled": True,
-            "response": templates.render_ask_pan()
-        }
+        return self._handle_collect_identity_document(
+            phone_number, parsed_document, workflow_type, trace_id, expected_missing="aadhaar",
+        )
 
     def _handle_collect_pan(
         self,
@@ -269,44 +214,86 @@ class OnboardingWorkflowHandler:
                 "response": templates.render_registration_cancelled()
             }
 
+        return self._handle_collect_identity_document(
+            phone_number, parsed_document, workflow_type, trace_id, expected_missing="pan",
+        )
+
+    def _handle_collect_identity_document(
+        self,
+        phone_number: str,
+        parsed_document: dict | None,
+        workflow_type: str,
+        trace_id: str,
+        expected_missing: str,
+    ) -> dict[str, Any]:
+        """Accept an Aadhaar OR a PAN image regardless of which one this
+        step was nominally waiting for — the customer may upload either
+        document in either order (see _detect_identity_document_type).
+        `expected_missing` ("aadhaar"/"pan") only decides the wording used
+        when nothing readable comes back at all; it never restricts which
+        document type is accepted."""
+        doc_label = "Aadhaar card" if expected_missing == "aadhaar" else "PAN card"
         if not parsed_document or not parsed_document.get("mime_type", "").startswith("image/"):
-            return {
-                "handled": True,
-                "response": templates.render_document_expected_not_text("PAN card")
-            }
+            return {"handled": True, "response": templates.render_document_expected_not_text(doc_label)}
 
-        pan = re.sub(r"\s", "", self._document_value(
-            parsed_document.get("content"),
-            "pan_number", "pan", "pan_card_number",
-        )).upper()
+        content = parsed_document.get("content")
+        detected = self._detect_identity_document_type(content)
 
-        if not PAN_PATTERN.match(pan):
+        if detected is None:
+            # Preserve today's exact wording for the document type this
+            # step was nominally waiting for.
+            if expected_missing == "aadhaar":
+                logger.info(f"[{trace_id}] Aadhaar OCR unreadable/invalid | phone={phone_number[-4:]}")
+                return {
+                    "handled": True,
+                    "response": (
+                        "I couldn't read a valid 12-digit Aadhaar number from that image. "
+                        "Please upload a clearer image of the Aadhaar card."
+                    ),
+                }
             logger.info(f"[{trace_id}] PAN OCR unreadable/invalid | phone={phone_number[-4:]}")
             return {
                 "handled": True,
                 "response": (
                     "I couldn't read a valid PAN number from that image. "
                     "Please upload a clearer image of the PAN card."
-                )
+                ),
             }
 
+        if detected == "aadhaar":
+            field_name = "aadhaar_number"
+            field_value = re.sub(r"[\s-]", "", self._document_value(
+                content, "aadhaar_number", "aadhaar", "aadhar_number", "aadhar",
+            ))
+            label = "Aadhaar card"
+        else:
+            field_name = "pan_number"
+            field_value = re.sub(r"\s", "", self._document_value(
+                content, "pan_number", "pan", "pan_card_number",
+            )).upper()
+            label = "PAN card"
+
         if workflow_type == WORKFLOW_ADD_ACCOUNT:
+            # An additional account must be verified against the SAME
+            # identity already on file for this phone number — a fresh
+            # registration has no such record to check against yet, so
+            # this only ever applies here.
             customer = get_customer_by_phone(phone_number)
-            if customer and customer.get("pan_number") and customer["pan_number"] != pan:
-                logger.info(f"[{trace_id}] Add-account PAN mismatch | phone={phone_number[-4:]}")
-                return {"handled": True, "response": templates.render_identity_document_mismatch("PAN card")}
+            if customer and customer.get(field_name) and customer[field_name] != field_value:
+                logger.info(f"[{trace_id}] Add-account {detected} mismatch | phone={phone_number[-4:]}")
+                return {"handled": True, "response": templates.render_identity_document_mismatch(label)}
 
         workflow = get_workflow(phone_number) or {}
         stored_data = workflow.get("data", {}) or {}
-        document_profile = self._extract_profile_fields(parsed_document.get("content"))
+        document_profile = self._extract_profile_fields(content)
         mismatches = self._validate_profile_data(stored_data, document_profile)
 
         if mismatches:
             return {
                 "handled": True,
                 "response": (
-                    "The PAN details do not match the information you already shared. "
-                    f"Please upload the correct PAN card. Mismatch: {', '.join(self._label_for_fields(mismatches))}."
+                    f"The {label} details do not match the information you already shared. "
+                    f"Please upload the correct {label}. Mismatch: {', '.join(self._label_for_fields(mismatches))}."
                 ),
             }
 
@@ -315,20 +302,37 @@ class OnboardingWorkflowHandler:
             for field, value in document_profile.items()
             if value and not stored_data.get(field)
         }
-        update_workflow_data(phone_number, {"pan_number": pan, **profile_updates})
-        set_workflow_step(phone_number, STEP_CONFIRM_REGISTRATION)
-        logger.info(f"[{trace_id}] Registration PAN collected | phone={phone_number[-4:]}")
-
-        workflow_data = (get_workflow(phone_number) or {}).get("data", {}) or {}
-
-        summary = templates.render_registration_summary(
-            phone_number=phone_number,
-            full_name=workflow_data.get("full_name", ""),
-            date_of_birth=workflow_data.get("date_of_birth", ""),
-            guardian_name=workflow_data.get("guardian_name", ""),
-            address=workflow_data.get("address", ""),
+        update_workflow_data(phone_number, {field_name: field_value, **profile_updates})
+        logger.info(
+            f"[{trace_id}] Registration {'Aadhaar' if detected == 'aadhaar' else 'PAN'} collected | "
+            f"phone={phone_number[-4:]}"
         )
-        return {"handled": True, "response": _yes_no_prompt(summary)}
+
+        merged_data = {**stored_data, field_name: field_value, **profile_updates}
+        still_missing = (
+            "pan" if not str(merged_data.get("pan_number", "")).strip()
+            else "aadhaar" if not str(merged_data.get("aadhaar_number", "")).strip()
+            else None
+        )
+
+        if still_missing is None:
+            set_workflow_step(phone_number, STEP_CONFIRM_REGISTRATION)
+            workflow_data = (get_workflow(phone_number) or {}).get("data", {}) or {}
+            summary = templates.render_registration_summary(
+                phone_number=phone_number,
+                full_name=workflow_data.get("full_name", ""),
+                date_of_birth=workflow_data.get("date_of_birth", ""),
+                guardian_name=workflow_data.get("guardian_name", ""),
+                address=workflow_data.get("address", ""),
+            )
+            return {"handled": True, "response": _yes_no_prompt(summary)}
+
+        if still_missing == "pan":
+            set_workflow_step(phone_number, STEP_COLLECT_PAN)
+            return {"handled": True, "response": templates.render_ask_pan()}
+
+        set_workflow_step(phone_number, STEP_COLLECT_AADHAAR)
+        return {"handled": True, "response": templates.render_ask_aadhaar()}
 
     def _handle_confirm_registration(
         self,
@@ -567,6 +571,39 @@ class OnboardingWorkflowHandler:
         if value is None:
             return ""
         return re.sub(r"[^a-z0-9]", "", str(value).strip().lower())
+
+    def _detect_identity_document_type(self, content: Any) -> str | None:
+        """Return "aadhaar", "pan", or None (couldn't tell) for an
+        identity-document upload that could be either — the OCR prompt for
+        this step no longer assumes which one is coming (see
+        app/services/message_handler.py::build_document_prompt), so the
+        customer's Aadhaar/PAN upload order is no longer fixed.
+
+        Prefers the model's own explicit "id_type" field (the newer shared
+        prompt); falls back to shape detection (a valid 12-digit Aadhaar
+        number, or a valid PAN-format string) for content that omits it —
+        this is also what keeps older/simpler content shapes like
+        {"aadhaar_number": "..."} with no id_type key at all working
+        exactly as before."""
+        declared = self._document_value(content, "id_type").strip().lower()
+        if declared in ("aadhaar", "aadhar"):
+            return "aadhaar"
+        if declared == "pan":
+            return "pan"
+
+        aadhaar_digits = re.sub(r"[\s-]", "", self._document_value(
+            content, "aadhaar_number", "aadhaar", "aadhar_number", "aadhar",
+        ))
+        if AADHAAR_PATTERN.match(aadhaar_digits):
+            return "aadhaar"
+
+        pan_value = re.sub(r"\s", "", self._document_value(
+            content, "pan_number", "pan", "pan_card_number",
+        )).upper()
+        if PAN_PATTERN.match(pan_value):
+            return "pan"
+
+        return None
 
     def _extract_profile_fields(self, content: Any) -> dict[str, str]:
         extracted: dict[str, str] = {}
