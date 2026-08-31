@@ -304,6 +304,83 @@ Verified: all tables and their constraints exist as expected (`customers` has un
 
 ---
 
+## Loan Eligibility Estimate — How the Math Works
+
+`check_loan_eligibility` (`app/agent/tools.py`) answers "am I eligible for a loan" / "how much can I borrow" with a real, personalized estimate computed from the customer's own transaction history — not a guess, and not the static rate card (`get_loan_product_info`). It is explicitly an **estimate, never an approval**: every result carries a `disclaimer` field, and the agent's system prompt is instructed to relay it as such — final eligibility is still decided during the real loan application.
+
+### Step 1 — Estimate monthly income from real data
+
+The tool looks at the customer's own account transactions:
+
+1. Averages every `salary`-category **credit** transaction (up to the last 100) on the account.
+2. If there's no salary-tagged history, it falls back to averaging *all* credit transactions instead, and flags the result with `income_basis: "all_credits_estimate"` (lower confidence) rather than presenting it identically to a confirmed salary.
+3. If there's no transaction history at all, it returns `found: False` and the agent offers to start the loan application instead, which asks for income directly.
+
+### Step 2 — Convert income into an EMI budget
+
+```
+monthly_emi_capacity = avg_monthly_income × 0.5
+```
+
+A standard, deliberately conservative debt-to-income heuristic: assume at most 50% of monthly income could go toward a loan repayment (EMI = Equated Monthly Installment), leaving the rest for living expenses and existing obligations. Real underwriting also weighs existing debts and credit history, which this tool has no access to — hence "estimate," not "decision."
+
+### Step 3 — Invert the loan amortization formula
+
+The standard formula for a loan's monthly payment, given its principal, is:
+
+```
+EMI = P × r × (1+r)^n / [(1+r)^n − 1]
+```
+
+This tool runs it **backwards** — it knows the EMI budget from Step 2 and solves for the principal `P` that EMI could service:
+
+```
+P = EMI × [(1+r)^n − 1] / [r × (1+r)^n]
+```
+
+Implemented in the numerically-equivalent, more stable form:
+
+```python
+estimated_amount = monthly_emi_capacity * (1 - (1 + monthly_rate) ** -tenure_months) / monthly_rate
+```
+
+Where, for the requested loan type (personal/home/vehicle/education), pulled from the `loan_products` table:
+
+- **`r` (monthly_rate)** — the product's interest rate range midpoint, converted from an annual percentage to a monthly decimal. E.g. Personal Loan's 10.5%–15.0% range → midpoint 12.75% APR → `12.75 / 12 / 100 = 0.0010625` per month.
+- **`n` (tenure_months)** — the product's **maximum** published tenure (e.g. 60 months for Personal Loan). A longer tenure lowers the EMI needed per rupee borrowed, so using the max tenure gives the most generous legitimate estimate for that EMI budget.
+
+### Step 4 — Guardrails on the result
+
+```python
+estimated_amount = max(min(estimated_amount, max_amount), 0)
+```
+
+- **Capped at the product's `max_amount`** — the bank never estimates lending more than its own published ceiling, no matter what the raw formula produces.
+- **Floored at 0, but never lifted up to `min_amount`.** If the formula produces a number below the product's minimum borrowing amount, that's left as-is (and flagged via `meets_product_minimum: false`) rather than rounded up — a genuinely low estimate is itself useful information ("this customer likely doesn't qualify for this loan type yet"), not something to hide.
+
+### Worked example (seeded test data)
+
+Aditya (`911111111111`, account `FNCL000000000001`) has two `salary`-category credits of ₹5,000 each in the seed data, and asks about a Personal Loan (10.5%–15.0% interest, 60-month max tenure, ₹10,000–₹10,00,000 range):
+
+```
+avg_monthly_income   = (5000 + 5000) / 2           = ₹5,000
+monthly_emi_capacity = 5000 × 0.5                  = ₹2,500
+
+r = ((10.5 + 15.0) / 2) / 12 / 100                 = 0.0010625
+n = 60
+
+(1 + r)^-n = (1.0010625)^-60                       ≈ 0.937798
+1 − 0.937798                                       = 0.062202
+
+P = 2500 × 0.062202 / 0.0010625                    ≈ ₹1,10,495.77
+```
+
+`₹1,10,495.77` is within `[10000, 1000000]`, so no clamping applies and `meets_product_minimum: true`. The customer would be told: *"Based on your transaction history, your average monthly income is around ₹5,000. At roughly 50% of that toward repayment over up to 60 months, you could likely borrow up to about ₹1,10,495 for a Personal Loan — this is an estimate, not an approval."*
+
+(The seed data's income figures are small illustrative test values, not realistic salaries — the same math scales naturally with real income data.)
+
+---
+
 ## Project Structure
 
 **app/** — Application code
