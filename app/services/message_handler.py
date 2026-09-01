@@ -20,7 +20,13 @@ from app.services.whatsapp import (
     get_media_id,
     download_media,
 )
-from app.conversation.renderer import ResponseKind, as_structured_response, render_and_send, spoken_choices_hint
+from app.conversation.renderer import (
+    ResponseKind,
+    as_structured_response,
+    render_and_send,
+    spoken_choices_hint,
+    translate_structured_response,
+)
 from app.conversation.responses.loan import render_loan_menu
 from app.services.language import translate_text
 from app.services.transcription import transcribe_audio
@@ -361,10 +367,18 @@ async def send_voice_reply(response, chat_id: str, trace_id: str = "", language:
     resolved_language = structured.language or language
     choices_hint = spoken_choices_hint(structured)
     if choices_hint:
-        # spoken_choices_hint() is authored in English (button/list titles
-        # are never translated — see ConversationManager._finish), so it
-        # needs the same translation pass `.text` already went through,
-        # or a Hindi/etc. reply would end with a jarring English sentence.
+        # spoken_choices_hint()'s own wrapper words ("Say X." / "You can
+        # say X, or Y.") are always authored in English, even though the
+        # button/list titles substituted into it are already translated
+        # by the time this runs (see ConversationManager._finish() /
+        # translate_structured_response) — so the wrapper still needs
+        # this translation pass, or a Hindi/etc. reply would mix an
+        # English sentence around already-Hindi choices. Re-translating
+        # the already-translated titles as part of the same call is
+        # harmless (the model leaves text already in the target language
+        # alone) but not free — if this ever shows up in latency, the fix
+        # is to build the wrapper and titles as separate translated
+        # pieces instead of one combined string.
         if resolved_language:
             choices_hint = await translate_text(choices_hint, resolved_language, trace_id=trace_id)
         response_text = f"{response_text} {choices_hint}"
@@ -395,7 +409,14 @@ async def send_voice_reply(response, chat_id: str, trace_id: str = "", language:
         elif structured.voice_menu:
             menu_render = _VOICE_QUERY_MENUS.get(structured.voice_menu)
             if menu_render:
-                await render_and_send(menu_render(), chat_id, trace_id)
+                menu_response = menu_render()
+                # Built fresh from its own template (e.g. render_loan_menu())
+                # -- never passes through ConversationManager._finish(), so
+                # it needs its own translation pass here, same as `.text`
+                # already got via resolved_language above.
+                if resolved_language:
+                    await translate_structured_response(menu_response, resolved_language, trace_id=trace_id)
+                await render_and_send(menu_response, chat_id, trace_id)
     return sent
 
 

@@ -75,6 +75,43 @@ class TranslateTextTests(unittest.IsolatedAsyncioTestCase):
             mock_get_client.return_value.chat.completions.return_value = _mock_response("")
             self.assertEqual(await translate_text("Your balance is 100", "ta"), "Your balance is 100")
 
+    async def test_max_length_passed_to_model_as_a_budget_instruction(self) -> None:
+        with patch("app.services.language._get_client") as mock_get_client:
+            mock_get_client.return_value.chat.completions.return_value = _mock_response("Short")
+            await translate_text("Edit amount", "te", max_length=20)
+            _, kwargs = mock_get_client.return_value.chat.completions.call_args
+            system_prompt = kwargs["messages"][0]["content"]
+            self.assertIn("20 characters", system_prompt)
+            self.assertIn("button/menu label", system_prompt)
+
+    async def test_translation_over_budget_is_truncated(self) -> None:
+        # Regression: confirmed live -- a literal translation of a short
+        # English label ("Edit amount") routinely ran longer than
+        # WhatsApp's own button-title limit even with the budget
+        # instruction, silently dropping the interactive buttons in favor
+        # of a plain-numbered-text fallback. This is the last-resort
+        # safety net when the model still overshoots.
+        with patch("app.services.language._get_client") as mock_get_client:
+            mock_get_client.return_value.chat.completions.return_value = _mock_response(
+                "This translation is deliberately far too long to fit"
+            )
+            result = await translate_text("Edit amount", "te", max_length=20)
+            self.assertLessEqual(len(result), 20)
+
+    async def test_translation_within_budget_is_returned_unchanged(self) -> None:
+        with patch("app.services.language._get_client") as mock_get_client:
+            mock_get_client.return_value.chat.completions.return_value = _mock_response("Short label")
+            result = await translate_text("Edit amount", "te", max_length=20)
+            self.assertEqual(result, "Short label")
+
+    async def test_no_max_length_uses_the_full_sentence_prompt(self) -> None:
+        with patch("app.services.language._get_client") as mock_get_client:
+            mock_get_client.return_value.chat.completions.return_value = _mock_response("Full translation")
+            await translate_text("Your balance is 100", "ta")
+            _, kwargs = mock_get_client.return_value.chat.completions.call_args
+            system_prompt = kwargs["messages"][0]["content"]
+            self.assertNotIn("button/menu label", system_prompt)
+
 
 class DetectExplicitLanguageChangeTests(unittest.TestCase):
     def test_recognizes_common_phrasings(self) -> None:

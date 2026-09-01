@@ -39,9 +39,13 @@ from app.services.language import (
     detect_explicit_language_change,
     detect_language,
     should_attempt_detection,
-    translate_text,
 )
-from app.conversation.renderer import ResponseLike, StructuredResponse, as_structured_response
+from app.conversation.renderer import (
+    ResponseLike,
+    StructuredResponse,
+    as_structured_response,
+    translate_structured_response,
+)
 from app.conversation.responses.common import (
     render_cancelled,
     render_clarification,
@@ -605,33 +609,11 @@ class ConversationManager:
         # here, right before it's sent/logged/persisted -- the body text
         # AND every visible button/list label, so a native-language
         # customer doesn't get a translated message with English tap
-        # targets stapled onto it. Safe to translate labels freely: the
-        # WhatsApp reply always carries back each button/row's `id`
-        # (see app/services/whatsapp.py::get_interactive_reply), never
-        # its displayed title -- nothing downstream parses the title, so
-        # translating it changes nothing about how a tap is processed.
-        # Batched into one gather() so a cold cache (a label/language pair
-        # never translated before) costs one round of concurrent calls,
-        # not one sequential call per label; translate_text's own Redis
-        # cache makes every later customer's turn free either way.
-        if context is not None and context.detected_language != DEFAULT_LANGUAGE:
-            lang = context.detected_language
-            targets: list[tuple[Any, str]] = [(structured, "text")]
-            for button in structured.buttons:
-                targets.append((button, "title"))
-            if structured.list_button_label:
-                targets.append((structured, "list_button_label"))
-            for section in structured.list_sections:
-                targets.append((section, "title"))
-                for row in section.rows:
-                    targets.append((row, "title"))
-                    if row.description:
-                        targets.append((row, "description"))
-            translated_values = await asyncio.gather(*[
-                translate_text(getattr(obj, attr), lang, trace_id=trace_id) for obj, attr in targets
-            ])
-            for (obj, attr), value in zip(targets, translated_values):
-                setattr(obj, attr, value)
+        # targets stapled onto it. See translate_structured_response's own
+        # docstring for why labels are safe to translate freely and why
+        # each one carries a character budget.
+        if context is not None:
+            await translate_structured_response(structured, context.detected_language, trace_id=trace_id)
 
         # Record the language `text` actually ends up in (English included)
         # so a voice reply can be spoken in the same language it was

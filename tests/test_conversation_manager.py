@@ -403,7 +403,7 @@ class LlmRoutingSafetyTests(unittest.IsolatedAsyncioTestCase):
         decision = _decision(intent="loan_application_request", action="START_WORKFLOW", target_workflow="loan")
         with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True), \
              patch("app.conversation.manager.classify_and_route_llm", return_value=decision), \
-             patch("app.conversation.manager.translate_text", side_effect=lambda text, *a, **kw: text), \
+             patch("app.conversation.renderer.translate_text", side_effect=lambda text, *a, **kw: text), \
              patch("app.conversation.manager.start_workflow_directly",
                    return_value={"handled": True, "response": "Let's get your loan application going!"}) as mock_start:
             response = await manager.handle_message(
@@ -420,7 +420,7 @@ class LlmRoutingSafetyTests(unittest.IsolatedAsyncioTestCase):
         decision = _decision(intent="add_account_request", action="START_WORKFLOW", target_workflow="add_account")
         with p1, p2, p3, p4, patch.object(manager.context_store, "save", return_value=True), \
              patch("app.conversation.manager.classify_and_route_llm", return_value=decision), \
-             patch("app.conversation.manager.translate_text", side_effect=lambda text, *a, **kw: text), \
+             patch("app.conversation.renderer.translate_text", side_effect=lambda text, *a, **kw: text), \
              patch("app.conversation.manager.start_workflow_directly",
                    return_value={"handled": True, "response": "Let's set up your new account!"}) as mock_start:
             response = await manager.handle_message(
@@ -628,7 +628,7 @@ class InteractiveLabelTranslationTests(unittest.IsolatedAsyncioTestCase):
         response = StructuredResponse.buttons_of(
             "Yes, proceed?", [InteractiveButton(id="acct_yes", title="Yes, proceed"), InteractiveButton(id="acct_no", title="No, thanks")],
         )
-        with patch("app.conversation.manager.translate_text", side_effect=self._upper), \
+        with patch("app.conversation.renderer.translate_text", side_effect=self._upper), \
              patch.object(self.manager.context_store, "save", return_value=True):
             result = await self.manager._finish(context, "441111111111", "q", response, "t")
 
@@ -652,7 +652,7 @@ class InteractiveLabelTranslationTests(unittest.IsolatedAsyncioTestCase):
                 InteractiveListRow(id="1", title="Savings", description="Balance 100"),
             ])],
         )
-        with patch("app.conversation.manager.translate_text", side_effect=self._upper), \
+        with patch("app.conversation.renderer.translate_text", side_effect=self._upper), \
              patch.object(self.manager.context_store, "save", return_value=True):
             result = await self.manager._finish(context, "441111111111", "q", response, "t")
 
@@ -669,7 +669,7 @@ class InteractiveLabelTranslationTests(unittest.IsolatedAsyncioTestCase):
 
         context = _fresh_context()  # detected_language defaults to "en"
         response = StructuredResponse.buttons_of("Proceed?", [InteractiveButton(id="yes", title="Yes")])
-        with patch("app.conversation.manager.translate_text") as mock_translate, \
+        with patch("app.conversation.renderer.translate_text") as mock_translate, \
              patch.object(self.manager.context_store, "save", return_value=True):
             result = await self.manager._finish(context, "441111111111", "q", response, "t")
 

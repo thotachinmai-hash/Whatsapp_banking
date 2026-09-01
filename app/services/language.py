@@ -197,21 +197,48 @@ def detect_explicit_language_change(message: str) -> Optional[str]:
     return _LANGUAGE_NAME_TO_CODE.get(match.group(1).strip().lower())
 
 
-def _translation_cache_key(text: str, target_language: str) -> str:
+def _translation_cache_key(text: str, target_language: str, max_length: int | None) -> str:
     digest = hashlib.sha256(text.encode("utf-8")).hexdigest()[:32]
-    return f"cache:translation:{target_language}:{digest}"
+    budget = max_length if max_length is not None else "full"
+    return f"cache:translation:{target_language}:{budget}:{digest}"
 
 
-async def translate_text(text: str, target_language: str, trace_id: str = "") -> str:
+def _truncate_to_budget(text: str, max_length: int) -> str:
+    """Last-resort safety net when the model still overshoots a requested
+    character budget — cut at the last whitespace within budget so a
+    multi-byte script character never gets split mid-cluster, falling
+    back to a hard cut only if there's no whitespace to use."""
+    if len(text) <= max_length:
+        return text
+    truncated = text[:max_length]
+    last_space = truncated.rfind(" ")
+    return truncated[:last_space].rstrip() if last_space > 0 else truncated
+
+
+async def translate_text(
+    text: str, target_language: str, trace_id: str = "", max_length: int | None = None
+) -> str:
     """Translate `text` (assumed English — everything this app generates
     is authored in English) into `target_language`. Returns the original
     text unchanged if target_language is English/unsupported, or on any
     translation failure — a failed translation must never block the
-    customer from getting a reply."""
+    customer from getting a reply.
+
+    `max_length`, when given, is a hard character budget for the
+    translation — used for button/list labels, which WhatsApp itself caps
+    (see app/conversation/renderer.py's MAX_BUTTON_TITLE_LEN etc.).
+    Confirmed live: a literal English->target-language translation of a
+    short label routinely runs longer than the source ("Edit amount" ->
+    23 characters in Telugu, over the 20-character button-title limit),
+    which silently dropped the interactive buttons/list entirely in favor
+    of the plain-numbered-text fallback (see renderer.py's
+    _fits_button_limits/_fits_list_limits) — every single time, not just
+    on rare long labels. Left None for body text, which has no such
+    limit."""
     if not text or target_language not in SUPPORTED_LANGUAGES or target_language == DEFAULT_LANGUAGE:
         return text
 
-    cache_key = _translation_cache_key(text, target_language)
+    cache_key = _translation_cache_key(text, target_language, max_length)
     try:
         cached = redis_client.get(cache_key)
         if cached is not None:
@@ -222,6 +249,24 @@ async def translate_text(text: str, target_language: str, trace_id: str = "") ->
     language_name = SUPPORTED_LANGUAGES[target_language]
     start = time.time()
     try:
+        if max_length is not None:
+            instruction = (
+                f"Translate the user's message into {language_name}. This is a short "
+                "WhatsApp button/menu label, not a sentence — reply with a natural, "
+                f"idiomatic {language_name} label of at most {max_length} characters. "
+                "Prefer a shorter, more colloquial phrasing over a longer literal one if "
+                "needed to fit; abbreviate rather than dropping the core meaning. Preserve "
+                "any number/ID/emoji exactly. Reply with ONLY the translated label, "
+                "nothing else."
+            )
+        else:
+            instruction = (
+                f"Translate the user's message into {language_name}. Preserve "
+                "every number, currency amount, ID/reference code (e.g. "
+                "CHQ-XXXXXXXX, TRF-XXXXXXXX), emoji, and line break exactly "
+                "as given — translate only the surrounding words. Reply with "
+                "ONLY the translated text, nothing else."
+            )
         # Sync SDK call — run off-thread, same reasoning as detect_language().
         response = await asyncio.to_thread(
             _get_client().chat.completions,
@@ -230,16 +275,7 @@ async def translate_text(text: str, target_language: str, trace_id: str = "") ->
             max_tokens=2000,
             reasoning_effort="low",
             messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        f"Translate the user's message into {language_name}. Preserve "
-                        "every number, currency amount, ID/reference code (e.g. "
-                        "CHQ-XXXXXXXX, TRF-XXXXXXXX), emoji, and line break exactly "
-                        "as given — translate only the surrounding words. Reply with "
-                        "ONLY the translated text, nothing else."
-                    ),
-                },
+                {"role": "system", "content": instruction},
                 {"role": "user", "content": text},
             ],
         )
@@ -247,6 +283,12 @@ async def translate_text(text: str, target_language: str, trace_id: str = "") ->
         duration = (time.time() - start) * 1000
         if not translated:
             return text
+        if max_length is not None and len(translated) > max_length:
+            logger.info(
+                f"[{trace_id}] Translated label exceeded budget, truncating | "
+                f"language={target_language} | budget={max_length} | length={len(translated)}"
+            )
+            translated = _truncate_to_budget(translated, max_length)
         logger.info(f"[{trace_id}] Response translated | language={target_language} | duration={duration:.2f}ms")
         try:
             redis_client.setex(cache_key, _TRANSLATION_CACHE_TTL, translated)

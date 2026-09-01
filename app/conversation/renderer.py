@@ -35,12 +35,14 @@ parsers already accept (see docs/current_architecture.md), and a
 customer can still just type a reply either way.
 """
 
+import asyncio
 from enum import Enum
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel
 
 from app.logger import get_logger
+from app.services.language import DEFAULT_LANGUAGE, translate_text
 from app.services.whatsapp import send_button_message, send_list_message, send_text_message
 
 logger = get_logger(__name__)
@@ -153,6 +155,55 @@ def as_structured_response(response: ResponseLike) -> StructuredResponse:
     if isinstance(response, StructuredResponse):
         return response
     return StructuredResponse.plain(str(response))
+
+
+async def translate_structured_response(
+    structured: StructuredResponse, target_language: str, trace_id: str = ""
+) -> None:
+    """Translate every visible field on `structured` in place — body text
+    AND every button/list label (title, description, list button label,
+    section title) — not just the body. Shared by
+    ConversationManager._finish() (the main text/interactive reply path)
+    and app/services/message_handler.py::send_voice_reply()'s voice_menu
+    follow-up (a menu built fresh from its own template function, e.g.
+    render_loan_menu(), which never otherwise passes through _finish()
+    and so was being sent English-only regardless of the conversation's
+    actual language) — kept in one place so the two can't drift into
+    translating a different set of fields.
+
+    Safe to translate labels freely: a WhatsApp interactive reply always
+    carries back the tapped button/row's `id`
+    (app/services/whatsapp.py::get_interactive_reply), never its
+    displayed title, so nothing downstream parses the title.
+
+    Each target's `max_length` matches the WhatsApp-enforced cap
+    `_fits_button_limits`/`_fits_list_limits` check below — a translation
+    with no length awareness routinely ran longer than its English
+    source, silently dropping the interactive buttons/list in favor of
+    the plain-numbered-text fallback on nearly every turn (see
+    translate_text's own docstring for the confirmed-live specifics).
+
+    A no-op when target_language is English/unsupported (translate_text's
+    own guard), so callers can call this unconditionally."""
+    if target_language == DEFAULT_LANGUAGE:
+        return
+    targets: list[tuple[Any, str, Optional[int]]] = [(structured, "text", None)]
+    for button in structured.buttons:
+        targets.append((button, "title", MAX_BUTTON_TITLE_LEN))
+    if structured.list_button_label:
+        targets.append((structured, "list_button_label", MAX_LIST_BUTTON_LABEL_LEN))
+    for section in structured.list_sections:
+        targets.append((section, "title", MAX_LIST_ROW_TITLE_LEN))
+        for row in section.rows:
+            targets.append((row, "title", MAX_LIST_ROW_TITLE_LEN))
+            if row.description:
+                targets.append((row, "description", MAX_LIST_ROW_TITLE_LEN))
+    translated_values = await asyncio.gather(*[
+        translate_text(getattr(obj, attr), target_language, trace_id=trace_id, max_length=budget)
+        for obj, attr, budget in targets
+    ])
+    for (obj, attr, _budget), value in zip(targets, translated_values):
+        setattr(obj, attr, value)
 
 
 def _fits_button_limits(structured: StructuredResponse) -> bool:
