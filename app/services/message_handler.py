@@ -445,6 +445,12 @@ async def handle_incoming_message(payload: dict) -> dict:
         parsed_document = None
         detected_language = None
         is_voice_message = msg_type == "voice"
+        # A button/list tap carries no language signal of its own -- the
+        # payload sent back is always a fixed internal id ("acct_yes",
+        # "1"), never something the customer composed, regardless of what
+        # language the tapped label was displayed in. See
+        # ConversationManager._update_language's is_button_tap handling.
+        is_button_tap = msg_type == "interactive"
 
         if msg_type == "text":
             query = get_message_text(payload)
@@ -713,6 +719,7 @@ async def handle_incoming_message(payload: dict) -> dict:
             parsed_document=parsed_document,
             detected_language=detected_language,
             is_voice=is_voice_message,
+            is_button_tap=is_button_tap,
         )
 
         agent_duration = (time.time() - agent_start) * 1000

@@ -574,6 +574,109 @@ class LanguageStickinessTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(context.voice_language, "en")
         self.assertEqual(context.text_language, "ta")
 
+    async def test_button_tap_after_voice_conversation_does_not_reset_to_english(self):
+        # Regression: a purely voice-driven Telugu conversation was
+        # reverting to English the instant a button was tapped -- a tap
+        # isn't a voice message, so it fell into the TEXT branch, which
+        # set detected_language from text_language (never actually
+        # established in a voice-only conversation), clobbering the
+        # correct value from context.voice_language.
+        context = _fresh_context()
+        await self.manager._update_language(context, "కరుకి 500 పంపండి", "te", True, "t")
+        self.assertEqual(context.detected_language, "te")
+
+        with patch("app.conversation.manager.detect_language") as mock_detect:
+            await self.manager._update_language(context, "acct_yes", None, False, "t", is_button_tap=True)
+        mock_detect.assert_not_called()
+        self.assertEqual(context.detected_language, "te")
+        self.assertEqual(context.voice_language, "te")
+        self.assertEqual(context.text_language, "en")
+
+    async def test_button_tap_after_text_conversation_does_not_reset_language(self):
+        context = _fresh_context()
+        with patch("app.conversation.manager.detect_language", return_value="hi"):
+            await self.manager._update_language(context, "मेरा बैलेंस क्या है", None, False, "t")
+        self.assertEqual(context.detected_language, "hi")
+
+        await self.manager._update_language(context, "1", None, False, "t", is_button_tap=True)
+        self.assertEqual(context.detected_language, "hi")
+        self.assertEqual(context.text_language, "hi")
+
+
+class InteractiveLabelTranslationTests(unittest.IsolatedAsyncioTestCase):
+    """_finish() must translate every visible button/list label, not just
+    the body text -- see app/services/whatsapp.py::get_interactive_reply
+    for why this is safe (a tap always sends back the row/button `id`,
+    never its displayed title, so translating the title changes nothing
+    about how a tap is processed)."""
+
+    def setUp(self):
+        self.manager, _ = _manager_with()
+
+    @staticmethod
+    def _upper(text, *_args, **_kwargs):
+        # A distinctive, deterministic stand-in for a real translation --
+        # proves the exact string was actually routed through
+        # translate_text, not skipped or duplicated.
+        return f"[{text}]"
+
+    async def test_button_titles_are_translated(self):
+        from app.conversation.renderer import InteractiveButton, StructuredResponse
+
+        context = _fresh_context()
+        context.detected_language = "te"
+        response = StructuredResponse.buttons_of(
+            "Yes, proceed?", [InteractiveButton(id="acct_yes", title="Yes, proceed"), InteractiveButton(id="acct_no", title="No, thanks")],
+        )
+        with patch("app.conversation.manager.translate_text", side_effect=self._upper), \
+             patch.object(self.manager.context_store, "save", return_value=True):
+            result = await self.manager._finish(context, "441111111111", "q", response, "t")
+
+        structured = as_structured_response(result)
+        self.assertEqual(structured.text, "[Yes, proceed?]")
+        self.assertEqual(structured.buttons[0].title, "[Yes, proceed]")
+        self.assertEqual(structured.buttons[1].title, "[No, thanks]")
+        # The button `id`s -- what actually gets processed on tap -- must
+        # be completely untouched by translation.
+        self.assertEqual(structured.buttons[0].id, "acct_yes")
+        self.assertEqual(structured.buttons[1].id, "acct_no")
+
+    async def test_list_row_titles_descriptions_and_section_titles_are_translated(self):
+        from app.conversation.renderer import InteractiveListRow, InteractiveListSection, StructuredResponse
+
+        context = _fresh_context()
+        context.detected_language = "hi"
+        response = StructuredResponse.list_of(
+            "Choose an account", "Choose account",
+            [InteractiveListSection(title="Your accounts", rows=[
+                InteractiveListRow(id="1", title="Savings", description="Balance 100"),
+            ])],
+        )
+        with patch("app.conversation.manager.translate_text", side_effect=self._upper), \
+             patch.object(self.manager.context_store, "save", return_value=True):
+            result = await self.manager._finish(context, "441111111111", "q", response, "t")
+
+        structured = as_structured_response(result)
+        self.assertEqual(structured.list_button_label, "[Choose account]")
+        self.assertEqual(structured.list_sections[0].title, "[Your accounts]")
+        row = structured.list_sections[0].rows[0]
+        self.assertEqual(row.title, "[Savings]")
+        self.assertEqual(row.description, "[Balance 100]")
+        self.assertEqual(row.id, "1")
+
+    async def test_english_conversation_never_translates_labels(self):
+        from app.conversation.renderer import InteractiveButton, StructuredResponse
+
+        context = _fresh_context()  # detected_language defaults to "en"
+        response = StructuredResponse.buttons_of("Proceed?", [InteractiveButton(id="yes", title="Yes")])
+        with patch("app.conversation.manager.translate_text") as mock_translate, \
+             patch.object(self.manager.context_store, "save", return_value=True):
+            result = await self.manager._finish(context, "441111111111", "q", response, "t")
+
+        mock_translate.assert_not_called()
+        structured = as_structured_response(result)
+        self.assertEqual(structured.buttons[0].title, "Yes")
+
 
 class ConversationManagerArchitectureBoundaryTests(unittest.IsolatedAsyncioTestCase):
     """Verifies the orchestrator/business-logic boundary."""

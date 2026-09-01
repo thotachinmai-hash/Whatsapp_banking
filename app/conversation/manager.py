@@ -154,6 +154,7 @@ class ConversationManager:
         parsed_document: Optional[dict] = None,
         detected_language: Optional[str] = None,
         is_voice: bool = False,
+        is_button_tap: bool = False,
     ) -> ResponseLike:
         """Run one full conversation turn and return the response text.
 
@@ -181,7 +182,7 @@ class ConversationManager:
         context = await asyncio.to_thread(self._load_context, phone_number, trace_id)
         if context is not None:
             context.last_user_message = message[:500]
-            await self._update_language(context, message, detected_language, is_voice, trace_id)
+            await self._update_language(context, message, detected_language, is_voice, trace_id, is_button_tap)
 
         query = message
 
@@ -480,6 +481,7 @@ class ConversationManager:
         detected_language: Optional[str],
         is_voice: bool,
         trace_id: str,
+        is_button_tap: bool = False,
     ) -> None:
         """Keep context.voice_language/text_language current, and set
         context.detected_language to whichever of the two applies to THIS
@@ -488,7 +490,20 @@ class ConversationManager:
 
         Voice and text are tracked as two fully independent sticky
         languages — a language established on one channel never leaks
-        into the other."""
+        into the other.
+
+        A button/list tap is neither -- its payload is always a fixed
+        internal id ("acct_yes", "1"), never something the customer
+        composed, regardless of what language the tapped label displayed
+        in. Confirmed live: a purely voice-driven Telugu conversation
+        reverted to English the instant a button was tapped, because a
+        tap isn't a voice message, so it fell into the TEXT branch below
+        -- which sets detected_language from text_language, a slot this
+        conversation had never actually used (only voice_language had
+        ever been set to Telugu). Leave every language field untouched
+        for a tap instead -- whatever was already active carries over."""
+        if is_button_tap:
+            return
         if is_voice:
             if detected_language:
                 context.voice_language = detected_language
@@ -587,9 +602,36 @@ class ConversationManager:
 
         # Every response generated above this point is authored in
         # English (templates, RAG/LLM output, error text). Translate once,
-        # here, right before it's sent/logged/persisted.
+        # here, right before it's sent/logged/persisted -- the body text
+        # AND every visible button/list label, so a native-language
+        # customer doesn't get a translated message with English tap
+        # targets stapled onto it. Safe to translate labels freely: the
+        # WhatsApp reply always carries back each button/row's `id`
+        # (see app/services/whatsapp.py::get_interactive_reply), never
+        # its displayed title -- nothing downstream parses the title, so
+        # translating it changes nothing about how a tap is processed.
+        # Batched into one gather() so a cold cache (a label/language pair
+        # never translated before) costs one round of concurrent calls,
+        # not one sequential call per label; translate_text's own Redis
+        # cache makes every later customer's turn free either way.
         if context is not None and context.detected_language != DEFAULT_LANGUAGE:
-            structured.text = await translate_text(structured.text, context.detected_language, trace_id=trace_id)
+            lang = context.detected_language
+            targets: list[tuple[Any, str]] = [(structured, "text")]
+            for button in structured.buttons:
+                targets.append((button, "title"))
+            if structured.list_button_label:
+                targets.append((structured, "list_button_label"))
+            for section in structured.list_sections:
+                targets.append((section, "title"))
+                for row in section.rows:
+                    targets.append((row, "title"))
+                    if row.description:
+                        targets.append((row, "description"))
+            translated_values = await asyncio.gather(*[
+                translate_text(getattr(obj, attr), lang, trace_id=trace_id) for obj, attr in targets
+            ])
+            for (obj, attr), value in zip(targets, translated_values):
+                setattr(obj, attr, value)
 
         # Record the language `text` actually ends up in (English included)
         # so a voice reply can be spoken in the same language it was

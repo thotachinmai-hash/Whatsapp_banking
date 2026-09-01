@@ -709,6 +709,7 @@ async def run_agent(
     parsed_document: dict | None = None,
     detected_language: str | None = None,
     is_voice: bool = False,
+    is_button_tap: bool = False,
 ):
     """Thin entry point — see app/conversation/manager.py::ConversationManager
     for the actual turn orchestration (Phase 5). Kept here as a stable,
@@ -727,7 +728,10 @@ async def run_agent(
     rather than inferred from `detected_language` being set, since a short
     voice utterance can arrive with `detected_language=None` too (Sarvam's
     own per-utterance tag gets dropped as unreliable below a length
-    threshold) and must still update the voice channel, not the text one."""
+    threshold) and must still update the voice channel, not the text one.
+    `is_button_tap` tells it this turn is a button/list reply (a fixed
+    internal id, never something the customer composed) so it must not
+    touch the sticky language state at all — see _update_language."""
     logger.info(f"[{trace_id}] Agent started | phone={phone_number[-4:]} | query={query[:50]}")
     try:
         return await conversation_manager.handle_message(
@@ -738,6 +742,7 @@ async def run_agent(
             parsed_document=parsed_document,
             detected_language=detected_language,
             is_voice=is_voice,
+            is_button_tap=is_button_tap,
         )
     except Exception as e:
         logger.error(f"[{trace_id}] Agent failed | error={e}")
