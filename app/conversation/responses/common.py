@@ -125,8 +125,9 @@ def render_main_menu_list(name: Optional[str] = None, greeting: bool = True, pre
     second render_main_menu() call, which isn't possible once this is a
     list instead of a plain string."""
     header = f"Hi {name}, welcome back to Finacle Banking! \U0001F44B\n\n" if (greeting and name) else ""
-    body = f"{prefix}\n\n" if prefix else ""
-    body += header + "\U0001F4CB *What would you like to do?*"
+    body = header
+    body += f"{prefix}\n\n" if prefix else ""
+    body += "\U0001F4CB *What would you like to do?*"
     rows = [InteractiveListRow(id=digit, title=title, description=desc) for digit, title, desc in _MAIN_MENU_ROWS]
     return StructuredResponse.list_of(body, "Menu", [InteractiveListSection(title="Services", rows=rows)])
 
