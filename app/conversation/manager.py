@@ -436,7 +436,9 @@ class ConversationManager:
                 # WorkflowManager's reprocess_query path), so it still
                 # falls through to the read-only general agent below,
                 # exactly as before this fix.
-                result = await asyncio.to_thread(start_view_transactions, phone_number, trace_id)
+                result = await asyncio.to_thread(
+                    start_view_transactions, phone_number, trace_id, query, llm_decision.entities
+                )
                 if result.get("handled"):
                     self._register_progress(context)
                     return await self._finish(

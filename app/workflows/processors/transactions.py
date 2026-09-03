@@ -11,7 +11,8 @@ tool_get_last_transactions) — that path was confirmed live to sometimes
 answer "no account linked" without calling the tool at all.
 """
 
-from typing import Any
+import re
+from typing import Any, Optional
 
 from app.database import get_account_by_number, get_accounts_by_phone, get_transactions
 from app.logger import get_logger
@@ -23,6 +24,23 @@ from app.conversation.renderer import InteractiveListRow, InteractiveListSection
 logger = get_logger(__name__)
 
 _TRANSACTIONS_LIMIT = 5
+
+_ACCOUNT_TYPE_RE = re.compile(r"\b(savings|current|salary)\b", re.I)
+
+
+def _resolve_account_type(query: str, entities: Optional[dict[str, Any]]) -> Optional[str]:
+    """Pull an explicit account-type mention ("...of my current account")
+    out of the trigger message, same idea as transfer.py's
+    _extract_source_hint -- so a customer who already named the account
+    they mean isn't asked again. Regex on the raw text first; the LLM
+    router's own entities.account_type (see llm_routing.py) is the
+    fallback for a native-language/voice-transcribed message the regex
+    can't read."""
+    match = _ACCOUNT_TYPE_RE.search(query or "")
+    if match:
+        return match.group(1).lower()
+    entity_type = str((entities or {}).get("account_type", "")).strip().lower()
+    return entity_type if entity_type in {"savings", "current", "salary"} else None
 
 
 def _render_transactions(account: dict, trace_id: str = "") -> StructuredResponse:
@@ -61,9 +79,18 @@ def _account_prompt(accounts: list[dict]) -> StructuredResponse:
     )
 
 
-def start_view_transactions(phone_number: str, trace_id: str = "") -> dict[str, Any]:
+def start_view_transactions(
+    phone_number: str, trace_id: str = "", query: str = "", entities: Optional[dict[str, Any]] = None
+) -> dict[str, Any]:
     """Entry point called from WorkflowManager.start_requested() for the
-    "View transactions" menu row / keyword trigger."""
+    "View transactions" menu row / keyword trigger, and from
+    ConversationManager for an LLM-routed transaction_request.
+
+    `query`/`entities` let a customer who already named which account they
+    mean ("show my last 5 transactions of my current account") skip the
+    "which account?" prompt below -- both are optional and default to
+    "nothing stated" for the plain menu-tap/keyword trigger, which has no
+    free text to read from."""
     accounts = get_accounts_by_phone(phone_number)
     if not accounts:
         return {
@@ -75,6 +102,12 @@ def start_view_transactions(phone_number: str, trace_id: str = "") -> dict[str, 
         }
     if len(accounts) == 1:
         return {"handled": True, "response": _render_transactions(accounts[0], trace_id)}
+
+    account_type = _resolve_account_type(query, entities)
+    if account_type:
+        type_matches = [a for a in accounts if str(a["account_type"]).lower() == account_type]
+        if len(type_matches) == 1:
+            return {"handled": True, "response": _render_transactions(type_matches[0], trace_id)}
 
     workflow = create_workflow_model(WORKFLOW_VIEW_TRANSACTIONS, STEP_SELECT_TRANSACTIONS_ACCOUNT)
     create_workflow(phone_number, workflow)

@@ -39,6 +39,17 @@ _BENEFICIARY_INTENT_RE = re.compile(
     r".*?\bto\s+([A-Za-z][A-Za-z .'\-]{1,50})",
     re.I,
 )
+# A conditional transfer ("transfer 100 to karu IF my balance is above 200")
+# puts the condition clause right after the name, inside the character
+# class _BENEFICIARY_INTENT_RE's capture group already allows (letters and
+# spaces) — so without this, the captured "name" runs straight into the
+# condition ("Karu If My Account Balance Is More Than") instead of stopping
+# at "karu". Cuts the captured text at the first such connector, same as
+# _NAME_TRAILERS does for trailing filler words.
+_CONDITION_CUTOFF_RE = re.compile(
+    r"\s+\b(?:if|unless|provided|in\s*case|only\s+if|as\s+long\s+as|when|but)\b.*$",
+    re.I,
+)
 # Matches an optional currency marker, digits with optional thousands
 # commas (Indian-style grouping like "1,00,000" included — the comma
 # positions aren't validated, just stripped), an optional decimal part,
@@ -149,7 +160,8 @@ def start_transfer_from_text(
     requested_name = ""
     name_match = _BENEFICIARY_INTENT_RE.search(query.strip())
     if name_match:
-        candidate = _NAME_TRAILERS.sub("", name_match.group(1).strip())
+        candidate = _CONDITION_CUTOFF_RE.sub("", name_match.group(1).strip())
+        candidate = _NAME_TRAILERS.sub("", candidate.strip())
         requested_name = candidate.strip().title()
     if not requested_name:
         entity_recipient = str(entities.get("recipient", "")).strip()

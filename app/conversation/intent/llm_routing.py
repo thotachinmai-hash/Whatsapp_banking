@@ -225,7 +225,10 @@ _ROUTING_SYSTEM_PROMPT = (
     "to Latin script if the message itself used a different script) and/or entities.amount (digits "
     'only, no currency symbol or words -- e.g. "500", "2000") for whichever of the two the message '
     "actually states. This lets the app skip re-asking for a beneficiary/amount the customer already "
-    "stated in a script or phrasing its own text-matching can't read."
+    "stated in a script or phrasing its own text-matching can't read.\n"
+    "When the message names which account it's about (savings/current/salary, in any language or "
+    "phrasing), include entities.account_type using exactly one of these English words: \"savings\", "
+    "\"current\", \"salary\". This lets the app skip re-asking which account the customer already stated."
 )
 
 

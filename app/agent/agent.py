@@ -104,7 +104,7 @@ def _timed_tool(name: str, fn, trace_id: str):
     return wrapped
 
 
-def make_tools(trace_id: str,phone_number: str,) -> list:
+def make_tools(trace_id: str, phone_number: str, query: str = "") -> list:
     tools = [
         StructuredTool.from_function(
             func=lambda account_number="": tool_get_account_balance(account_number, phone_number, trace_id),
@@ -284,7 +284,7 @@ def make_tools(trace_id: str,phone_number: str,) -> list:
         ),
         StructuredTool.from_function(
             func=lambda beneficiary_name="", amount="": tool_start_transfer_workflow(
-                phone_number, beneficiary_name, amount, trace_id
+                phone_number, beneficiary_name, amount, trace_id, original_query=query
             ),
             name="start_transfer_workflow",
             description="""
@@ -343,8 +343,8 @@ def make_tools(trace_id: str,phone_number: str,) -> list:
     return tools
 
 
-def build_agent(trace_id: str,phone_number: str,) -> Any:
-    tools = make_tools(trace_id,phone_number,)
+def build_agent(trace_id: str, phone_number: str, query: str = "") -> Any:
+    tools = make_tools(trace_id, phone_number, query)
     llm = get_llm()
     llm_with_tools = llm.bind_tools(tools)
     active_workflow = get_workflow(phone_number)
@@ -558,7 +558,7 @@ Important: Keep responses short and suitable for WhatsApp messages.""")
 
     graph: StateGraph = StateGraph(AgentState)
     graph.add_node("agent", agent_node)  # type: ignore
-    graph.add_node("tools", ToolNode(make_tools(trace_id,phone_number,)))  # type: ignore
+    graph.add_node("tools", ToolNode(make_tools(trace_id, phone_number, query)))  # type: ignore
     graph.set_entry_point("agent")
     graph.add_conditional_edges("agent", should_continue, {"tools": "tools", END: END})
     graph.add_edge("tools", "agent")
@@ -641,7 +641,7 @@ async def _run_llm_agent(
         elif msg["role"] == "assistant":
             past_messages.append(AIMessage(content=msg["content"][:300]))
 
-    agent = await asyncio.to_thread(build_agent, trace_id, phone_number)
+    agent = await asyncio.to_thread(build_agent, trace_id, phone_number, query)
 
     initial_state: AgentState = {
         "messages": past_messages + [HumanMessage(content=query)],

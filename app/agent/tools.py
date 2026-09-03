@@ -787,7 +787,8 @@ def _response_text(result: Any) -> str:
 
 
 def tool_start_transfer_workflow(
-    phone_number: str, beneficiary_name: str = "", amount: str = "", trace_id: str = ""
+    phone_number: str, beneficiary_name: str = "", amount: str = "", trace_id: str = "",
+    original_query: str = "",
 ) -> str:
     """
     Start a money-transfer workflow, optionally pre-filled with a
@@ -820,7 +821,20 @@ def tool_start_transfer_workflow(
         query_parts.append(f"to {beneficiary_name.strip()}")
     synthetic_query = " ".join(query_parts) if len(query_parts) > 1 else "transfer money"
 
-    result = start_transfer_from_text(phone_number, synthetic_query, TransferWorkflowProcessor(), trace_id)
+    # Prefer the customer's own original wording over the synthetic
+    # reconstruction above — start_transfer_from_text's own regex
+    # extraction (name + amount) runs on whichever query string it's
+    # given, and the original sentence carries the full picture (e.g. a
+    # conditional transfer's beneficiary name) even when the LLM's own
+    # beneficiary_name/amount tool-call arguments come back incomplete.
+    # beneficiary_name/amount are kept as a fallback via `entities`, used
+    # by start_transfer_from_text only if its own regex extraction finds
+    # nothing — see that function's docstring.
+    query_for_extraction = original_query.strip() or synthetic_query
+    result = start_transfer_from_text(
+        phone_number, query_for_extraction, TransferWorkflowProcessor(), trace_id,
+        entities={"recipient": beneficiary_name, "amount": amount},
+    )
     logger.info(f"[{trace_id}] TOOL | start_transfer_workflow | beneficiary={beneficiary_name or 'none'} | amount={amount or 'none'}")
     return _response_text(result) or "Transfer workflow started."
 
