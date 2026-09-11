@@ -406,8 +406,8 @@ INSERT INTO cheque_requests (request_id, phone_number, bank_name, branch, payee,
 
 -- Saved beneficiaries — synced from live database snapshot, 2026-09-04
 INSERT INTO beneficiaries (phone_number, beneficiary_name, account_number, bank_name, created_at) VALUES
-('447818658034', 'Priya Sharma',                        'GB29FNCL60161331926819', 'Finacle Banking', '2026-08-18 08:51:47.934207'),
-('447818658034', 'Alex Morgan',                          'GB77FNCL29001847502211', 'Finacle Banking', '2026-08-18 08:51:47.934207'),
+('44XXXXXXXXXX', 'Priya Sharma',                        'GB29FNCL60161331926819', 'Finacle Banking', '2026-08-18 08:51:47.934207'),
+('44XXXXXXXXXX', 'Alex Morgan',                          'GB77FNCL29001847502211', 'Finacle Banking', '2026-08-18 08:51:47.934207'),
 ('91XXXXXXXXXX', 'Rahul Verma',                          'GB14FNCL74208891XXXXXX', 'Finacle Banking', '2026-08-18 08:51:47.934207'),
 ('91XXXXXXXXXX', 'Emma Wilson',                          'GB05FNCL13590027461938', 'Finacle Banking', '2026-08-18 08:51:47.934207'),
 ('91XXXXXXXXXX', 'My Landlord If Balance Is More Than',  'ACCOUNTNUMBERIS4639356', NULL,              '2026-08-18 09:21:42.239804'),
