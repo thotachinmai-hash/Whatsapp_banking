@@ -16,6 +16,7 @@ from langgraph.prebuilt import ToolNode
 from typing_extensions import TypedDict
 from app.agent.tools import (
     tool_get_account_balance,
+    tool_get_frequently_used_account,
     tool_get_last_transactions,
     tool_start_cheque_workflow,
     tool_check_cheque_status,
@@ -110,6 +111,11 @@ def make_tools(trace_id: str, phone_number: str, query: str = "") -> list:
             func=lambda account_number="": tool_get_account_balance(account_number, phone_number, trace_id),
             name="get_account_balance",
             description="Get the current balance. For a registered customer, omit account_number and use the account linked to their phone; never ask repeatedly for an account number."
+        ),
+        StructuredTool.from_function(
+            func=lambda: tool_get_frequently_used_account(phone_number, trace_id),
+            name="get_frequently_used_account",
+            description="Find the active account linked to this customer's phone number with the most transaction history. Use for questions like 'what is my most frequently used account?' or 'which account do I use most?'. Always call this tool and report only its result.",
         ),
         StructuredTool.from_function(
             func=lambda account_number="", limit=5, start_date=None, end_date=None, transaction_type=None, category=None: tool_get_last_transactions(
@@ -357,6 +363,10 @@ def build_agent(trace_id: str, phone_number: str, query: str = "") -> Any:
 
     async def agent_node(state: AgentState) -> dict:  # type: ignore
         start = time.time()
+        from app.services.language import SUPPORTED_LANGUAGES
+        conversation_context = conversation_context_store.get(phone_number, trace_id=trace_id)
+        response_language = (conversation_context.detected_language if conversation_context else "en") or "en"
+        response_language_name = SUPPORTED_LANGUAGES.get(response_language, "English")
         system_message = SystemMessage(content=f"""You are a helpful Finacle Banking assistant on WhatsApp.
 You help customers check their account balance, view transactions and spend summaries,
 deposit cheques, check the status of a cheque deposit request, and start money transfers.
@@ -448,6 +458,10 @@ Write in simple, everyday English a customer who isn't comfortable with banking 
 follow easily — short sentences, no technical or internal terms (never say "intent",
 "classifier", "router", "workflow", "system error", or similar). Keep messages short and
 use at most one or two emojis, only when they genuinely help.
+
+LANGUAGE RULE: Reply in {response_language_name}, the language detected for the customer's
+current message or selected button. Do not let older conversation turns override it. If the
+current message is English, reply in English even if earlier turns were in another language.
 
 {workflow_context}
 If the customer asks a side question while a workflow is active, answer it naturally and

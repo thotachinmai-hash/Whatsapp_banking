@@ -28,7 +28,7 @@ from app.conversation.renderer import (
     translate_structured_response,
 )
 from app.conversation.responses.loan import render_loan_menu
-from app.services.language import translate_text
+from app.services.language import detect_language, translate_text
 from app.services.transcription import transcribe_audio
 from app.services.tts import synthesize_voice_note
 from app.services.whatsapp import send_voice_message, send_document_message
@@ -492,6 +492,10 @@ async def handle_incoming_message(payload: dict) -> dict:
             # app/conversation/renderer.py's module docstring for the id
             # convention. `title` is logged only, never parsed as input.
             query = reply["id"]
+            # The internal reply id carries no language signal, but the
+            # visible button title does. Use it to keep the response in the
+            # language the customer just selected from.
+            detected_language = await detect_language(reply.get("title", ""), trace_id=trace_id)
             logger.info(f"[{trace_id}] Interactive reply | id={reply['id']!r} | title={reply['title']!r}")
 
         elif msg_type == "voice":

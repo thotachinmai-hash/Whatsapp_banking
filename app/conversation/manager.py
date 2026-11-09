@@ -509,6 +509,12 @@ class ConversationManager:
         ever been set to Telugu). Leave every language field untouched
         for a tap instead -- whatever was already active carries over."""
         if is_button_tap:
+            # The visible button title was detected by message_handler.
+            # Apply it to the text channel so English buttons clear stale
+            # Telugu state before the response is rendered.
+            if detected_language:
+                context.text_language = detected_language
+                context.detected_language = detected_language
             return
         if is_voice:
             if detected_language:

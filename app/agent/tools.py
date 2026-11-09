@@ -6,6 +6,7 @@ from app.conversation.renderer import StructuredResponse
 from app.database import (
     get_account_by_number,
     get_accounts_by_phone,
+    get_frequently_used_account,
     get_transactions,
     get_spend_summary,
     get_cheque_request_by_id,
@@ -33,6 +34,22 @@ from app.workflows.constants import (
 from app.rag.retriever import search as rag_search
 
 logger = get_logger(__name__)
+
+
+def tool_get_frequently_used_account(phone_number: str = "", trace_id: str = "") -> dict:
+    """Find and return the customer's active account with the most transactions."""
+    start = time.time()
+    try:
+        accounts = get_accounts_by_phone(phone_number)
+        if not accounts:
+            return {"found": False, "message": "No active accounts are linked to this mobile number."}
+        account = get_frequently_used_account(phone_number, accounts=accounts)
+        if not account:
+            return {"found": False, "message": "No active accounts are linked to this mobile number."}
+        logger.info(f"[{trace_id}] TOOL | get_frequently_used_account | success | duration={(time.time() - start) * 1000:.2f}ms")
+        return {"found": True, "account_number": account["account_number"], "account_type": account["account_type"]}
+    except Exception as e:
+        return _tool_error("get_frequently_used_account", "finding your most frequently used account", e, trace_id)
 
 
 def _tool_error(tool_name: str, action: str, e: Exception, trace_id: str) -> dict:
